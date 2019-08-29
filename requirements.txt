@@ -1,0 +1,6 @@
+discord.py[voice]
+aiohttp
+asyncpg
+apscheduler
+sqlalchemy
+pip
