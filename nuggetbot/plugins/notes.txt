@@ -1,0 +1,34 @@
+>>> psutil.cpu_freq()
+scpufreq(current=4001.0, min=0.0, max=4001.0)
+
+>>> psutil.cpu_percent()
+9.1
+
+>>> psutil.cpu_count()
+8
+
+
+psutil.disk_usage(r"c:/")
+sdiskusage(total=249585201152, used=84634804224, free=164950396928, percent=33.9)
+
+>>> psutil.swap_memory()
+sswap(total=36796071936, used=14933676032, free=21862395904, percent=40.6, sin=0, sout=0)
+
+>>> psutil.virtual_memory()
+svmem(total=34229157888, available=22149898240, percent=35.3, used=12079259648, free=22149898240)
+#tinker
+>>> psutil.virtual_memory()
+svmem(total=2100023296, available=1914519552, percent=8.8, used=105734144, free=1330302976, active=221483008, inactive=426090496, buffers=28860416, cached=635125760, shared=15908864, slab=86986752)
+
+>>> platform.processor()
+'Intel64 Family 6 Model 60 Stepping 3, GenuineIntel'
+none under tinkerboard
+
+>>> platform.machine()
+'AMD64'
+
+>>> platform.architecture()
+('32bit', 'WindowsPE')
+
+>>> platform.python_version()
+'3.7.3'
