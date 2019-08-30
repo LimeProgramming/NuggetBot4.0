@@ -68,7 +68,7 @@ class Gallery(commands.Cog):
     async def on_cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
             try:
-                owner = self.bot.application_info()
+                owner = (self.bot.application_info()).owner
             except:
                 owner = self.bot.get_guild(self.gal_guild_id).owner()
 

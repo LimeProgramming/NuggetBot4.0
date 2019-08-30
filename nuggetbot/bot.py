@@ -385,22 +385,22 @@ class NuggetBot(commands.Bot):
                 await self.db.execute("INSERT INTO test(guild_id, chs_id, emojis) VALUES($1, $2, $3)", 605100382569365573, chs, emojis_bytes)
 
 
-            emoji_return = await self.db.fetchrow("SELECT * FROM test")
+                emoji_return = await self.db.fetchrow("SELECT * FROM test")
 
-            
-
-            for i in emoji_return['emojis']:
-                #print(type(i[2]))
-                #print(i)
                 
-                #e_id, 
-                #img = Image.frombuffer('RGBA', (128,128), j)
-                img = Image.open(BytesIO(i[2]))
 
-                if i[1].lower() == "gif":
-                    img.save(f"{i[0]}.{i[1]}", format=i[1], save_all=True, optimize=True)
-                else:
-                    img.save(f"{i[0]}.{i[1]}", format=i[1])
+                for i in emoji_return['emojis']:
+                    #print(type(i[2]))
+                    #print(i)
+                    
+                    #e_id, 
+                    #img = Image.frombuffer('RGBA', (128,128), j)
+                    img = Image.open(BytesIO(i[2]))
+
+                    if i[1].lower() == "gif":
+                        img.save(f"{i[0]}.{i[1]}", format=i[1], save_all=True, optimize=True)
+                    else:
+                        img.save(f"{i[0]}.{i[1]}", format=i[1])
 
         except Exception as e:
             print(e)
