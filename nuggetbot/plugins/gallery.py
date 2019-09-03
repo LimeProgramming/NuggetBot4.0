@@ -227,7 +227,7 @@ class Gallery(commands.Cog):
             return
         
         ###===== RETURN IF MESSAGE TYPE IS ANYTHING OTHER THAN A NORMAL MESSAGE.
-        if not isinstance(msg, discord.MessageType.default):
+        if not bool(msg.type == discord.MessageType.default):
             return
 
         if msg.channel in self.gal_channels:

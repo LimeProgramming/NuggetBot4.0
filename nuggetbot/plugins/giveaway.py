@@ -9,8 +9,11 @@ import dblogin
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
-from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
+#from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
+from .cog_utils import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff, SAVE_COG_CONFIG, LOAD_COG_CONFIG
 #https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#bot
+
+giveaway_channel_id = int()
 
 class Giveaway(commands.Cog):
     """Lime's Giveaway System."""
@@ -19,9 +22,10 @@ class Giveaway(commands.Cog):
     delete_after = 15
 
     def __init__(self, bot):
-        self.RafEntryActive = False
-        self.RafDatetime = []
+        #self.RafEntryActive = False
+        #self.RafDatetime = []
         self.bot = bot
+        self.cogset = dict()
         #self.config = Config()
         Giveaway.config = Config()
         self.databaselg = DatabaseLogin()
@@ -29,10 +33,24 @@ class Giveaway(commands.Cog):
 
         #self._last_result = None
     
+  #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
         credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
         self.db = await asyncpg.create_pool(**credentials)
+
+        ###===== LOAD COG SETTINGS
+        self.cogset = await LOAD_COG_CONFIG(cogname="giveaway")
+
+        if not self.cogset:
+            self.cogset= dict(
+                RafEntryActive=    False,
+                RafDatetime=       ""
+            )
+
+            await SAVE_COG_CONFIG(self.cogset, cogname="giveaway")
+
+        giveaway_channel_id = Giveaway.config.gvwy_channel_id
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
@@ -59,12 +77,19 @@ class Giveaway(commands.Cog):
         elif (self.giveaway_role in before.roles) and (self.giveaway_role not in after.roles):
             await self.db.execute(pgCmds.REM_MEM_GVWY_ENTRIES, after.id)
 
+
+  #-------------------- LOCAL COG STUFF --------------------
     async def cog_after_invoke(self, ctx):
+        if not ctx.message.guild:
+            return 
+            
         if Giveaway.config.delete_invoking:
             await ctx.message.delete()
 
         return
 
+
+  #-------------------- STATIC METHODS --------------------
     @staticmethod
     async def Get_user_id(content):
         try:
@@ -131,9 +156,11 @@ class Giveaway(commands.Cog):
         arrs.append(arr)
         return arrs
 
+
+  #-------------------- COMMANDS --------------------
     ###Users assign themselves the giveaway role
     @is_core()
-    @in_channel([607424940177883148])
+    @in_channel([giveaway_channel_id])
     @commands.command(pass_context=False, hidden=False, name='giveaway', aliases=["gvwy"])
     async def cmd_giveaway(self, ctx):
         """
@@ -146,7 +173,7 @@ class Giveaway(commands.Cog):
         giveawayRole = discord.utils.get(ctx.guild.roles, id=Giveaway.config.gvwy_role_id)
 
         ##===== IF RAFFLE IS OPEN
-        if self.RafEntryActive:
+        if self.cogset['RafEntryActive']:
 
             #=== IF MEMBER IS IN RAFFLE
             if await self.db.fetchval(pgCmds.GET_MEM_EXISTS_GVWY_ENTRIES, ctx.message.author.id):
@@ -174,7 +201,7 @@ class Giveaway(commands.Cog):
                 return
 
             #=== IF NOT ACTIVE ENOUGH
-            if len(await self.db.fetch(pgCmds.GET_MEMBER_MSGS_BETWEEN, ctx.author.id, self.RafDatetime["open"], self.RafDatetime["past"])) < Giveaway.config.gvwy_min_msgs:
+            if len(await self.db.fetch(pgCmds.GET_MEMBER_MSGS_BETWEEN, ctx.author.id, self.cogset['RafDatetime']["open"], self.cogset['RafDatetime']["past"])) < Giveaway.config.gvwy_min_msgs:
                 await ctx.channel.send(content=f"Sorry {ctx.author.mention}, but you have not been active enough on the server to enter the giveaway.", delete_after=Giveaway.delete_after) 
                 return
 
@@ -489,7 +516,8 @@ class Giveaway(commands.Cog):
             [prefix]endraffle
         """
         #===== CLOSE RAFFLE ENTRY
-        self.RafEntryActive = False
+        self.cogset['RafEntryActive']
+        await SAVE_COG_CONFIG(self.cogset, cogname="giveaway")
 
         #===== GET GIVEAWAY ROLE AND MEMBERS
         giveawayRole = discord.utils.get(ctx.guild.roles, id=Giveaway.config.gvwy_role_id)
@@ -518,9 +546,11 @@ class Giveaway(commands.Cog):
             [prefix]allowentries
         """
 
-        if not self.RafEntryActive:
-            self.RafEntryActive = True
-            self.RafDatetime = {'open':datetime.datetime.utcnow(), 'past':datetime.datetime.utcnow() + datetime.timedelta(days = -15)}
+        if not self.cogset['RafEntryActive']:
+            self.cogset['RafEntryActive'] = True
+            self.cogset['RafDatetime'] = {'open':datetime.datetime.utcnow(), 'past':datetime.datetime.utcnow() + datetime.timedelta(days = -15)}
+
+            await SAVE_COG_CONFIG(self.cogset, cogname="giveaway")
 
             await ctx.channel.send(content="Entries now allowed :thumbsup:")
             return
@@ -539,8 +569,10 @@ class Giveaway(commands.Cog):
             [prefix]stopentries
         """
 
-        if self.RafEntryActive:
-            self.RafEntryActive = False
+        if self.cogset['RafEntryActive']:
+            self.cogset['RafEntryActive'] = False
+
+            await SAVE_COG_CONFIG(self.cogset, cogname="giveaway")
 
             await ctx.channel.send(content="Entries now turned off :thumbsup:")
             return
@@ -549,7 +581,7 @@ class Giveaway(commands.Cog):
         return
 
     ###Support or above can post list of raffle entries
-    #@in_channel([ChnlID.giveaway])
+    @in_channel([giveaway_channel_id])
     @is_core()
     @commands.command(pass_context=True, hidden=False, name='giveawayentries', aliases=["gvwy_giveawayentries"])
     async def cmd_giveawayentries(self, ctx):
