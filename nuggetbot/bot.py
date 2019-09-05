@@ -53,13 +53,13 @@ NuggetBot
 log = logging.getLogger(__name__)
 
 plugins = (
-    ('nuggetbot.plugins.test_plugin',    'Test'),
-    ('nuggetbot.plugins.giveaway',       'Giveaway'),
-    ('nuggetbot.plugins.image',          'Imagetest'),
-    ('nuggetbot.plugins.artists',        'Artists'),
-    ('nuggetbot.plugins.fun',            'Fun'),
-    ('nuggetbot.plugins.admin',          'Admin'),
-    ('nuggetbot.plugins.delMsgLogging',  'Deleted Message Logging'),
+    ('nuggetbot.plugins.test_plugin',   'Test'),
+    ('nuggetbot.plugins.giveaway',      'Giveaway'),
+    ('nuggetbot.plugins.image',         'Imagetest'),
+    ('nuggetbot.plugins.artists',       'Artists'),
+    ('nuggetbot.plugins.fun',           'Fun'),
+    ('nuggetbot.plugins.admin',         'Admin'),
+    ('nuggetbot.plugins.delMsgLogging', 'Deleted Message Logging'),
     ('nuggetbot.plugins.memberdms',     'Feedback')
 )
 
@@ -1064,52 +1064,6 @@ class NuggetBot(commands.Bot):
             if not quiet:
                 self.safe_print("[Warning] Cannot delete message \"{message}\", message not found")
 
-
-    ###Deletes a lot of messages
-    async def delete_channel_messages(self, message_list):
-        return
-        #     """Custom delete method. Will use the fastest way possible to delete large amounts of messages."""
-
-        #     slow_message_list = None
-        #     fast_message_list = None
-        #     curr_datetime = datetime.datetime.utcnow()
-
-        #     #===== messages less than 14 days old
-        #     fast_message_list = [message for message in message_list if (curr_datetime - message.timestamp).days < 14]
-
-        #     #===== if all messages are less than 14 days old
-        #     if not len(message_list) == len(fast_message_list):
-        #         slow_message_list = [message for message in message_list if not message in fast_message_list]
-
-        #     #===== if less than 14 days old messages exist
-        #     if not fast_message_list == None:
-
-        #         #=== if fast_message_list is greater than 100 THAN break list into a 2d list of 100 sized arrays
-        #         if len(fast_message_list) > 100:
-        #             twoD_Message_list = await self.split_list(fast_message_list)
-
-        #             for i in range(len(twoD_Message_list)):
-
-        #                 #= Last item AND last set of messages is less than 2 THAN delete one by one
-        #                 if ((i + 1) == len(twoD_Message_list)) and len(twoD_Message_list[i]) < 2:
-        #                     for MYDM in enumerate(reversed(twoD_Message_list[i])):
-        #                         await self.delete_message(MYDM)
-
-        #                 #= if not last item OR last set of messages is greater than 1 THAN delete in bulk
-        #                 else:
-        #                     await self.delete_messages(twoD_Message_list[i])
-
-        #         #=== if fast_message_list is less than 100 THAN delete bulk
-        #         else:
-        #             await self.delete_messages(fast_message_list)
-
-        #     #===== if old messages exist THAN delete one by one
-        #     if not slow_message_list == None:
-        #         for MYDM in enumerate(reversed(slow_message_list)):
-        #             await self.delete_message(MYDM)
-
-        #     return
-
     #updated
     async def _get_private_channel(self, user):
         """
@@ -2080,11 +2034,12 @@ class NuggetBot(commands.Bot):
         [Core] Prints a help message for the users.
         """
 
-        embed = await GenEmbed.getNuggetHelp(   msg = msg, 
-                                                avatar_url = self.user.avatar_url, 
-                                                command_prefix = self.config.command_prefix, 
-                                                reception_channel_id = self.config.channels["reception_id"],
-                                                self_mention = self.user.mention
+        embed = await GenEmbed.getNuggetHelp(   
+            msg = msg, 
+            avatar_url = self.user.avatar_url, 
+            command_prefix = self.config.command_prefix, 
+            reception_channel_id = self.config.channels["reception_id"],
+            self_mention = self.user.mention
                                             )
 
         return Response(embed=embed, delete_after=100)
