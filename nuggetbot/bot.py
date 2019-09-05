@@ -52,12 +52,15 @@ NuggetBot
 
 log = logging.getLogger(__name__)
 
-initial_extensions = (
-    'nuggetbot.plugins.test_plugin',
-    'nuggetbot.plugins.giveaway',
-    'nuggetbot.plugins.image',
-    'nuggetbot.plugins.artists',
-    'nuggetbot.plugins.fun'
+plugins = (
+    ('nuggetbot.plugins.test_plugin',    'Test'),
+    ('nuggetbot.plugins.giveaway',       'Giveaway'),
+    ('nuggetbot.plugins.image',          'Imagetest'),
+    ('nuggetbot.plugins.artists',        'Artists'),
+    ('nuggetbot.plugins.fun',            'Fun'),
+    ('nuggetbot.plugins.admin',          'Admin'),
+    ('nuggetbot.plugins.delMsgLogging',  'Deleted Message Logging'),
+    ('nuggetbot.plugins.memberdms',     'Feedback')
 )
 
 class ChnlID():
@@ -104,12 +107,27 @@ class NuggetBot(commands.Bot):
 
         #self.shard = [0, 1]
 
-        for extension in initial_extensions:
+        for plugin in plugins:
             try:
-                self.load_extension(extension)
-            except Exception:
-                print(f'Failed to load extension {extension}.', file=sys.stderr)
-                traceback.print_exc()
+                self.load_extension(plugin[0])
+                self.safe_print(f"[Log] Loaded COG {plugin[1]}")
+                
+            except discord.ext.commands.ExtensionNotFound:
+                print(f"Extention not found. {plugin}")
+
+            except discord.ext.commands.ExtensionAlreadyLoaded:
+                print(f"Extention already loaded, {plugin}.")
+
+            except discord.ext.commands.NoEntryPointError:
+                print(f"The extension does not have a setup function, {plugin}.")
+
+            except discord.ext.commands.ExtensionFailed:
+                print(f"The extension or its setup function had an execution error, {plugin}.")
+
+
+            except Exception as e:
+                print(e)
+                print(f'Failed to load extension {plugin}.', file=sys.stderr) 
 
 
 #======================================== Bot Object Setup ========================================
@@ -2183,206 +2201,6 @@ class NuggetBot(commands.Bot):
             await self.safe_send_message(msg.author, commands)
 
         return Response(reply=False)
-
-    @is_high_staff
-    async def cmd_logchannel(self, msg):
-        """
-        Useage:
-            [prefix]logchannel <channelID/channelmention>
-        [Minister/Bastion] starts logging a channel for deleted messages
-        """
-
-        try:
-            channel_id = msg.content.split(" ")[1]
-
-        except IndexError:
-            return Response(content="`Useage: [p]logchannel <channelID/channelmention>, [Minister/Bastion] starts logging a channel for deleted messages.`", reply=True)
-
-        #===== remove the channel mention
-        if channel_id.startswith("<#"):
-            channel_id = channel_id.replace("<", "").replace("#", "").replace("!", "").replace(">", "")
-
-        #===== get the channel
-        channel = msg.guild.get_channel(channel_id)
-
-        #===== if channel doesn't exist
-        if not channel_id.isdigit() and not channel:
-            return Response(content="Channel does not exist or is not a channel of {}".format(msg.guild.name), delete_after=10)
-
-        #===== channel already being logged
-        if channel_id in self.logging["message_logging"]["monitored_channels"]:
-            return Response(content="Channel is already being monitored", delete_after=10)
-
-        monitored_channels = self.logging["message_logging"]["monitored_channels"]
-        monitored_channels_update = ""
-
-        if monitored_channels == "":
-            monitored_channels_update = channel_id
-
-        else:
-            monitored_channels_update = monitored_channels + " " + channel_id
-
-        self.logging.set("message_logging", "monitored_channels", str(monitored_channels_update))
-
-        with open("logging.ini", "w") as configfile:
-            self.logging.write(configfile)
-
-        return Response(content="{} will now be monitored for deleted messages".format(channel.name), delete_after=10)
-
-    @is_high_staff
-    async def cmd_stoplogchannel(self, msg):
-        """
-        Useage:
-            [prefix]stoplogchannel <channelID/channelmention>
-        [Minister/Bastion] stops logging a channel for deleted messages
-        """
-
-        try:
-            channel_id = msg.content.split(" ")[1]
-
-        except IndexError:
-            return Response(content="`Useage: [p]stoplogchannel <channelID/channelmention>, [Minister/Bastion] stops logging a channel for deleted messages.`")
-
-        #===== remove the channel mention
-        if channel_id.startswith("<#"):
-            channel_id = channel_id.replace("<", "").replace("#", "").replace("!", "").replace(">", "")
-
-        #===== get the channel
-        channel = msg.guild.get_channel(channel_id)
-
-        #===== if channel doesn't exist
-        if not channel_id.isdigit():
-            return Response("`Channel does not exist or is not a channel of {}`".format(msg.guild.name), delete_after=10)
-
-        #===== channel already being logged
-        if channel_id not in self.logging["message_logging"]["monitored_channels"]:
-            return Response(content="`{} was not already being monitored`".format(channel.name), delete_after=10)
-
-        monitored_channels = self.logging["message_logging"]["monitored_channels"].split(" ")
-        monitored_channels.remove(channel_id)
-
-        monitored_channels_update = " ".join(monitored_channels)
-
-        self.logging.set("message_logging", "monitored_channels", str(monitored_channels_update))
-
-        with open("logging.ini", "w") as configfile:
-            self.logging.write(configfile)
-
-        if channel:
-            return Response(content="`{} will no longer be monitored for deleted messages`".format(channel.name), delete_after=10)
-
-        return Response(content="`{} will no longer be monitored for deleted messages`".format(channel_id), delete_after=10)
-
-    @has_role(["Minister"])
-    async def cmd_logignoremember(self, msg):
-        """
-        Useage:
-            [prefix]logignoremember <userID/mention>
-        [Minister] add a member to channel log whitelist, so deleted messages from them do not get logged
-        """
-
-        try:
-            user_id = msg.content.split(" ")[1]
-
-        except IndexError:
-            return Response(content="`Useage: [p]logignoremember <userID/mention>, [Minister] add a member to channel log whitelist, so deleted messages from them do not get logged.`")
-        
-        #===== remove the user mention
-        if user_id.startswith("<@"):
-            user_id = user_id.replace("<", "").replace("@", "").replace("!", "").replace(">", "")
-
-        #===== get the member
-        tMember = msg.guild.get_member(user_id)
-
-        #===== if member doesn't exist
-        if not user_id.isdigit() and not tMember:
-            return Response(content="User does not exist or is not a member of {}".format(msg.guild.name), delete_after=10)
-
-        #===== member already being logged
-        if user_id in self.logging["message_logging"]["ignored_users"]:
-            return Response(content="User is already being ignored.", delete_after=10)
-
-        ignored_users = self.logging["message_logging"]["ignored_users"]
-        ignored_users_update = ""
-
-        if ignored_users == "":
-            ignored_users_update = user_id
-
-        else:
-            ignored_users_update = ignored_users + " " + user_id
-
-        self.logging.set("message_logging", "ignored_users", ignored_users_update)
-
-        with open("logging.ini", "w") as configfile:
-            self.logging.write(configfile)
-
-        return Response(content="{}#{} | {} will not have their deleted messages monitored.".format(tMember.name, tMember.discriminator, tMember.mention), delete_after=10)
-
-    @has_role(["Minister"])
-    async def cmd_stoplogignoremember(self, msg):
-        """
-        Useage:
-            [prefix]stoplogignoremember <userID/mention>
-        [Minister] removes a member to channel log whitelist, so deleted messages from them will get logged
-        """
-
-        try:
-            user_id = msg.content.split(" ")[1]
-
-        except IndexError:
-            return Response(content="`Useage: [p]stoplogignoremember <userID/mention>, [Minister] removes a member to channel log whitelist, so deleted messages from them will get logged.`")
-
-        #===== remove the user mention
-        if user_id.startswith("<@"):
-            user_id = user_id.replace("<", "").replace("@", "").replace("!", "").replace(">", "")
-
-        #===== get the member
-        tMember = msg.guild.get_member(user_id)
-
-        #===== if member doesn't exist
-        if not user_id.isdigit():
-            return Response(content="Not a valid user", delete_after=10, reply=True)
-
-        #===== member already being logged
-        if user_id not in self.logging["message_logging"]["ignored_users"]:
-            return Response(content="User is not already being ignored.", delete_after=10, reply=True)
-
-        ignored_users = self.logging["message_logging"]["ignored_users"].split(" ")
-        ignored_users.remove(user_id)
-
-        ignored_users_update = " ".join(ignored_users)
-
-        self.logging.set("message_logging", "ignored_users", ignored_users_update)
-
-        with open("logging.ini", "w") as configfile:
-            self.logging.write(configfile)
-
-        if tMember:
-            return Response(content="{0.name}#{0.discriminator} | {0.mention} has been removed from the logging whitelist.".format(tMember), delete_after=10)
-
-        return Response(content="{} has been removed from the logging whitelist".format(user_id), delete_after=10)
-
-    @has_role(["Minister"])
-    async def cmd_togglechannellogging(self, msg):
-        """
-        Useage:
-            [prefix]togglechannellogging
-        [Minister] toggles on/off the logging of deleted messages.
-        """
-
-        current_setting = self.logging["message_logging"]["enabled"]
-
-        if current_setting == "True":
-            updated_setting = "False"
-        else:
-            updated_setting = "True"
-
-        self.logging.set("message_logging", "enabled", updated_setting)
-
-        with open("logging.ini", "w") as configfile:
-            self.logging.write(configfile)
-
-        return Response(content="Channel logging has been set to {}".format(updated_setting))
 
     @has_role(["Minister"]) #updated
     async def cmd_loginvites(self, msg, quiet=False):
