@@ -2380,47 +2380,6 @@ class NuggetBot(commands.Bot):
 
         return Response(reply=False)
 
-    @is_high_staff #new
-    async def cmd_banbyid(self, msg):
-        """
-        Useage:
-            [prefix]banbyid <userid/mention> <reason>
-        [Admin/Mod] Bans a user from guild using their ID alone.
-        """
-        try:
-            args = msg.content.split(" ")
-            if len(args) > 3:
-                return Response(content="`Useage: [p]banbyid <userid/mention> <reason>, [Admin/Mod] Bans a user from guild using their ID alone.`")
-
-            #=== SPLIT, REMOVE MENTION WRAPPER AND CONVERT TO INT
-            user_id = args[1]
-            user_id = user_id.replace("<", "").replace("@", "").replace("!", "").replace(">", "")
-            user_id = int(user_id)
-
-            if len(args) == 3:
-                reason = args[2]
-                reason = reason[:1000]
-            else:
-                reason = None
-
-        except (IndexError, ValueError):
-            return Response(content="`Useage: [p]banbyid <userid/mention> <reason>, [Admin/Mod] Bans a user from guild using their ID alone.`")
-
-
-        try:
-            await self.bot.http.ban(user_id=user_id, guild_id=self.config.target_guild_id, delete_message_days=1, reason=reason)
-            return Response(content=f"<@{user_id}> has been banned from this Guild.")
-
-        #===== REPORT PERMISSION ERROR
-        except discord.errors.Forbidden:
-            return Response(content=f"`I do not have the permission needed to ban <@{user_id}> from this Guild.`")
-
-        #===== REPORT GENERIC ERROR
-        except discord.errors.HTTPException as e:
-            print(e)
-            return Response(content=f"`I could no ban <@{user_id}> due to generic error.`")
-
-
 #======================================== GALLARY STUFF ========================================
 
     #async def delete_logic(self):
