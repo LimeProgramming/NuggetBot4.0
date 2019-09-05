@@ -10,6 +10,26 @@ from nuggetbot.config import Config
 
 config = Config()
 
+###########################################################################################
+###-------------------------- JUST SOME REGULAR OLD FUNCTIONS --------------------------###
+###########################################################################################
+
+def __get_guild_and_invoker(ctx):
+    guild = ctx.bot.get_guild(config.target_guild_id)
+    invoker = guild.get_member(ctx.author.id)
+
+    return guild, invoker
+
+def __admin_or_owner(ctx, invoker):
+    return bool(    (invoker.guild_permissions.administrator)    
+                or  (ctx.author.id == config.owner_id)
+    )
+
+####################################################################################################
+###-------------------------- COMMANDS.COMMAND WRAPPERS, IN GUILD ONLY --------------------------###
+####################################################################################################
+
+
 #Msg must be in specified channel or command be posted by staff or user with admin perm
 def in_channel(channel_ids):
 
@@ -21,9 +41,8 @@ def in_channel(channel_ids):
                 return False 
 
             return bool (   (ctx.channel.id in channel_ids) 
-                        or  (any(role.name in config.roles["any_staff"] for role in channel_ids.author.roles))
-                        or  (channel_ids.author.guild_permissions.administrator)
-                        or  (channel_ids.author.id == config.owner_id)
+                        or  (any(role.id in config.roles["any_staff"] for role in channel_ids.author.roles))
+                        or __admin_or_owner(ctx, ctx.author)
                         )
         return pred
 
@@ -40,9 +59,8 @@ def in_channel_name(channel_names):
                 return False 
 
             if  (   (ctx.channel.name in channel_names)
-                or  (any(role.name in config.roles["any_staff"] for role in ctx.author.roles))
-                or  (ctx.author.guild_permissions.administrator)
-                or  (ctx.author.id == config.owner_id)
+                or  (any(role.id in config.roles["any_staff"] for role in ctx.author.roles))
+                or __admin_or_owner(ctx, ctx.author)
                 ):
 
                 return True
@@ -64,9 +82,8 @@ def has_role(role_name):
                 return False 
 
             if  (   (any(role.name in role_name for role in ctx.author.roles))
-                or  (any(role.name in config.roles["any_staff"] for role in ctx.author.roles))
-                or  (ctx.author.guild_permissions.administrator)
-                or  (ctx.author.id == config.owner_id)
+                or  (any(role.id in config.roles["any_staff"] for role in ctx.author.roles))
+                or __admin_or_owner(ctx, ctx.author)
                 ):
 
                 return True
@@ -87,8 +104,7 @@ def in_reception(*args):
 
         return bool (  (ctx.channel.id == config.channels["reception_id"]) 
                     or (any(role.name in config.roles["any_staff"] for role in ctx.author.roles))
-                    or (ctx.author.guild_permissions.administrator)
-                    or (ctx.author.id == config.owner_id)
+                    or __admin_or_owner(ctx, ctx.author)
                     )
 
     return commands.check(pred)
@@ -100,10 +116,26 @@ def is_core(*args):
         if not ctx or not ctx.guild:
             return False 
 
-        return bool (   (any(role.name in config.roles["user_staff"] for role in ctx.author.roles))
-                    or  (ctx.author.guild_permissions.administrator)
-                    or  (ctx.author.id == config.owner_id)
+        return bool (   (any(role.id in config.roles["user_staff"] for role in ctx.author.roles))
+                    or __admin_or_owner(ctx, ctx.author)
                     )
+
+    return commands.check(pred)
+
+def is_highest_staff(*args):
+    async def pred(ctx):
+        if not ctx or not ctx.guild:
+            return False   
+
+        if  (   (any(role.id in config.roles["admin"] for role in ctx.author.roles))
+            or __admin_or_owner(ctx, ctx.author)
+            ):
+
+            return True
+
+        else:
+            await ctx.channel.send(content="`You lack the permissions to run this command.`", delete_after=15)
+            return False
 
     return commands.check(pred)
 
@@ -114,16 +146,15 @@ def is_high_staff(*args):
         if not ctx or not ctx.guild:
             return False   
 
-        if  (   (any(role.name in config.roles["high_staff"] for role in ctx.author.roles))
-            or  (ctx.author.guild_permissions.administrator)
-            or  (ctx.author.id == config.owner_id)
+        if  (   (any(role.id in config.roles["high_staff"] for role in ctx.author.roles))
+            or __admin_or_owner(ctx, ctx.author)
             ):
 
             return True
 
         else:
+            await ctx.channel.send(content="`You lack the permissions to run this command.`", delete_after=15)
             return False
-            #return await _responce_generator(self, content="`You lack the permissions to run this command.`")
 
     return commands.check(pred)
 
@@ -133,46 +164,126 @@ def is_any_staff(*args):
         if not ctx or not ctx.guild:
             return False   
 
-        if  (   (any(role.name in config.roles["any_staff"] for role in ctx.author.roles))
-            or  (ctx.author.guild_permissions.administrator)
-            or  (ctx.author.id == config.owner_id)
+        if  (   (any(role.id in config.roles["any_staff"] for role in ctx.author.roles))
+            or __admin_or_owner(ctx, ctx.author)
             ):
 
             return True
 
         else:
+            await ctx.channel.send(content="`You lack the permissions to run this command.`", delete_after=15)
             return False
-            #return await _responce_generator(self, content="`You lack the permissions to run this command.`")
 
     return commands.check(pred)
 
 ### Disables a bot command
 def turned_off(*args):
-    #@wraps(func)
-    #async def wrapper(self, *args, **kwargs):
-    #    return
+    async def pred(ctx):
+        await ctx.channel.send(content="`This command is disabled`")
+        return False
 
-    #return wrapper
-    return commands.check(False)
+    return commands.check(pred)
 
 
 ###Bot owner only commands
 def owner_only(func):
-    @wraps(func)
 
-    async def wrapper(self, *args, **kwargs):
-        og_msg = _get_variable('message')
+    async def wrapper(ctx):
+        if not ctx:
+            return False
 
-        if ((not og_msg)
-        or (og_msg.author.id == config.owner_id)):
-            return await func(self, msg=og_msg)
+        if ctx.author.id == config.owner_id:
+            return True
 
         else:
-            return await _responce_generator(self, content="`You are not the bot owner.`")
+            await ctx.channel.send(content="`You are not the bot owner.`", delete_after=15)
+            return False
 
-    return wrapper
+    return commands.check(wrapper)
+
+##########################################################################################################
+###-------------------------- COMMANDS.COMMAND WRAPPERS, DM CHANNELS ALLOWED --------------------------###
+##########################################################################################################
+
+#if user has core_role  or user with admin perm
+def IS_CORE_DM(*args):
+
+    async def pred(ctx):
+        if not ctx:
+            return False 
+
+        guild, invoker = __get_guild_and_invoker(ctx)
+
+        return bool (   (any(role.id in config.roles["user_staff"] for role in invoker.roles))
+                    or  (__admin_or_owner(ctx, invoker))
+                    )
+
+    return commands.check(pred)
+
+def IS_HIGHEST_STAFF_DM(*args):
+    async def pred(ctx):
+        if not ctx:
+            return False   
+
+        guild, invoker = __get_guild_and_invoker(ctx)
+
+        if  (   (any(role.id in config.roles["admins"] for role in invoker.roles))
+            or  (__admin_or_owner(ctx, invoker))
+            ):
+
+            return True
+
+        else:    
+            await ctx.channel.send(content="`You lack the permissions to run this command.`")
+            return False
+
+    return commands.check(pred)
+
+##Staff role decor | Bastion or Minister or user with admin perm
+def IS_HIGH_STAFF_DM(*args):
+
+    async def pred(ctx):
+        if not ctx:
+            return False   
+
+        guild, invoker = __get_guild_and_invoker(ctx)
+
+        if  (   (any(role.id in config.roles["high_staff"] for role in invoker.roles))
+            or  (__admin_or_owner(ctx, invoker))
+            ):
+
+            return True
+
+        else:
+            await ctx.channel.send(content="`You lack the permissions to run this command.`")
+            return False
+
+    return commands.check(pred)
+
+##Staff role decor | Support orBastion or Minister or user with admin perm
+def IS_ANY_STAFF_DM(*args):
+    async def pred(ctx):
+        if not ctx:
+            return False   
+
+        guild, invoker = __get_guild_and_invoker(ctx)
+
+        if  (   (any(role.id in config.roles["any_staff"] for role in invoker.roles))
+            or  (__admin_or_owner(ctx, invoker))
+            ):
+
+            return True
+
+        else:
+            await ctx.channel.send(content="`You lack the permissions to run this command.`")
+            return False
+
+    return commands.check(pred)
 
 
+###########################################################################################################
+###------------------------------ COG SETTING SAVING AND LOADING COMMANDS ------------------------------###
+###########################################################################################################
 
 @asyncio.coroutine
 async def SAVE_COG_CONFIG(cogset, cogname:str):
@@ -247,7 +358,11 @@ async def __convert_str_dd(val):
     Converts a str of datetime patter to a real datetime object
     """
 
-    if isinstance(val, str) and bool(re.match(r'^ ([0-9]{4}\-[0-9]{2}\-[0-9]{2} \d\d\:\d\d\:\d\d\.\d+) $', val)):
-        val = datetime.datetime.fromisoformat(val)
+    #if isinstance(val, str) and bool(re.match(r'^ ([0-9]{4}\-[0-9]{2}\-[0-9]{2} \d\d\:\d\d\:\d\d\.\d+) $', val)):
+    if isinstance(val, str):
+        try:
+            val = datetime.datetime.fromisoformat(val)
+        except ValueError:
+            pass
 
     return val

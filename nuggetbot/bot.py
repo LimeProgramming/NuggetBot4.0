@@ -512,11 +512,18 @@ class NuggetBot(commands.Bot):
             print(stack)
 
     async def on_command_error(self, ctx, error):
-        print(error)
         if isinstance(error, discord.ext.commands.errors.PrivateMessageOnly):
 
             await ctx.channel.send(f'`Command "{ctx.message.content.split(" ")[0]}" only works in DM\'s.`', delete_after=15)
-            await ctx.message.delete()
+
+            if self.config.delete_invoking:
+                await ctx.message.delete()
+
+        elif isinstance(error, discord.ext.commands.errors.CheckFailure):
+            if self.config.delete_invoking:
+                await ctx.message.delete()
+                
+        return
 
     async def on_raw_reaction_add(self, payload):
         #===== Block reactions in DM's
