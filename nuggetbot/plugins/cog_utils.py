@@ -201,6 +201,23 @@ def owner_only(func):
 
     return commands.check(wrapper)
 
+###Bot owner only commands
+def is_owner(*args):
+
+    async def wrapper(ctx):
+        if not ctx:
+            return False
+
+        if ctx.author.id == config.owner_id:
+            return True
+
+        else:
+            await ctx.channel.send(content="`You are not the bot owner.`", delete_after=15)
+            return False
+
+    return commands.check(wrapper)
+
+
 ##########################################################################################################
 ###-------------------------- COMMANDS.COMMAND WRAPPERS, DM CHANNELS ALLOWED --------------------------###
 ##########################################################################################################
