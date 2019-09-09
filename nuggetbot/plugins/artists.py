@@ -29,6 +29,7 @@ class Artists(commands.Cog):
 
         await ctx.message.delete()
 
+  #-------------------- STATIC METHODS --------------------
     @staticmethod
     async def _toggle_role(ctx, baseRoleID, delete_after=15, reason=None):
         '''Handler to toggle a guild members role'''
@@ -148,7 +149,7 @@ class Artists(commands.Cog):
 
         return embeds
 
-
+  #-------------------- COMMANDS --------------------
     #@has_role(["Artist"])
     #@in_channel([ChnlID.artistcorner, ChnlID.reception])
     @commands.command(pass_context=False, hidden=False, name='opencommissions', aliases=[])

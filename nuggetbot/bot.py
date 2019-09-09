@@ -635,20 +635,40 @@ class NuggetBot(commands.Bot):
         #--------------------------------------------------Cancel scheduled kick--------------------------------------------------
         await self.cancel_scheduled_kick(member=m)
 
-        #--------------------------------------------------Get if banned member--------------------------------------------------
-        #===== wait a bit to make sure the list of banned members got updated
+        #-------------------------------------------------- IF MEMBER IS KICKED OR BANNED --------------------------------------------------
+        #===== WAIT A BIT TO MAKE SURE THE GUILD AUDIT LOGS ARE UPDATED BEFORE READING THEM
         await asyncio.sleep(0.2)
 
-        bans = await self._get_banned_members(m.guild) or []
-        memberBanned = bool([x for x in bans if x.user.id == m.id])
+        banOrKick = list() 
+        past_id = discord.utils.time_snowflake(datetime.datetime.utcnow() - datetime.timedelta(seconds=10), high=True)
+
+        try:
+            for i in [discord.AuditLogAction.ban, discord.AuditLogAction.kick]:
+
+                async for entry in m.guild.audit_logs(limit=30, action=i, oldest_first=False):
+                    if entry.id >= past_id and entry.target.id == m.id:
+
+                        if banOrKick:
+                            if entry.id > banOrKick[4]:
+                                banOrKick = [entry.action, entry.target, entry.user, entry.reason or "None", entry.id]
+
+                        else:
+                            banOrKick = [entry.action, entry.target, entry.user, entry.reason or "None", entry.id]
+
+        except discord.errors.Forbidden:
+            self.safe_print("[Info]  Missing view_audit_log permission.")
+
+        except discord.errors.HTTPException:
+            self.safe_print("[Info]  HTTP error occured, likly being rate limited or blocked by cloudflare. Restart recommended.")
 
         #--------------------------------------------------Removed User Logging--------------------------------------------------
-        embed = await GenEmbed.getMemLeaveStaff(m, memberBanned)
+        embed = await GenEmbed.getMemLeaveStaff(m, banOrKick)
         await self.safe_send_msg_chid(self.config.channels['bot_log'], embed=embed)
 
         #=public version
         if bool([x for x in m.roles if x.name == self.config.user_role]):
-            embed = await GenEmbed.getMemJoinLeaveUser(member=m, joining="banned" if memberBanned else False)
+
+            embed = await GenEmbed.getMemLeaveUser(m, banOrKick)
             await self.safe_send_msg_chid(self.config.channels['public_bot_log'], embed=embed)
 
         #--------------------------------------------------Remove User Welcome Messages--------------------------------------------------
@@ -656,7 +676,6 @@ class NuggetBot(commands.Bot):
         
         #--------------------------------------------------Update Database--------------------------------------------------
         await self.db.execute(pgCmds.REMOVE_MEMBER_FUNC, m.id)
-        await self.db.execute(pgCmds.REM_MEM_GVWY_ENTRIES, m.id)
 
     async def on_member_update(self, before, after):
         """When there is an update to a users user data"""
@@ -683,7 +702,7 @@ class NuggetBot(commands.Bot):
                 await self.cancel_scheduled_kick(after)
 
                 #= Tell the users a new comer has joined
-                embed = await GenEmbed.getMemJoinLeaveUser(after, joining=True)
+                embed = await GenEmbed.getMemJoinUser(after)
                 await self.safe_send_msg_chid(self.config.channels['public_bot_log'], embed=embed)
 
             await self.del_user_welcome(after)

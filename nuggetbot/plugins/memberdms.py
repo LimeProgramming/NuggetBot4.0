@@ -1,14 +1,18 @@
-from discord.ext import commands
-import discord
-import asyncio
-import datetime
-from io import BytesIO
 import os
 import json
+import dblogin 
+import discord
+import asyncio
+import asyncpg
+import datetime
+from io import BytesIO
+from discord.ext import commands
 
-from sebastianbot.plugins.cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
-from sebastianbot.config import Config
-from sebastianbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
+from nuggetbot.config import Config
+from nuggetbot.util import gen_embed as GenEmbed
+from nuggetbot.database import DatabaseCmds as pgCmds
+from nuggetbot.plugins.cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
+from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
 
 class MemberDMS(commands.Cog):
     """Private feedback system."""
@@ -20,6 +24,7 @@ class MemberDMS(commands.Cog):
         self.bot = bot
         MemberDMS.config = Config()
         self.cogset = dict()
+        self.db = None
 
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
@@ -33,7 +38,17 @@ class MemberDMS(commands.Cog):
             await SAVE_COG_CONFIG(self.cogset, cogname="feedback")
 
   #-------------------- LOCAL COG STUFF --------------------
+    async def cog_before_invoke(self, ctx):
+        '''THIS IS CALLED BEFORE EVERY COG COMMAND, IT'S SOLE PURPOSE IS TO CONNECT TO THE DATABASE'''
+
+        credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
+        self.db = await asyncpg.create_pool(**credentials)
+
+        return
+
     async def cog_after_invoke(self, ctx):
+        
+        await self.db.close()
 
         if MemberDMS.config.delete_invoking and not isinstance(ctx.channel, discord.abc.PrivateChannel):
             await ctx.message.delete()
@@ -104,70 +119,55 @@ class MemberDMS(commands.Cog):
     @commands.command(pass_context=True, hidden=True, name="findfeedback", aliases=([]))
     async def cmd_findfeedback(self, ctx):
         """
+        [Bot Owner] Returns user id of who posted anon feedback.
+
         Useage:
             [prefix]findfeedback <msg_id> or <msg_id-ch_id>
-        [Bot Owner] Returns user id of who posted anon feedback.
         """
+        try:
+            args= ctx.message.content.split(" ")
 
-        ###===== CHECK IF THE INPUT IS VALID
-        msg_id, ch_id = await MemberDMS.split_msg_ch_id(ctx.message.content)
+            if len(args) > 2:
+                raise ValueError
 
-        if not msg_id:
-            await ctx.channel.send("`Useage: [p]findfeedback <msg_id>, [Bot Owner] Returns user id of who posted anon feedback.`")
+            #=== SPLIT, REMOVE MENTION WRAPPER AND CONVERT TO INT
+            msg_id = args[1]
+            if len(msg_id) > 18:
+                msg_id, ch_id = msg_id.split('-')
 
-        ###===== READ THE LOGGED DATA AND RETURN IF NO DATA IS PRESENT
-        with open(os.path.join('jsondata','feedback.json'), 'r', encoding='utf-8') as oldfeedback:
-            feedback = json.load(oldfeedback)
+                if len(msg_id) >= 18 and len(ch_id) >= 18:
+                    msg_id = int(msg_id)
+                    ch_id = int(ch_id)
 
-        if not feedback:
-            await ctx.channel.send("`No information found for message`")
-            feedback = list()
+                else:
+                    await ctx.send_help('findfeedback', delete_after=15)
+                    return
 
+            else:
+                msg_id = int(msg_id)
+                ch_id = None
 
-        ###===== ITERATE THROUGH LOGGED DATA
-        valid = False
-
-        for i in feedback:
-            if i[0] == msg_id:
-                valid = True 
-
-                user_id = i[3]
-                present = bool(ctx.message.guild.get_member(user_id))
-                guild = ctx.message.guild
-                srv_id  = i[2]
-                chl_id = i[1]
-
-                break
+        except (IndexError, ValueError):
+            await ctx.send_help('findfeedback', delete_after=15)
+            return
         
-        ###===== IF THERE IS NO DATA, RETURN
-        if not valid:
-            await ctx.channel.send("No data found for {msg_id}.")
-            return 
+        # IF NO CHANNEL ID WAS PROVIDED
+        if not ch_id:
+            data = await self.db.fetchrow(pgCmds.GET_MEM_DM_FEEDBACK, msg_id, ctx.guild.id)
 
-        embed = discord.Embed(  title=      'Anon Feedback',
-                                description=f'User: <@{user_id}> | Still on guild: {present}\n'
-                                            f"Posted:\n https://discordapp.com/channels/{srv_id}/{chl_id}/{msg_id}",
+        else:
+            data = await self.db.fetchrow(pgCmds.GET_MEM_CH_DM_FEEDBACK, msg_id, ch_id, ctx.guild.id)
 
-                                type=       "rich",
-                                timestamp=  datetime.datetime.utcnow(),
-                                color=      RANDOM_DISCORD_COLOR()
-                                        
-                                )
+        #===== IF NO RECORD IN THE DATABASE
+        if not data:
+            await ctx.channel.send(content=f"No record matching id {msg_id} found.", delete_after=15)
+            return
 
-        embed.set_footer(       icon_url=   GUILD_URL_AS(guild),
-                                text=       guild.name
-                        )
+        present = bool(ctx.guild.get_member(data['user_id']))
+        
+        embed = await GenEmbed.genFeedbackSnooping(data['user_id'], data['sent_msg_id'], data['sent_chl_id'], data['sent_srv_id'], present, data['timestamp'], ctx.guild)
+ 
         await ctx.channel.send(embed=embed)
-        return
-
-    @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name="tooglelogfeedback", aliases=([]))
-    async def cmd_tooglelogfeedback(self, ctx):
-        self.cogset["enablelogging"] = not self.cogset["enablelogging"]
-
-        await SAVE_COG_CONFIG(cogset=self.cogset, cogname="feedback")
-
-        await ctx.channel.send(content=f"Anon Feedback Logging has been set to: {self.cogset['enablelogging']}")
         return
 
 
@@ -218,26 +218,11 @@ class MemberDMS(commands.Cog):
             else:
                 m = await feedback_channel.send(f"{header} {msg_content}", files=msg_attach)
 
+        #===== Log info to database
+        await self.db.execute(pgCmds.ADD_DM_FEEDBACK, msg.author.id, msg.channel.id, m.id, m.channel.id, m.guild.id, m.created_at)
+
         #===== Tell the user their feedback is sent
         await msg.channel.send(f"Your feedback has been submitted.\nThank you for helping make {guild.name} a better place.")
-
-        #===== LogFeedback
-        if self.cogset["enablelogging"]:
-            try:
-                with open(os.path.join('jsondata','feedback.json'), 'r', encoding='utf-8') as oldfeedback:
-                    feedback = json.load(oldfeedback)
-
-                if not feedback:
-                    feedback = list()
-            except FileNotFoundError:
-                feedback = list()
-
-            #sentmsg_id, sendch_id, send_guildid, sender_id, 
-            feedback.append([m.id, m.channel.id, m.guild.id, ctx.author.id])
-
-            with open(os.path.join('jsondata','feedback.json'), 'w', encoding='utf-8') as newfeedback:
-                json.dump(feedback, newfeedback)
-
 
         return
 

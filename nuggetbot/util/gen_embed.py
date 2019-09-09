@@ -86,45 +86,99 @@ async def getMemJoinStaff(member, invite):
 
     return embed
 
-async def getMemLeaveStaff(member, memberBanned):
-    embed = discord.Embed(  description="Mention: <@{0.id}> | Username: {0.name}#{0.discriminator}\n"
-                                        "Join Date: {1}".format( member,
-                                                                member.joined_at.strftime('%b %d, %Y %H:%M:%S')
-                                                                ),
-                            colour=     0xCC1234,
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow()
+async def getMemLeaveStaff(member, banOrKick):
+
+    embed = discord.Embed(  
+        description="Mention: <@{0.id}> | Username: {0.name}#{0.discriminator}\n"
+                    "Join Date: {1}".format(member, member.joined_at.strftime('%b %d, %Y %H:%M:%S')),
+
+        colour=     random_embed_color(),
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow()
                         )
 
-    embed.set_author(       name=       ("Member Left" if not memberBanned else "Member Banned"),
-                            icon_url=   AVATAR_URL_AS(member)
+    authorname = "Member Left"
+    if banOrKick:
+        if (banOrKick[0] == discord.AuditLogAction.ban):
+            authorname = "Member Banned"
+
+            embed.add_field(    
+                name= "Audit Log Data",
+                value= f"{banOrKick[1].mention} was banned by {banOrKick[2].mention}. Reason: {banOrKick[3]}",
+                inline= False
+                            )
+
+        elif (banOrKick[0] == discord.AuditLogAction.kick): 
+            authorname = "Member Kicked"
+
+            embed.add_field(    
+                name= "Audit Log Data",
+                value= f"{banOrKick[1].mention} was kicked by {banOrKick[2].mention}. Reason: {banOrKick[3]}",
+                inline= False
+                            )
+
+    embed.set_author(       
+        name=       authorname,
+        icon_url=   AVATAR_URL_AS(member)
                     )
 
-    embed.set_footer(       text=       f"User ID: {member.id}"
+    embed.set_footer(       
+        text=       f"User ID: {member.id}"
                     )
     
     return embed
 
-async def getMemJoinLeaveUser(member, joining):
+async def getMemLeaveUser(member, banOrKick):
 
-    embed = discord.Embed(  description="Mention: <@{0.id}> | Username: {0.name}#{0.discriminator}\n"
-                                        "{1}".format(   member, 
-                                                        f"Created (UTC): {member.created_at.strftime('%b %d, %Y %H:%M:%S')}" 
-                                                        if joining else 
-                                                        f"Join Date: {member.joined_at.strftime('%b %d, %Y %H:%M:%S')}"
-                                                    ),
+    embed = discord.Embed(  
+        description="Mention: <@{0.id}> | Username: {0.name}#{0.discriminator}\n"
+                    "{1}".format(   member, 
+                                    f"Join Date: {member.joined_at.strftime('%b %d, %Y %H:%M:%S')}" 
+                                ),
 
-                            colour=     0x51B5CC if joining else 0xCC1234,
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow()
-                        )
+        colour=     random_embed_color(),
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow())
 
-    embed.set_author(       name=       ("Member Banned" if joining == "banned" else ("Member Joined" if joining else "Member Left")),
-                            icon_url=   AVATAR_URL_AS(member)
+    authorname = "Member Left"
+
+    if banOrKick:
+        if (banOrKick[0] == discord.AuditLogAction.ban):
+            authorname = "Member Banned"
+
+        elif (banOrKick[0] == discord.AuditLogAction.kick): 
+            authorname = "Member Kicked"
+
+    embed.set_author(       
+        name=       authorname,
+        icon_url=   AVATAR_URL_AS(member)
                     )
                     
-    embed.set_footer(       icon_url=   GUILD_URL_AS(member.guild),
-                            text=       member.guild.name
+    embed.set_footer(       
+        icon_url=   GUILD_URL_AS(member.guild),
+        text=       member.guild.name
+                    )
+    
+    return embed
+
+async def getMemJoinUser(member):
+
+    embed = discord.Embed(  
+        description="Mention: <@{0.id}> | Username: {0.name}#{0.discriminator}\n"
+                    "Created (UTC): {1}".format(member, member.created_at.strftime('%b %d, %Y %H:%M:%S')),
+
+        colour=     random_embed_color(),
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow())
+
+    embed.set_author(       
+        name=       'Member Joined',
+        icon_url=   AVATAR_URL_AS(member)
+                    )
+                    
+    embed.set_footer(       
+        icon_url=   GUILD_URL_AS(member.guild),
+        text=       member.guild.name
                     )
     
     return embed
@@ -598,7 +652,6 @@ async def getNuggetHelp(msg, avatar_url, command_prefix, reception_channel_id, s
     
     return embed 
 
-
 async def getMemberLeveledUP(msg, level, reward, total):
     embed = discord.Embed(      description=    f"Level: {level} | Reward: {reward} :gem:\n"
                                                 f"Total Gems: {total}",
@@ -615,7 +668,6 @@ async def getMemberLeveledUP(msg, level, reward, total):
                                 text=       "{0.name}#{0.discriminator}".format(msg.author)
                     )
     return embed
-
 
 async def getUserProfile(msg, info):
     embed = discord.Embed(      description=    f"Level: {info['level']}\n"
@@ -704,7 +756,6 @@ async def genFeedbackSnooping(user_id, msg_id, chl_id, srv_id, present, senddate
                             text=       guild.name
                     )
     return embed
-
 
 
 

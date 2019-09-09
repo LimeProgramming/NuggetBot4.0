@@ -76,8 +76,10 @@ class Giveaway(commands.Cog):
         #===== ASSUMING STAFF REMOVED THE GIVEAWAY ROLE FROM A MEMBER
         elif (self.giveaway_role in before.roles) and (self.giveaway_role not in after.roles):
             await self.db.execute(pgCmds.REM_MEM_GVWY_ENTRIES, after.id)
-
-
+    
+    @commands.Cog.listener()
+    async def on_member_remove(self, m):
+        await self.db.execute(pgCmds.REM_MEM_GVWY_ENTRIES, m.id)
   #-------------------- LOCAL COG STUFF --------------------
     async def cog_after_invoke(self, ctx):
         if not ctx.message.guild:
