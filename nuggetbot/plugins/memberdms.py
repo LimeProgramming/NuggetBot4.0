@@ -37,6 +37,7 @@ class MemberDMS(commands.Cog):
 
             await SAVE_COG_CONFIG(self.cogset, cogname="feedback")
 
+
   #-------------------- LOCAL COG STUFF --------------------
     async def cog_before_invoke(self, ctx):
         '''THIS IS CALLED BEFORE EVERY COG COMMAND, IT'S SOLE PURPOSE IS TO CONNECT TO THE DATABASE'''
