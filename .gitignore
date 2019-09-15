@@ -1,2 +1,12 @@
 
 setup.ini
+*.pyc
+*.pyc
+nuggetbot/__pycache__/config.cpython-37.pyc
+nuggetbot/__pycache__/bot.cpython-37.pyc
+*.log
+*.last
+data/cogSettings.json
+gallery.sqlite
+nuggetbot/__pycache__/bot.cpython-37.pyc
+nuggetbot/util/__pycache__/gen_embed.cpython-37.pyc

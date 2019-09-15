@@ -11,11 +11,13 @@ from apscheduler import events
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from nuggetbot.utils import get_next
-from nuggetbot.plugins.cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 from nuggetbot.config import Config
+from nuggetbot.utils import get_next
 from nuggetbot.database import DatabaseCmds as pgCmds
+from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, AVATAR_URL_AS, GUILD_URL_AS
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
+
 #https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#bot
 import dblogin 
 
@@ -53,8 +55,11 @@ class Gallery(commands.Cog):
     async def cog_after_invoke(self, ctx):
         '''THIS IS CALLED AFTER EVERY COG COMMAND, IT DISCONNECTS FROM THE DATABASE AND DELETES INVOKING MESSAGE IF SET TO.'''
 
-        await self.db.close()
-        await ctx.message.delete()
+        try:
+            await self.db.close()
+            await ctx.message.delete()
+        except Exception as e:
+            print(e)
 
         return
 
@@ -72,23 +77,7 @@ class Gallery(commands.Cog):
 
   #-------------------- STATIC METHODS --------------------
     @staticmethod
-    async def get_user_id(content):
-        try:
-            args= content.split(" ")
-            if len(args) > 2:
-                return False 
-
-            #=== SPLIT, REMOVE MENTION WRAPPER AND CONVERT TO INT
-            user_id = args[1]
-            user_id = user_id.replace("<", "").replace("@", "").replace("!", "").replace(">", "")
-            user_id = int(user_id)
-            return user_id
-
-        except (IndexError, ValueError):
-            return False
-    
-    @staticmethod
-    def time_pat_to_hrs(content):
+    def time_pat_to_hrs(t):
         '''
         Converts a string in format <xdxh> (d standing for days and h standing for hours) to amount of hours.
         eg: 3d5h would be 77 hours
@@ -99,15 +88,6 @@ class Gallery(commands.Cog):
         Returns:
             (int) or (None)
         '''
-        args= content.split(" ")
-
-        if len(args) > 2:
-            return False 
-        
-        t = args[1]
-
-        timeinHours = int() 
-
         try:
             timeinHours = int(t)
             return timeinHours
@@ -157,9 +137,11 @@ class Gallery(commands.Cog):
         arrs.append(arr)
         return arrs
 
+
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
+
         self.cogset = await LOAD_COG_CONFIG(cogname="gallery")
         if not self.cogset:
             self.cogset= dict(
@@ -167,6 +149,7 @@ class Gallery(commands.Cog):
                 enable=        False, 
                 channel_ids=   [],
                 text_expirein= None,
+                rem_low=       False,
                 user_wl=       [],
                 allow_links=   False,
                 link_wl=       []
@@ -179,32 +162,33 @@ class Gallery(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, msg):
-        ###===== RETURN IF GALLERYS ARE DISABLED
-        if not self.cogset['enable']:
+        ###===== RETURN IF GALLERYS ARE DISABLED or MESSAGE IS NOT FROM A GUILD
+        if  (  not self.cogset['enable'] 
+            or not msg.guild
+            or not msg.type == discord.MessageType.default
+            or not msg.author.id in self.cogset['user_wl']
+            ):
             return 
-        
-        ###===== RETURN IF MESSAGE IS NOT FROM A GUILD
-        if not msg.guild:
-            return
-        
-        ###===== RETURN IF MESSAGE TYPE IS ANYTHING OTHER THAN A NORMAL MESSAGE.
-        if not bool(msg.type == discord.MessageType.default):
-            return
 
         if msg.channel in self.gal_channels:
-            
-            ###=== IF AUTHOR IS ALLOWED TO POST MESSAGES FREELY IN GALLERY CHANNELS
-            if msg.author.id in self.cogset['user_wl']:
-                return 
-
             valid = False
 
             ###=== IF MESSAGE HAS ATTACHMENTS ASSUME THE MESSAGE IS OF ART.
             if msg.attachments:
-                valid = True 
+                if not self.cogset['rem_low']:
+                    valid = True 
+                else:
+                    toosmall = False 
+
+                    for attch in msg.attachments:
+                        if attch.height < 300 and attch.width < 300:
+                            toosmall=True
+                            break 
+                    
+                    valid = not toosmall
             
             ###=== IF LINKS ARE ALLOWED IN GALLERY CHANNELS
-            if self.cogset['allow_links']:
+            elif self.cogset['allow_links']:
                 #- get the links from msg content
                 links = re.findall(r"(?P<url>http[s]?://[^\s]+)", msg.content)
 
@@ -234,7 +218,7 @@ class Gallery(commands.Cog):
 
   #-------------------- COMMANDS --------------------
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galenable', aliases=[])
+    @commands.command(pass_context=True, hidden=False, name='galenable', aliases=[])
     async def cmd_galenable(self, ctx):
         """
         [Bot Owner] Enables the gallery feature.
@@ -262,7 +246,7 @@ class Gallery(commands.Cog):
         return
         
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galdisable', aliases=[])
+    @commands.command(pass_context=True, hidden=False, name='galdisable', aliases=[])
     async def cmd_galdisable(self, ctx):
         """
         [Bot Owner] Disables the gallery feature.
@@ -286,7 +270,7 @@ class Gallery(commands.Cog):
         return
 
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galtogglechannel', aliases=[])
+    @commands.command(pass_context=True, hidden=False, name='galtogglechannel', aliases=[])
     async def cmd_galtogglechannel(self, ctx, channel):
         """
         [Bot Owner] Add or remove a channel to the list of active gallery channels
@@ -334,18 +318,24 @@ class Gallery(commands.Cog):
         return
 
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galsetexpirehours', aliases=[])
-    async def cmd_galsetexpirehours(self, ctx):
+    @commands.command(pass_context=True, hidden=False, name='galsetexpirehours', aliases=[])
+    async def cmd_galsetexpirehours(self, ctx, timepat):
         """
-        [Bot Owner] Sets how long the bot should wait to delete text only messages from gallery channels
+        [Bot Owner] Sets how long the bot should wait to delete text only messages from gallery channels.
+        Can be provided as <XdXh>
 
         Useage:
             [prefix]galsetexpirehours <hours>
         """
-        new_time = Gallery.time_pat_to_hrs(ctx.message.content)
+        ###===== CHECK IF VALID
+        new_time = Gallery.time_pat_to_hrs(timepat)
         
-        self.cogset['text_expirein'] = new_time
+        if not new_time:
+            await ctx.send_help("galsetexpirehours", delete_after=15)
+            return
 
+        ###===== SAVE COG SETTINGS
+        self.cogset['text_expirein'] = new_time
         await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
 
         resetJob = False
@@ -370,72 +360,42 @@ class Gallery(commands.Cog):
 
         await ctx.channel.send(content=f"Text message expirey time has been set to {new_time} hours.")
         return
-    
+
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galadduserwl', aliases=[])
-    async def cmd_galadduserwl(self, ctx):
+    @commands.command(pass_context=True, hidden=False, name='galtoguserwl', aliases=[])
+    async def cmd_galtoguserwl(self, ctx, user_id):
         """
-        [Bot Owner] Adds a user to the gallery user whitelist. Allowing them to post in Gallery channels.
+        [Bot Owner] Toggles a user in the gallery user whitelist. 
+        If they are in the whitelist then their messages are persistent and not deleted retroactivly.
 
         Useage:
-            [prefix]galadduserwl <userid/mention>
+            [prefix]galtoguserwl <userid/mention>
         """ 
 
         ###===== CHECK IF INPUT IS VALID
-        user_id = Gallery.get_user_id(ctx.message.content)
+        try:
+            user_id = int(user_id.replace("<", '').replace("@", '').replace("!", '').replace(">", ''))
+        except (IndexError, ValueError):
+            await ctx.send_help('galtoguserwl', delete_after=Gallery.delete_after)
+            return    
 
-        if not user_id:
-            await ctx.send_help('galadduserwl', delete_after=15)
-            return
+        ###===== REMOVE OR ADD USER TO THE WHITELIST
+        ret_msg = ""
 
-        ###===== ADD USER ID TO THE WHITELIST
-        new_user_whitelist = list(set(self.cogset['user_wl']) + {user_id})
-
-        if Gallery.compare(self.cogset['user_wl'], new_user_whitelist):
-            await ctx.channel.send(content=f"<@{user_id}> is alreadt in the gallery whitelist.", delete_after=Gallery.delete_after)
-            return 
-
+        if user_id in self.cogset['user_wl']:
+            self.cogset['user_wl'].remove(user_id)
+            ret_msg = f'<@{user_id} has been **removed** from the gallery whitelist.'
+        
         else:
-            self.cogset['user_wl'] = new_user_whitelist
+            self.cogset['user_wl'].append(user_id)
+            ret_msg = f'<@{user_id} has been **added** to the gallery whitelist.'
+
 
         ###===== WRITE TO THE DATABASE
         await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
 
         ###===== RETURN
-        await ctx.channel.send(content=f"<@{user_id}> has been added to the gallery whitelist.", delete_after=Gallery.delete_after)
-        return
-
-    @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galremuserwl', aliases=[])
-    async def cmd_galremuserwl(self, ctx):
-        """
-        [Bot Owner] Remomes a user to the gallery user whitelist.
-
-        Useage:
-            [prefix]galremuserwl <userid/mention>
-        """
-
-        ###===== CHECK IF INPUT IS VALID
-        user_id = Gallery.get_user_id(ctx.message.content)
-        
-        if not user_id:
-            await ctx.send_help('galremuserwl', delete_after=15)
-            return
-
-        ###===== REMOVE USER FROM WHITELIST
-        try:
-            self.cogset['user_wl'].remove(user_id)
-
-        except ValueError:
-            #=== IF USER IS NOT ON THE WHITELIST
-            await ctx.channel.send(content=f"<@{user_id}> was not on the gallery whitelist.", delete_after=Gallery.delete_after)
-            return
-
-        ###===== WRITE TO DATABASE
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
-
-        ###===== RETURN 
-        await ctx.channel.send(content=f"<@{user_id}> has been removed from the gallery whitelist.", delete_after=Gallery.delete_after)
+        await ctx.channel.send(content=ret_msg, delete_after=Gallery.delete_after)
         return
 
     @commands.is_owner()
@@ -508,7 +468,7 @@ class Gallery(commands.Cog):
  
     ### REM LINK WHITELIST
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galremlinkuwl', aliases=[])
+    @commands.command(pass_context=True, hidden=False, name='galremlinkuwl', aliases=[])
     async def cmd_galremlinkuwl(self, ctx):
         """
         [Bot Owner] Removes a link from gallery link whitelist.
@@ -540,7 +500,7 @@ class Gallery(commands.Cog):
 
     ### SPECIAL
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galloadsettings', aliases=[])
+    @commands.command(pass_context=True, hidden=False, name='galloadsettings', aliases=[])
     async def cmd_galloadsettings(self, ctx):
         """
         [Bot Owner] Loads gallery settings from the setup.ini file
@@ -548,28 +508,76 @@ class Gallery(commands.Cog):
         Useage:
             [prefix]galloadsettings
         """
+        try:
+            config = Config()
 
-        config = Config()
+            ###===== UPDATE THE SETTINGS IN THE LOCAL COG
+            self.cogset['guild_id'] =       config.target_guild_id
+            self.cogset['enable']=          config.galEnable
+            self.cogset['channel_ids'] =    config.gallerys["chls"]
+            self.cogset['text_expirein']=   config.gallerys['expire_in']
+            self.cogset['rem_low']=         config.gallerys['rem_low']
+            self.cogset['user_wl']=         config.gallerys["user_wl"]
+            self.cogset['allow_links']=     config.gallerys["links"]
+            self.cogset['link_wl']=         config.gallerys['link_wl']
 
-        ###===== UPDATE THE SETTINGS IN THE LOCAL COG
-        self.cogset['guild_id'] =       config.target_guild_id
-        self.cogset['enable']=          config.galEnable
-        self.cogset['channel_ids'] =    config.gallerys["chls"]
-        self.cogset['text_expirein']=   config.gallerys['expire_in']
-        self.cogset['user_wl']=         config.gallerys["user_wl"]
-        self.cogset['allow_links']=     config.gallerys["links"]
-        self.cogset['link_wl']=         config.gallerys['link_wl']
-
-        guild =                 self.bot.get_guild(self.cogset['guild_id'])
-        self.gal_channels=      [channel for channel in guild.channels if channel.id in self.cogset['channel_ids']]
-        
-        ###===== SAVE COG SETTINGS
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
-
-        ###===== RETURN
-        await ctx.channel.send(content="Gallery information has been updated from the setup.ini file", delete_after=15)
+            guild =                 self.bot.get_guild(self.cogset['guild_id'])
+            self.gal_channels=      [channel for channel in guild.channels if channel.id in self.cogset['channel_ids']]
+            
+            ###===== SAVE COG SETTING
+            print(1)
+            
+            await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+            print(2)
+            ###===== RETURN
+            await ctx.channel.send(content="Gallery information has been updated from the setup.ini file", delete_after=15)
+        except Exception as e:
+            print(e)
         return
 
+    @commands.is_owner()
+    @commands.command(pass_context=True, hidden=False, name='getsettings', aliases=[])
+    async def cmd_galsettings(self, ctx):
+        try:
+            embed=discord.Embed(    
+                title=      "Gallery Channel Settings.",
+                description=f"**Enabled:** {self.cogset['enable']}"
+                            f"**Expire time:** {self.cogset['text_expirein']} hours",
+                colour=     RANDOM_DISCORD_COLOR(),
+                type=       "rich",
+                timestamp=  datetime.datetime.utcnow()
+                )
+
+            embed.add_field(
+                name=       "Gallery Channels",
+                value=      "\n".join([f"<#{ch_id}>" for ch_id in self.cogset['channel_ids']]),
+                inline=     False
+                )    
+
+            embed.add_field(
+                name=       "Whitelisted Members",
+                value=      "\n".join([f"<#{user_id}>" for user_id in self.cogset['user_wl']]),
+                inline=     False
+                )
+
+            links = "\n".join(self.cogset["link_wl"])
+
+            embed.add_field(
+                name=       "Gallery Links",
+                value=      f'**Allowed:** {self.cogset["allow_links"]}'
+                            f'**Links:** {links}',
+                inline=     False
+                )   
+
+            embed.set_footer(       
+                icon_url=   GUILD_URL_AS(ctx.guild) if ctx.guild else AVATAR_URL_AS(self.bot.user), 
+                text=       "Gallery Settings"
+                        )
+
+            await ctx.channel.send("force", embed=embed)
+        except Exception as e:
+            print(e)
+        return
 
   #-------------------- SCHEDULING --------------------
     def job_missed(self, event):
@@ -682,7 +690,7 @@ class Gallery(commands.Cog):
         return
 
 def setup(bot):
-    bot.Gallery(Gallery(bot))
+    bot.add_cog(Gallery(bot))
 
 async def call_schedule(func=None, arg=None):
     await getattr(Gallery.bot, func)(arg)

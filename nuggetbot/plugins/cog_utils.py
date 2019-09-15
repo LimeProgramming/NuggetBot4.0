@@ -305,8 +305,11 @@ def IS_ANY_STAFF_DM(*args):
 @asyncio.coroutine
 async def SAVE_COG_CONFIG(cogset, cogname:str):
 
-    with open(os.path.join('jsondata','cogSettings.json'), 'r', encoding='utf-8') as cogSettings:
-        existing = json.load(cogSettings)
+    try:
+        with open(os.path.join('data','cogSettings.json'), 'r', encoding='utf-8') as cogSettings:
+            existing = json.load(cogSettings)
+    except FileNotFoundError:
+        existing = dict()
     
     ###===== Convert Datetime.datetime to string to allow for serialization
     for key in cogset.keys():
@@ -322,21 +325,21 @@ async def SAVE_COG_CONFIG(cogset, cogname:str):
             for j, i in enumerate(cogset[key]):
                 cogset[key][j] = await __convert_dd_str(i)
 
-
     existing[cogname] = cogset
 
-    with open(os.path.join('jsondata','cogSettings.json'), 'w', encoding='utf-8') as cogSettings:
+    with open(os.path.join('data','cogSettings.json'), 'w', encoding='utf-8') as cogSettings:
         json.dump(existing, cogSettings, skipkeys=True, sort_keys=True)
 
     return
 
 @asyncio.coroutine
 async def LOAD_COG_CONFIG(cogname : str):
-    with open(os.path.join('jsondata','cogSettings.json'), 'r', encoding='utf-8') as cogSettings:
-        existing = json.load(cogSettings)
-
     ###===== TRY TO USE THE COGNAME AS A KEY, IF COGNAME IS NOT A KEY, COGSET WILL BE NONE
+    # ALSO IF NO COG SETTINGS HAVE BEEN SET, THEN IT'LL THROW A FILENOTFOUNDERROR
     try:
+        with open(os.path.join('data','cogSettings.json'), 'r', encoding='utf-8') as cogSettings:
+            existing = json.load(cogSettings)
+
         cogset = existing[cogname]
 
         ###=== CONVERT DATETIME ITEMS BACK TO THE CORRECT FORMAT
@@ -353,7 +356,7 @@ async def LOAD_COG_CONFIG(cogname : str):
                 for j, i in enumerate(cogset[key]):
                     cogset[key][j] = await __convert_str_dd(i)
 
-    except KeyError:
+    except (FileNotFoundError, KeyError):
         cogset = None
 
     return cogset

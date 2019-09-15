@@ -113,8 +113,9 @@ class Config:
         self.gallerys = {}
 
         self.galEnable=             config.getboolean(  'Gallery', 'Enable',            fallback=False)
-        self.gallerys["chls"]=      config.get(         'Gallery', 'Channels',          fallback=None)
+        self.gallerys["chls"]=      config.get(         'Gallery', 'Channels',          fallback=list())
         self.gallerys['expire_in']= config.get(         'Gallery', 'Text-MSG-ExpireIn', fallback=24)
+        self.gallerys['rem_low']=   config.getboolean(  'Gallery', 'Delete-Low-Quality',fallback=False)
         self.gallerys["user_wl"]=   config.get(         'Gallery', 'User-Whitelist',    fallback=list())
         self.gallerys["links"]=     config.getboolean(  'Gallery', 'Allow-Links',       fallback=False)
         self.gallerys['link_wl']=   config.get(         'Gallery', 'Link-Whitelist',    fallback=list())
@@ -264,7 +265,7 @@ class Config:
             (str) List of Discord id's seperated by a space.
 
         Returns:
-            (set) Set of Discord id's converted to an int.
+            (list) Set of Discord id's converted to an int.
         '''
 
         #===== REMOVE SOME COMMON ILLEGAL CHARACTERS
@@ -294,7 +295,7 @@ class Config:
             )
 
         #===== RETURN A SET OF INTS
-        return set(intids)
+        return intids
         
     def time_pat_to_hrs(self, t):
         '''
@@ -356,7 +357,7 @@ class Config:
             str
         
         Returns:
-            set
+            list
         '''
         clinks = []
 
@@ -368,7 +369,7 @@ class Config:
             link = link.replace('\'', '').replace('"', '').replace(',', '')
             clinks.append(link)
 
-        return set(clinks)
+        return clinks
 
 
     async def async_validate(self, bot):

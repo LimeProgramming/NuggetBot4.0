@@ -60,7 +60,8 @@ plugins = (
     ('nuggetbot.plugins.fun',           'Fun'),
     ('nuggetbot.plugins.admin',         'Admin'),
     ('nuggetbot.plugins.delMsgLogging', 'Deleted Message Logging'),
-    ('nuggetbot.plugins.memberdms',     'Feedback')
+    ('nuggetbot.plugins.memberdms',     'Feedback'),
+    ('nuggetbot.plugins.gallery',       'Gallery')
 )
 
 class ChnlID():
