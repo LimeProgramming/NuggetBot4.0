@@ -1,11 +1,11 @@
-[26.973485947] 2019-08-28 06:24:09,923 - INFO - launcher: Starting sanity checks
-[26.973485947] 2019-08-28 06:24:09,923 - INFO - launcher: Checking for Python 3.5+
-[26.973485947] 2019-08-28 06:24:09,923 - INFO - launcher: Checking console encoding
-[26.973485947] 2019-08-28 06:24:09,923 - INFO - launcher: Setting console encoding to UTF-8
-[27.972459793] 2019-08-28 06:24:09,924 - INFO - launcher: Ensuring we're in the right environment
-[507.298946381] 2019-08-28 06:24:10,403 - INFO - launcher: Required checks passed.
-[507.298946381] 2019-08-28 06:24:10,403 - INFO - launcher: Optional checks passed.
-[508.298158646] 2019-08-28 06:24:10,404 - INFO - launcher: Moving old nuggetbot log
+[21.983385086] 2019-09-15 23:00:52,292 - INFO - launcher: Starting sanity checks
+[22.476911545] 2019-09-15 23:00:52,293 - INFO - launcher: Checking for Python 3.5+
+[22.476911545] 2019-09-15 23:00:52,293 - INFO - launcher: Checking console encoding
+[22.476911545] 2019-09-15 23:00:52,293 - INFO - launcher: Setting console encoding to UTF-8
+[22.977828979] 2019-09-15 23:00:52,293 - INFO - launcher: Ensuring we're in the right environment
+[414.070129395] 2019-09-15 23:00:52,684 - INFO - launcher: Required checks passed.
+[414.070129395] 2019-09-15 23:00:52,684 - INFO - launcher: Optional checks passed.
+[414.580345154] 2019-09-15 23:00:52,685 - INFO - launcher: Moving old nuggetbot log
 
 ######################### PRE-RUN SANITY CHECKS PASSED #########################
 

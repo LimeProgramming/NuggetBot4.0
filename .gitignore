@@ -10,3 +10,15 @@ data/cogSettings.json
 gallery.sqlite
 nuggetbot/__pycache__/bot.cpython-37.pyc
 nuggetbot/util/__pycache__/gen_embed.cpython-37.pyc
+logs/nuggetbot.log.last
+logs/nuggetbot.log
+logs/nuggetbot.log
+logs/nuggetbot.log.last
+nuggetbot/__pycache__/bot.cpython-37.pyc
+nuggetbot/__pycache__/config.cpython-37.pyc
+nuggetbot/__pycache__/database.cpython-37.pyc
+nuggetbot/__pycache__/decorators.cpython-37.pyc
+nuggetbot/plugins/__pycache__/artists.cpython-37.pyc
+nuggetbot/plugins/__pycache__/ctx_decorators.cpython-37.pyc
+nuggetbot/plugins/__pycache__/giveaway.cpython-37.pyc
+nuggetbot/util/__pycache__/gen_embed.cpython-37.pyc
