@@ -9,8 +9,7 @@ import dblogin
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
-#from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
-from .cog_utils import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff, SAVE_COG_CONFIG, LOAD_COG_CONFIG
+from .cog_utils import in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF, SAVE_COG_CONFIG, LOAD_COG_CONFIG
 #https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#bot
 
 giveaway_channel_id = int()
@@ -22,8 +21,6 @@ class Giveaway(commands.Cog):
     delete_after = 15
 
     def __init__(self, bot):
-        #self.RafEntryActive = False
-        #self.RafDatetime = []
         self.bot = bot
         self.cogset = dict()
         #self.config = Config()
@@ -31,7 +28,6 @@ class Giveaway(commands.Cog):
         self.databaselg = DatabaseLogin()
         self.giveaway_role = None
 
-        #self._last_result = None
     
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
@@ -80,6 +76,8 @@ class Giveaway(commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, m):
         await self.db.execute(pgCmds.REM_MEM_GVWY_ENTRIES, m.id)
+
+
   #-------------------- LOCAL COG STUFF --------------------
     async def cog_after_invoke(self, ctx):
         if not ctx.message.guild:
@@ -161,7 +159,7 @@ class Giveaway(commands.Cog):
 
   #-------------------- COMMANDS --------------------
     ###Users assign themselves the giveaway role
-    @is_core()
+    @IS_CORE()
     @in_channel([giveaway_channel_id])
     @commands.command(pass_context=False, hidden=False, name='giveaway', aliases=["gvwy"])
     async def cmd_giveaway(self, ctx):
@@ -240,7 +238,7 @@ class Giveaway(commands.Cog):
             return
 
     ###Adds a user to the blacklist
-    @is_high_staff()
+    @IS_HIGH_STAFF()
     @commands.command(pass_context=True, hidden=False, name='addblacklist', aliases=["gvwy_addblacklist", "gvwy_addblock"])
     async def cmd_addblacklist(self, ctx):
         """
@@ -281,7 +279,7 @@ class Giveaway(commands.Cog):
             return
 
     ###Remove a user from the blacklist
-    @is_high_staff()
+    @IS_HIGH_STAFF()
     @commands.command(pass_context=True, hidden=False, name='remblacklist', aliases=["gvwy_remblacklist", "gvwy_remblock"])
     async def cmd_remblacklist(self, ctx):
         """
@@ -308,7 +306,7 @@ class Giveaway(commands.Cog):
         return 
 
     ###Returns a list of users who are blacklisted from the raffle
-    @is_any_staff()
+    @IS_ANY_STAFF()
     @commands.command(pass_context=True, hidden=False, name='checkblacklist', aliases=["gvwy_checkblacklist", "gvwy_checkblocks"])
     async def cmd_checkblacklist(self, ctx):
         """
@@ -356,7 +354,7 @@ class Giveaway(commands.Cog):
         return
 
     ###Adds a user to the previous winners list
-    @is_high_staff()
+    @IS_HIGH_STAFF()
     @commands.command(pass_context=True, hidden=True, name='makeprewinner', aliases=["gvwy_makeprewinner"])
     async def cmd_makeprewinner(self, ctx):
         """
@@ -379,7 +377,7 @@ class Giveaway(commands.Cog):
         return
 
     ###Remove a user to the previous winners list
-    @is_high_staff()
+    @IS_HIGH_STAFF()
     @commands.command(pass_context=True, hidden=True, name='remprewinner', aliases=["gvwy_remprewinner"])
     async def cmd_remprewinner(self, ctx):
         """
@@ -417,7 +415,7 @@ class Giveaway(commands.Cog):
         return
         
     ###Returns a list of users who have won the raffle before
-    @is_any_staff()
+    @IS_ANY_STAFF()
     @commands.command(pass_context=True, hidden=True, name='checkprewinners', aliases=["gvwy_checkprewinners"])
     async def cmd_checkprewinners(self, ctx):
         """
@@ -466,7 +464,7 @@ class Giveaway(commands.Cog):
         return
         
     ###Support or above calls a winner of the raffle 
-    @is_any_staff()
+    @IS_ANY_STAFF()
     @commands.command(pass_context=True, hidden=False, name='callgiveawaywinner', aliases=["gvwy_callwinner"])
     async def cmd_callgiveawaywinner(self, ctx):
         """
@@ -508,7 +506,7 @@ class Giveaway(commands.Cog):
             return
 
     ###Bastion or above close raffle
-    @is_high_staff()
+    @IS_HIGH_STAFF()
     @commands.command(pass_context=True, hidden=False, name='endraffle', aliases=["gvwy_end"])
     async def cmd_endraffle(self, ctx):
         """
@@ -538,7 +536,7 @@ class Giveaway(commands.Cog):
         return
 
     ###Support or above can allow raffle entries
-    @is_any_staff()
+    @IS_ANY_STAFF()
     @commands.command(pass_context=True, hidden=False, name='allowentries', aliases=["gvwy_allow"])
     async def cmd_allowentries(self, ctx):
         """
@@ -561,7 +559,7 @@ class Giveaway(commands.Cog):
         return
 
     ###Support or above can close raffle entries
-    @is_any_staff()
+    @IS_ANY_STAFF()
     @commands.command(pass_context=True, hidden=False, name='stopentries', aliases=["gvwy_stop"])
     async def cmd_stopentries(self, ctx):
         """
@@ -584,7 +582,7 @@ class Giveaway(commands.Cog):
 
     ###Support or above can post list of raffle entries
     @in_channel([giveaway_channel_id])
-    @is_core()
+    @IS_CORE()
     @commands.command(pass_context=True, hidden=False, name='giveawayentries', aliases=["gvwy_giveawayentries"])
     async def cmd_giveawayentries(self, ctx):
         """
@@ -618,7 +616,7 @@ class Giveaway(commands.Cog):
         
         return
 
-    @is_any_staff()
+    @IS_ANY_STAFF()
     @commands.command(pass_context=True, hidden=True, name='giveawayoverride', aliases=["gvwy_giveawayoverride"])
     async def cmd_giveawayoverride(self, ctx):
         """

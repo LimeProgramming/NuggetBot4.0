@@ -5,10 +5,10 @@ import collections
 from io import BytesIO
 from discord.ext import commands
 
-
-from nuggetbot.plugins.cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, in_channel, in_channel_name, in_reception, is_any_staff, is_core, is_high_staff, is_highest_staff
 from nuggetbot.config import Config
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS, escape
+
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, in_channel, in_channel_name, IS_ANY_STAFF, IS_CORE, IS_HIGH_STAFF, IS_HIGHEST_STAFF
 
 compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
 
@@ -232,7 +232,7 @@ class DelMsgLogging(commands.Cog):
 
   #-------------------- COG COMMANDS --------------------
     
-    @is_highest_staff()
+    @IS_HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=True, name='toggledelmsglog', aliases=['toggleDelMsgLog'])
     async def cmd_toggleDelMsgLog(self, ctx):
         """
@@ -255,7 +255,7 @@ class DelMsgLogging(commands.Cog):
         await ctx.channel.send(f"Deleted message logging has been set to {self.cogset['enableDelMsgLog']}")
         return
 
-    @is_highest_staff()
+    @IS_HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=True, name='toggledelmsgattach', aliases=['toggleDelMsgAttach'])
     async def cmd_toggleDelMsgAttach(self, ctx):
         """
@@ -278,7 +278,7 @@ class DelMsgLogging(commands.Cog):
         await ctx.channel.send(f"Deleted message logging download attachments has been set to {self.cogset['save_attach']}")
         return
 
-    @is_highest_staff()
+    @IS_HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=True, name='delmsglogchannel', aliases=['DelMsgLogChannel'])
     async def cmd_DelMsgLogChannel(self, ctx):
         """
@@ -310,7 +310,7 @@ class DelMsgLogging(commands.Cog):
         await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
         return
 
-    @is_highest_staff()
+    @IS_HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=True, name='delmsglogmember', aliases=['DelMsgLogMember'])
     async def cmd_DelMsgLogMember(self, ctx):
         """
@@ -339,7 +339,7 @@ class DelMsgLogging(commands.Cog):
         await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
         return
 
-    @is_highest_staff()
+    @IS_HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=True, name='delmsgreportchannel', aliases=['DelMsgReportChannel'])
     async def cmd_DelMsgReportChannel(self, ctx):
         """

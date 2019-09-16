@@ -11,8 +11,9 @@ from discord.ext import commands
 from nuggetbot.config import Config
 from nuggetbot.util import gen_embed as GenEmbed
 from nuggetbot.database import DatabaseCmds as pgCmds
-from nuggetbot.plugins.cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
+
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 
 class MemberDMS(commands.Cog):
     """Private feedback system."""

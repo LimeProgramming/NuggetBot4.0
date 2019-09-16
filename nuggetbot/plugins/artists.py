@@ -7,7 +7,7 @@ import datetime
 from nuggetbot.util.chat_formatting import AVATAR_URL_AS, GUILD_URL_AS, RANDOM_DISCORD_COLOR
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseCmds as pgCmds
-from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
+from .cog_utils import in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF
 
 import dblogin 
 

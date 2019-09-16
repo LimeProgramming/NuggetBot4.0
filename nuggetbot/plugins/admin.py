@@ -18,7 +18,7 @@ from nuggetbot.config import Config
 from nuggetbot.util import gen_embed as GenEmbed
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
-from nuggetbot.plugins.cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, is_high_staff, is_highest_staff, is_owner, turned_off
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, IS_HIGH_STAFF, IS_HIGHEST_STAFF, is_owner, turned_off
 import dblogin 
 
 class GlobalChannel(commands.Converter):
@@ -275,7 +275,7 @@ class Admin(commands.Cog):
 
   #-------------------- COMMANDS --------------------
 
-    @is_high_staff()
+    @IS_HIGH_STAFF()
     @commands.command(pass_context=True, hidden=False, name='loginvites', aliases=['logInvites', 'LogInvites'])
     async def cmd_loginvites(self, ctx):
         """
@@ -755,7 +755,7 @@ class Admin(commands.Cog):
 
         return
 
-    @is_high_staff() #new
+    @IS_HIGH_STAFF() #new
     @commands.command(pass_context=True, hidden=True, name='banbyid', aliases=[])
     async def cmd_banbyid(self, ctx):
         """

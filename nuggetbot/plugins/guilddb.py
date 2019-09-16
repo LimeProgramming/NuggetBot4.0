@@ -9,7 +9,7 @@ import logging
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
-from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
+from .cog_utils import in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF
 
 import dblogin 
 
@@ -26,6 +26,7 @@ class GuildDB(commands.Cog):
         self.RafDatetime = []
         self.bot = bot
 
+  #-------------------- STATIC METHOD --------------------  
     @staticmethod
     async def oneline_valid(content):
         try:
@@ -52,6 +53,8 @@ class GuildDB(commands.Cog):
         arrs.append(arr)
         return arrs
 
+
+  #-------------------- LOCAL COG STUFF --------------------  
     async def on_cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
             ctx.guild.owner.send(content=f"{ctx.author.mention} tried to use the owner only command{ctx.invoked_with}")
@@ -62,7 +65,8 @@ class GuildDB(commands.Cog):
 
         return
 
-    #-------------------- COMMANDS --------------------
+
+  #-------------------- COMMANDS --------------------
     @commands.is_owner()
     @commands.command(pass_context=True, hidden=True, name='GuildPopulateBans', aliases=[])
     async def GuildPopulateBans(self, ctx):

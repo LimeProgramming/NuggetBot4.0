@@ -96,7 +96,7 @@ def has_role(role_name):
     return commands.check(inner)
 
 #Msg must be in reception_channel (setup.ini) or command be posted by staff or user with admin perm
-def in_reception(*args):
+def IN_RECEPTION(*args):
     
     async def pred(ctx):
         if not ctx or not ctx.guild:
@@ -110,8 +110,7 @@ def in_reception(*args):
     return commands.check(pred)
 
 #if user has core_role  or user with admin perm
-def is_core(*args):
-
+def IS_CORE(*args):
     async def pred(ctx):
         if not ctx or not ctx.guild:
             return False 
@@ -122,7 +121,7 @@ def is_core(*args):
 
     return commands.check(pred)
 
-def is_highest_staff(*args):
+def IS_HIGHEST_STAFF(*args):
     async def pred(ctx):
         if not ctx or not ctx.guild:
             return False   
@@ -140,7 +139,7 @@ def is_highest_staff(*args):
     return commands.check(pred)
 
 ##Staff role decor | Bastion or Minister or user with admin perm
-def is_high_staff(*args):
+def IS_HIGH_STAFF(*args):
 
     async def pred(ctx):
         if not ctx or not ctx.guild:
@@ -159,7 +158,7 @@ def is_high_staff(*args):
     return commands.check(pred)
 
 ##Staff role decor | Support orBastion or Minister or user with admin perm
-def is_any_staff(*args):
+def IS_ANY_STAFF(*args):
     async def pred(ctx):
         if not ctx or not ctx.guild:
             return False   

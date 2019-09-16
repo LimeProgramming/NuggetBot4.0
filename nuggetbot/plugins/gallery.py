@@ -15,8 +15,7 @@ from nuggetbot.config import Config
 from nuggetbot.utils import get_next
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, AVATAR_URL_AS, GUILD_URL_AS
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
-from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF
 
 #https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#bot
 import dblogin 
