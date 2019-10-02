@@ -470,8 +470,9 @@ class DatabaseCmds(object):
         #SET_GUILD_DATA=
         SET_GUILD_OWNER=        'UPDATE guild SET owner_id = CAST($1 AS BIGINT) WHERE guild_id = CAST($2 AS BIGINT);'
         SET_GUILD_ROLES=        'UPDATE guild SET roles = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
-        UPDATE_GUILD_BANS=      'UPDATE guild SET bans = array_append(bans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
-        UPDATE_GUILD_UNBANS=    'UPDATE guild SET unbans = array_append(unbans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
+        APPEND_GUILD_BANS=      'UPDATE guild SET bans = array_append(bans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
+        APPEND_GUILD_UNBANS=    'UPDATE guild SET unbans = array_append(unbans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
+        APPEND_GUILD_EMOJIS=    'UPDATE guild SET emojis = array_append(emojis, $1) WHERE guild_id = CAST($2 AS BIGINT);'
 
                  
         ###RETIRED CODE

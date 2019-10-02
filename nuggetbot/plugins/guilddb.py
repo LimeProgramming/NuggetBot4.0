@@ -28,6 +28,7 @@ class GuildDB(commands.Cog):
         self.RafDatetime = []
         self.bot = bot
         self.db = None
+        self.cog_ready = False
 
   #-------------------- STATIC METHOD --------------------  
     @staticmethod
@@ -68,6 +69,24 @@ class GuildDB(commands.Cog):
 
         return
 
+    async def connect_db(self):
+        """
+        Connects to the database using variables set in the dblogin.py file.
+        """
+
+        credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
+        self.db = await asyncpg.create_pool(**credentials)
+
+        return
+
+    async def disconnet_db(self):
+        """
+        Closes the connection to the database.
+        """
+        await self.db.close()
+
+        return
+
 
   #-------------------- COMMANDS --------------------
     @commands.is_owner()
@@ -81,9 +100,81 @@ class GuildDB(commands.Cog):
         
         return
 
+ 
+  #-------------------- LISTENERS --------------------
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.connect_db()
 
+        self.cog_ready = True 
+
+    @commands.Cog.listener()        
+    async def on_guild_update(self, before, after):
+        ###===== OWNER CHECK
+        if before.owner_id != after.owner_id:
+            await self.db.execute(pgCmds.SET_GUILD_OWNER, after.owner_id, after.id)
+
+        ###=====
+
+   #-------------------- ROLE MANAGEMENT --------------------
+    @commands.Cog.listener()        
+    async def on_guild_role_create(self, role):
+        r = [role.id for role in role.guild.roles]
+        
+        await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
+
+    @commands.Cog.listener()        
+    async def on_guild_role_delete(self, role):
+        r = [role.id for role in role.guild.roles]
+        
+        await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
+
+    @commands.Cog.listener()        
+    async def on_guild_role_update(self, before, after):
+        pass
+
+
+   #-------------------- EMOJI MANAGEMENT --------------------
+    @commands.Cog.listener()        
+    async def on_guild_emojis_update(self, guild, before, after):
+        ###===== Wait for the cog to be ready. This should help avoid data becoming corrupt or going out of order.
+        while not self.cog_ready:
+            await asyncio.sleep(5)
+
+        ###===== If the list of new emojis is not greater than the list of old emojis
+        # if this check fails it means that an emoji has been removed and the point of this function is to log all emojis ever added to the guild.
+        if not len(after) > len(before):
+            return 
+
+        ###===== Cycle through the emojis, old ones are removed in the implied list.
+        for emoji in [emoji for emoji in after if emoji not in before]:
+
+            e_id, ext = (emoji.url.__str__().split("/").pop()).split(".")
+
+            e_bytes = await emoji.url.read()
+
+            emoji_byte = int(e_id), ext, e_bytes, emoji.created_at
+
+            await self.db.execute(pgCmds.APPEND_GUILD_EMOJIS, emoji_byte, guild.id)
+
+        return
+
+
+   #-------------------- CHANNEL MANAGEMENT --------------------
+    @commands.Cog.listener()  
+    async def on_guild_channel_delete(self, channel):
+        pass
+
+    @commands.Cog.listener()  
+    async def on_guild_channel_create(self, channel):
+        pass
+
+    @commands.Cog.listener()  
+    async def on_guild_channel_update(self, before, after):
+        pass
     
-    #-------------------- LISTENERS --------------------
+
+   #-------------------- MEMBER MANAGEMENT --------------------
     @commands.Cog.listener()
     async def on_member_join(self, member):
         pass
@@ -111,49 +202,21 @@ class GuildDB(commands.Cog):
         return
 
     @commands.Cog.listener()        
-    async def on_guild_update(self, before, after):
-        ###===== OWNER CHECK
-        if before.owner_id != after.owner_id:
-            await self.db.execute(pgCmds.SET_GUILD_OWNER, after.owner_id, after.id)
-
-        ###=====
-
-    @commands.Cog.listener()        
-    async def on_guild_role_create(self, role):
-        r = [role.id for role in role.guild.roles]
-        
-        await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
-
-    @commands.Cog.listener()        
-    async def on_guild_role_delete(self, role):
-        r = [role.id for role in role.guild.roles]
-        
-        await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
-
-    @commands.Cog.listener()        
-    async def on_guild_role_update(self, before, after):
-        pass
-
-    @commands.Cog.listener()        
-    async def on_guild_emojis_update(self, guild, before, after):
-        pass
-
-    @commands.Cog.listener()        
     async def on_member_ban(self, guild, user):
         #(User banned, staff_id, Reason, timestamp)
         data = self.get_ban_unban_data(discord.AuditLogAction.ban, user, guild)
         
-        await self.db.execute(pgCmds.UPDATE_GUILD_BANS, data)
-
+        await self.db.execute(pgCmds.APPEND_GUILD_BANS, data)
 
     @commands.Cog.listener()        
     async def on_member_unban(self, guild, user):
         #(User banned, staff_id, Reason, timestamp)
         data = self.get_ban_unban_data(discord.AuditLogAction.unban, user, guild)
 
-        await self.db.execute(pgCmds.UPDATE_GUILD_UNBANS, data[:4])
+        await self.db.execute(pgCmds.APPEND_GUILD_UNBANS, data[:4])
 
-    #-------------------- FUNCTIONS --------------------
+
+  #-------------------- FUNCTIONS --------------------
 
     async def get_ban_unban_data(self, action, user: Union[discord.User, discord.Member], guild: discord.Guild):
         """
@@ -189,6 +252,7 @@ class GuildDB(commands.Cog):
             print("[Info]  HTTP error occured, likly being rate limited or blocked by cloudflare. Restart recommended.")
 
         return data[:4]
+
 
 def setup(bot):
     bot.add_cog(GuildDB(bot))

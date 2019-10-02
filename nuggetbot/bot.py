@@ -552,7 +552,7 @@ class NuggetBot(commands.Bot):
 
             info = await self.db.fetchrow(pgCmds.GET_RECT_MSG_MSGID, payload.message_id) 
 
-            guild = self.get_guild(info['srv_id'])
+            guild = self.get_guild(info['guild_id'])
             member = guild.get_member(payload.user_id)
 
             #=== Quit if the reaction was added by a bot
