@@ -188,7 +188,6 @@ class NuggetBot(commands.Bot):
             await self.close()
 
 
-
         #===== CREATE DATABASE TABLES AT STARTUP
         database_tables = [
             {"exists":"EXISTS_MSGS_TABLE",          "create":"CREATE_MSGS_TABLE",           "log":"Created messages table."},
@@ -233,18 +232,26 @@ class NuggetBot(commands.Bot):
         guild = self.get_guild(self.config.target_guild_id)
         guildMems = sorted(guild.members, key=lambda x: x.joined_at)
         memids = [member.id for member in guildMems]
-
+        dbMems = await self.db.fetch(pgCmds.get_all_members_joinleave)
+        dbMemids = [mem["user_id"] for mem in dbMems]
         ###Deal with members joining and leaving while bot is off.
         i = j = x = 0
 
-        ### If members table is empty
+        ###=== IF MEMBERS TABLE IS EMPTY, POPULATE IT
         if len(await self.db.fetch(pgCmds.member_table_empty_test)) == 0:
             for m in guildMems:
                 j += 1 
                 await self.db.execute(pgCmds.add_a_member, m.id, m.joined_at, m.created_at, True)                
 
-        
-        for memid in await self.db.fetch(pgCmds.get_all_members_joinleave):
+        else:
+            ###=== ADDING NEW MEMBERS
+            for member in guildMems:
+                if member.id not in dbMemids and not member.bot:
+                    j += 1 
+                    await self.db.execute(pgCmds.add_a_member, member.id, member.joined_at, member.created_at, True)
+                                        
+        ###===== UPDATE CURRENT MEMBERS LOGGED IN DATABASE
+        for memid in dbMems:
             member = guild.get_member(memid["user_id"])
 
             #=== remove from db
@@ -252,15 +259,6 @@ class NuggetBot(commands.Bot):
                 i += 1
                 await self.db.execute(pgCmds.REMOVE_MEMBER_FUNC, memid["user_id"])
 
-            #=== add to db
-            elif member and not member.bot and memid["user_id"] not in memids:
-                j += 1 
-                await self.db.execute(  pgCmds.add_a_member,
-                                        member.id,
-                                        member.joined_at,
-                                        member.created_at,
-                                        True
-                                    )
             #=== readd to db
             elif member and str(memid["user_id"]) in memids and not memid["ishere"]:
                 x += 1

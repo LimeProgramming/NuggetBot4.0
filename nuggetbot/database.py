@@ -79,9 +79,9 @@ class DatabaseCmds(object):
     ### ============================== GALLARY MESSAGES TABLE ==============================
         CREATE_GALL_MSGS_TABLE =    """ 
                                     CREATE TABLE IF NOT EXISTS gallery_messages (
-                                        msg_id BIGINT PRIMARY KEY,
-                                        ch_id BIGINT NOT NULL,
-                                        srv_id BIGINT NOT NULL,
+                                        msg_id  BIGINT PRIMARY KEY,
+                                        ch_id   BIGINT NOT NULL,
+                                        srv_id  BIGINT NOT NULL,
                                         auth_id BIGINT,
                                         timestamp TIMESTAMP NOT NULL
                                         ); 
@@ -104,7 +104,7 @@ class DatabaseCmds(object):
                                     """
 
         GET_GALL_MSG_AFTER=         "SELECT * FROM gallery_messages WHERE timestamp > $1"
-        GET_GALL_MSG_BEFORE=         "SELECT * FROM gallery_messages WHERE timestamp < $1"
+        GET_GALL_MSG_BEFORE=        "SELECT * FROM gallery_messages WHERE timestamp < $1"
         GET_GALL_MSG_MEM_AFTER=     "SELECT * FROM gallery_messages WHERE auth_id = CAST($1 AS BIGINT) AND timestamp > $2"
         GET_GALL_CHIDS_AFTER=       'SELECT DISTINCT ch_id FROM public.gallery_messages WHERE timestamp > $1'
         GET_GALL_CHIDS_BEFORE=      'SELECT DISTINCT ch_id FROM public.gallery_messages WHERE timestamp < $1'
@@ -114,19 +114,35 @@ class DatabaseCmds(object):
 
 
     ### ============================== MEMBERS TABLE ==============================
-        CREATE_MEMBERS_TABLE =      """ CREATE TABLE IF NOT EXISTS members (
-                                            num BIGSERIAL PRIMARY KEY,
-                                            user_id BIGINT NOT NULL,
-                                            joindate TIMESTAMP,
-                                            creationdate TIMESTAMP,
-                                            ishere BOOLEAN DEFAULT TRUE,
-                                            nummsgs BIGINT DEFAULT 0,
-                                            gems BIGINT DEFAULT 0,
-                                            level SMALLINT DEFAULT 0,
-                                            bonus TEXT DEFAULT '',
-                                            CONSTRAINT mem_unique UNIQUE (user_id)
-                                            ); 
-                                    """
+        CREATE_MEMBERS_TABLE =      """ 
+        CREATE TABLE IF NOT EXISTS members (
+            num             BIGSERIAL   PRIMARY KEY,
+            user_id         BIGINT      NOT NULL,
+            joindate        TIMESTAMP,
+            creationdate    TIMESTAMP,
+            ishere          BOOLEAN     DEFAULT TRUE,
+            nummsgs         BIGINT      DEFAULT 0,
+            last_msg        TIMESTAMP   DEFAULT (NOW() AT TIME ZONE 'utc'), 
+            gems            BIGINT      DEFAULT 0,
+            level           SMALLINT    DEFAULT 0,
+            bonus           TEXT        DEFAULT '',
+            CONSTRAINT mem_unique UNIQUE (user_id)
+            ); 
+        
+        COMMENT ON TABLE members is 'Members past and present who have joined the guild, it keeps track of their gems, levels, bonus's, message information and discord info.';
+        COMMENT ON COLUMN members.num is 'The guild members number in the order they joined the guild.This will also keep track of members who have left. Members who leave and rejoin will keep their number.';
+        COMMENT ON COLUMN members.user_id is 'This is a members discord user id. Useful for blocking them later.';
+        COMMENT ON COLUMN members.joindate is 'The date when a member first joined the guild.';
+        COMMENT ON COLUMN members.creationdate is 'The date the member created their discord account.'; 
+        COMMENT ON COLUMN members.ishere is 'Denotes if a member is actually in the guild or not.';
+        COMMENT ON COLUMN members.nummsgs is 'Automatic logging of the number of messages a member sent to the guild. This uses the msgIncrementer trigger set on the messages table.';
+        COMMENT ON COLUMN members.last_msg is 'This is the last known message a member sent within the guild.';
+        COMMENT ON COLUMN members.gems is 'Amount of un server currency the member has earned via leveling up, birthdays and holidays.';
+        COMMENT ON COLUMN members.level is 'Members level within the guild, calulated based on the amount of messages they sent on the guild.';
+        COMMENT ON COLUMN members.bonus is 'This doesn''t do anything, was planned to give bonuses on birthdays and holidays.';
+        """
+
+
         add_a_member=               """ 
                                         INSERT INTO members(
                                                 user_id,
@@ -306,12 +322,12 @@ class DatabaseCmds(object):
     ### ============================== GIVEAWAY BLOCKS TABLE ==============================    
         CREATE_GVWY_BLOCKS_TABLE=   """
                                     CREATE TABLE IF NOT EXISTS gvwy_blocks(
-                                        user_id BIGINT PRIMARY KEY,
-                                        blocked_by BIGINT,
-                                        reason VARCHAR(1000),
-                                        timestamp TIMESTAMP,
-                                        timed BOOLEAN DEFAULT FALSE,
-                                        unblock_timestamp TIMESTAMP
+                                        user_id             BIGINT PRIMARY KEY,
+                                        blocked_by          BIGINT,
+                                        reason              VARCHAR(1000),
+                                        timestamp           TIMESTAMP,
+                                        timed               BOOLEAN DEFAULT FALSE,
+                                        unblock_timestamp   TIMESTAMP
                                         );
                                     """
         ADD_GVWY_BLOCKS_NONTIMED=   """
@@ -449,20 +465,23 @@ class DatabaseCmds(object):
                                     lstaff_hist     BIGINT[]        DEFAULT ARRAY[]::BIGINT[],
                                     roles           BIGINT[]        DEFAULT ARRAY[]::BIGINT[],
                                     channels        BIGINT[]        DEFAULT ARRAY[]::BIGINT[],
-                                    active_bans     DISCORD_BAN[],
-                                    unban_hist      DISCORD_BAN[],
-                                    emojis          DISCORD_EMOJI[],
-                                    gall_nbl        BOOLEAN         DEFAULT FALSE,
-                                    gall_ch         BIGINT[]        DEFAULT ARRAY[]::BIGINT[],
-                                    gall_text_exp   INTEGER,
-                                    gall_user_wl    BIGINT[],       DEFAULT ARRAY[]::BIGINT[],
-                                    gall_nbl_links  BOOLEAN         DEFAULT FALSE,
-                                    gall_links      VARCHAR(80)[]
+                                    bans            DISCORD_BAN[],
+                                    unbans          DISCORD_BAN[],
+                                    emojis          DISCORD_EMOJI[]
                                 );
                                 """
 
         EXISTS_GUILD=           "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GUILD');"
+        EXISTS_GUILD_DATA=      'SELECT EXISTS(SELECT * FROM public.guild WHERE guild_id = CAST($1 AS BIGINT));'
+        GET_GUILD_DATA=         'SELECT * FROM public.guild WHERE guild_id = CAST($1 AS BIGINT);'
+        #SET_GUILD_DATA=
+        SET_GUILD_OWNER=        'UPDATE guild SET owner_id = CAST($1 AS BIGINT) WHERE guild_id = CAST($2 AS BIGINT);'
+        SET_GUILD_ROLES=        'UPDATE guild SET roles = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
+        UPDATE_GUILD_BANS=      'UPDATE guild SET bans = array_append(bans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
+        UPDATE_GUILD_UNBANS=    'UPDATE guild SET unbans = array_append(unbans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
 
+                 
+        ###RETIRED CODE
         GET_GUILD_GALL_CONFIG=  "SELECT guild_id, gall_nbl, gall_ch, gall_text_exp, gall_user_wl, gall_nbl_links, gall_links FROM guild;"
         SET_GUILD_GALL_CONFIG=  """
                                 UPDATE guild 
@@ -490,32 +509,58 @@ class DatabaseCmds(object):
 
 
     ### ============================== TRIGGERS ==============================
-        CREATE_MSGINCREMENTER=      """
-                                    DO
-                                    $do$
-                                    BEGIN
-                                    IF NOT EXISTS(	SELECT *
-                                            FROM pg_proc
-                                            WHERE prorettype <> 0 AND proname = 'incrementusermsgcounter' AND format_type(prorettype, NULL) = 'trigger') THEN
+        CREATE_MSGINCREMENTER="""
+            DO
+            $do$
+            BEGIN
+            IF NOT EXISTS(	SELECT *
+                    FROM pg_proc
+                    WHERE prorettype <> 0 AND proname = 'incrementusermsgcounter' AND format_type(prorettype, NULL) = 'trigger') THEN
 
-                                        CREATE OR REPLACE FUNCTION incrementUserMSGCounter() RETURNS trigger
-                                            LANGUAGE plpgsql
-                                            cost 200 AS
-                                        $$BEGIN
-                                            UPDATE members SET nummsgs = (nummsgs +1) WHERE user_id = NEW.auth_id;
-                                            RETURN NEW;
-                                        END;$$;
-                                    END IF;
+                CREATE OR REPLACE FUNCTION incrementUserMSGCounter() RETURNS trigger
+                    LANGUAGE plpgsql
+                    cost 200 AS
+                $$BEGIN
+                    UPDATE members SET nummsgs = (nummsgs +1), last_msg = NEW.timestamp WHERE user_id = NEW.auth_id;
+                    RETURN NEW;
+                END;$$;
+            END IF;
 
-                                    IF NOT EXISTS(SELECT * FROM information_schema.triggers WHERE event_object_table = 'messages' AND trigger_name = 'msgincrementer') THEN
-                                        CREATE TRIGGER msgIncrementer BEFORE INSERT ON messages FOR EACH ROW
-                                            EXECUTE PROCEDURE incrementUserMSGCounter();
-                                    END IF;
-                                    END
-                                    $do$
-                                    """
-        EXISTS_MSGINCREMENTER=      "SELECT EXISTS(SELECT * FROM information_schema.triggers WHERE upper(trigger_name) = 'MSGINCREMENTER');"
+            IF NOT EXISTS(SELECT * FROM information_schema.triggers WHERE event_object_table = 'messages' AND trigger_name = 'msgincrementer') THEN
+                CREATE TRIGGER msgIncrementer BEFORE INSERT ON messages FOR EACH ROW
+                    EXECUTE PROCEDURE incrementUserMSGCounter();
+            END IF;
+            END
+            $do$
+            """
 
+        EXISTS_MSGINCREMENTER="SELECT EXISTS(SELECT * FROM information_schema.triggers WHERE upper(trigger_name) = 'MSGINCREMENTER');"
+
+        CREATE_GUILDOWNERHIST="""
+            DO
+            $do$
+            BEGIN
+            IF NOT EXISTS (SELECT * 
+                    FROM pg_proc
+                    WHERE prorettype <> 0 AND proname = 'guild_manageOwnerHist' AND format_type(prorettype, NULL) = 'trigger') THEN
+
+                CREATE OR REPLACE FUNCTION guild_manageOwnerHist() RETURNS trigger
+                    LANGUAGE plpgsql
+                    COST 200 AS
+                $$BEGIN
+                    UPDATE guild SET owner_hist = array_append(owner_hist, NEW.owner_id) WHERE guild_id = NEW.guild_id;
+                END;$$;
+            END IF;    
+
+            IF NOT EXISTS(SELECT * FROM information_schema.triggers WHERE event_object_table = 'guild' AND trigger_name = 'manageOwnerHist') THEN
+                CREATE TRIGGER manageOwnerHist AFTER UPDATE OF owner_id ON guild FOR EACH ROW
+                    EXECUTE PROCEDURE guild_manageOwnerHist();
+            END IF;
+            END
+            $do$
+            """
+
+            #UPDATE table SET array_field = array_append(array_field,'new item') WHERE
     ### ============================== FUNCTIONS ==============================
         
         # -------------------- UPDATE_INVITES --------------------
@@ -576,8 +621,8 @@ class DatabaseCmds(object):
                                                     WHEN new_nummsgs >= 0 AND new_nummsgs < 10 THEN new_level = 0;
                                                     WHEN new_nummsgs >= 10 AND new_nummsgs < 75 THEN new_level = 1;
                                                     WHEN new_nummsgs >= 75 AND new_nummsgs < 200 THEN new_level = 2;
-                                                    WHEN new_nummsgs >= 200 AND new_nummsgs < 500 THEN new_level = 3;
-                                                    WHEN new_nummsgs >= 500 AND new_nummsgs < 575 THEN new_level = 4;
+                                                    WHEN new_nummsgs >= 200 AND new_nummsgs < 350 THEN new_level = 3;
+                                                    WHEN new_nummsgs >= 350 AND new_nummsgs < 500 THEN new_level = 4;
                                                     WHEN new_nummsgs >= 500 AND new_nummsgs < 575 THEN new_level = 5;
                                                     WHEN new_nummsgs >= 575 AND new_nummsgs < 661 THEN new_level = 6;
                                                     WHEN new_nummsgs >= 661 AND new_nummsgs < 760 THEN new_level = 7;
@@ -882,19 +927,34 @@ class DatabaseCmds(object):
                             """
 
         #(User banned, staff_id, Reason, timestamp)
-        discord_bans=      """
-                            DO $$
-                            BEGIN
-                                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discord_ban') THEN
-                                    CREATE TYPE discord_ban AS
-                                    (
-                                    field_1     BIGINT,
-                                    field_2     BIGINT,
-                                    field_3     VARCHAR(250),
-                                    field_4     TIMESTAMP
-                                    );
-                                END IF;
-                            END$$;
-                            """
+        discord_bans="""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discord_ban') THEN
+                    CREATE TYPE discord_ban AS
+                    (
+                    field_1     BIGINT,
+                    field_2     BIGINT,
+                    field_3     VARCHAR(250),
+                    field_4     TIMESTAMP
+                    );
+                END IF;
+            END$$;
+            """
+
+        #staff.id, made staff by id, timestamp.
+        guild_staff= """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'guild_staff') THEN
+                    CREATE TYPE guild_staff AS
+                    (
+                    field_1     BIGINT,
+                    field_2     BIGINT,
+                    field_4     TIMESTAMP
+                    );
+                END IF;
+            END$$;
+            """
 
 

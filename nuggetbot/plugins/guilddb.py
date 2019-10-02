@@ -6,6 +6,8 @@ import datetime
 import random
 import logging
 
+from typing import Union
+
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
@@ -25,6 +27,7 @@ class GuildDB(commands.Cog):
         self.RafEntryActive = False
         self.RafDatetime = []
         self.bot = bot
+        self.db = None
 
   #-------------------- STATIC METHOD --------------------  
     @staticmethod
@@ -109,15 +112,23 @@ class GuildDB(commands.Cog):
 
     @commands.Cog.listener()        
     async def on_guild_update(self, before, after):
-        pass
+        ###===== OWNER CHECK
+        if before.owner_id != after.owner_id:
+            await self.db.execute(pgCmds.SET_GUILD_OWNER, after.owner_id, after.id)
+
+        ###=====
 
     @commands.Cog.listener()        
     async def on_guild_role_create(self, role):
-        pass
+        r = [role.id for role in role.guild.roles]
+        
+        await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
 
     @commands.Cog.listener()        
     async def on_guild_role_delete(self, role):
-        pass
+        r = [role.id for role in role.guild.roles]
+        
+        await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
 
     @commands.Cog.listener()        
     async def on_guild_role_update(self, before, after):
@@ -129,13 +140,55 @@ class GuildDB(commands.Cog):
 
     @commands.Cog.listener()        
     async def on_member_ban(self, guild, user):
-        pass
+        #(User banned, staff_id, Reason, timestamp)
+        data = self.get_ban_unban_data(discord.AuditLogAction.ban, user, guild)
+        
+        await self.db.execute(pgCmds.UPDATE_GUILD_BANS, data)
+
 
     @commands.Cog.listener()        
     async def on_member_unban(self, guild, user):
-        pass
+        #(User banned, staff_id, Reason, timestamp)
+        data = self.get_ban_unban_data(discord.AuditLogAction.unban, user, guild)
 
+        await self.db.execute(pgCmds.UPDATE_GUILD_UNBANS, data[:4])
 
+    #-------------------- FUNCTIONS --------------------
+
+    async def get_ban_unban_data(self, action, user: Union[discord.User, discord.Member], guild: discord.Guild):
+        """
+        Gets most recent Audit Log data about a ban or unban. 
+        Returns Generic data if bot lacks permission to view the audit log
+
+        Args:
+            action [discord.AuditLogAction]
+            user   [discord.Member, discord.User]
+            guild  [discord.Guild]
+
+        Returns
+            list
+        """
+        past_id = discord.utils.time_snowflake(datetime.datetime.utcnow() - datetime.timedelta(seconds=10), high=True)
+        data = []
+
+        try:
+            async for entry in guild.audit_logs(limit=10, action=action, oldest_first=False):
+                if entry.id >= past_id and entry.target.id == user.id:
+                    
+                    if data and data[4] > entry.id:
+                        data = [entry.target.id, entry.user.id, entry.reason[:1000] or "None", entry.created_at, entry.id]
+                    else:
+                        data = [entry.target.id, entry.user.id, entry.reason[:1000] or "None", entry.created_at, entry.id]
+
+        except discord.errors.Forbidden:
+            data = [user.id, 0, "None", datetime.datetime.utcnow(), 0]
+            print("[Info]  Missing view_audit_log permission.")
+
+        except discord.errors.HTTPException:
+            data = [user.id, 0, "None", datetime.datetime.utcnow(), 0]
+            print("[Info]  HTTP error occured, likly being rate limited or blocked by cloudflare. Restart recommended.")
+
+        return data[:4]
 
 def setup(bot):
     bot.add_cog(GuildDB(bot))
