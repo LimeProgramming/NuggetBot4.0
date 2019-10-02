@@ -42,32 +42,33 @@ class DatabaseLogin:
 
 class DatabaseCmds(object):
     ### ============================== MESSAGES TABLE ==============================
-        CREATE_MSGS_TABLE =         """ 
-                                    CREATE TABLE IF NOT EXISTS messages (
-                                        msg_id BIGINT PRIMARY KEY,
-                                        ch_id BIGINT NOT NULL,
-                                        srv_id BIGINT NOT NULL,
-                                        auth_id BIGINT,
-                                        timestamp TIMESTAMP NOT NULL,
-                                        num BIGSERIAL
-                                        ); 
-                                    """
-        #add_to_messages =                           
-        ADD_MSG =                   """ 
-                                    INSERT INTO messages(
-                                        msg_id, 
-                                        ch_id, 
-                                        srv_id,
-                                        auth_id, 
-                                        timestamp)
-                                    VALUES( CAST($1 AS BIGINT), 
-                                            CAST($2 AS BIGINT), 
-                                            CAST($3 AS BIGINT), 
-                                            CAST($4 AS BIGINT), 
-                                            $5)
-                                    ON CONFLICT (msg_id)
-                                        DO NOTHING;
-                                    """
+        CREATE_MSGS_TABLE =""" 
+            CREATE TABLE IF NOT EXISTS messages (
+                msg_id      BIGINT      PRIMARY KEY,
+                ch_id       BIGINT      NOT NULL,
+                guild_id    BIGINT      NOT NULL,
+                auth_id     BIGINT,
+                timestamp   TIMESTAMP   NOT NULL    DEFAULT (NOW() AT TIME ZONE 'utc'),
+                num         BIGSERIAL
+                ); 
+
+            COMMENT ON TABLE messages is            'This table stores some basic information about messages sent on the server. It keeps a log of messages which have been deleted from the guild.'
+            COMMENT ON COLUMN messages.msg_id is     'Discord id of the sent message.'; 
+            COMMENT ON COLUMN messages.ch_id is      'Channel id of the message was posted in.';
+            COMMENT ON COLUMN messages.guild_id is   'Note of the guild the message was posted in. Useful for API calls.';
+            COMMENT ON COLUMN messages.auth_id is    'Discord id of the messages sender.';
+            COMMENT ON COLUMN messages.timestamp is  'UTC timestamp of when the message was created.';
+            COMMENT ON COLUMN messages.num is        'The serial number of the message id sent.';
+            """       
+
+        ADD_MSG =""" 
+            INSERT INTO messages( msg_id, ch_id, guild_id, auth_id, timestamp)
+
+            VALUES( CAST($1 AS BIGINT), CAST($2 AS BIGINT), CAST($3 AS BIGINT), CAST($4 AS BIGINT), $5)
+
+            ON CONFLICT (msg_id)
+                DO NOTHING;
+            """
 
         get_messages_after =        "SELECT * FROM messages WHERE timestamp < $1"
         GET_MEMBER_MSGS_AFTER=      "SELECT * FROM messages WHERE auth_id = CAST($1 AS BIGINT) AND timestamp > $2"
@@ -78,30 +79,30 @@ class DatabaseCmds(object):
 
     ### ============================== GALLARY MESSAGES TABLE ==============================
         CREATE_GALL_MSGS_TABLE =    """ 
-                                    CREATE TABLE IF NOT EXISTS gallery_messages (
-                                        msg_id  BIGINT PRIMARY KEY,
-                                        ch_id   BIGINT NOT NULL,
-                                        srv_id  BIGINT NOT NULL,
-                                        auth_id BIGINT,
-                                        timestamp TIMESTAMP NOT NULL
-                                        ); 
-                                    """
+            CREATE TABLE IF NOT EXISTS gallery_messages (
+                msg_id      BIGINT      PRIMARY KEY,
+                ch_id       BIGINT      NOT NULL,
+                guild_id    BIGINT      NOT NULL,
+                auth_id     BIGINT,
+                timestamp   TIMESTAMP   NOT NULL
+                ); 
+            
+            COMMENT ON TABLE gallery_messages is            'This table stores basic information about the messages sent in gallery channels. Messages here are stored with discord id's and are slated to be deleted via API calls.';
+            COMMENT ON COLUMN gallery_messages.msg_id is     'Discord id of the sent message.'; 
+            COMMENT ON COLUMN gallery_messages.ch_id is      'Channel id of the message was posted in.';
+            COMMENT ON COLUMN gallery_messages.guild_id is   'Note of the guild the message was posted in. Useful for API calls.';
+            COMMENT ON COLUMN gallery_messages.auth_id is    'Discord id of the messages sender.';
+            COMMENT ON COLUMN gallery_messages.timestamp is  'UTC timestamp of when the message was created.';
+            """
 
-        ADD_GALL_MSG=               """ 
-                                    INSERT INTO gallery_messages(
-                                        msg_id, 
-                                        ch_id, 
-                                        guild_id,
-                                        auth_id, 
-                                        timestamp)
-                                    VALUES( CAST($1 AS BIGINT), 
-                                            CAST($2 AS BIGINT), 
-                                            CAST($3 AS BIGINT), 
-                                            CAST($4 AS BIGINT), 
-                                            $5)
-                                    ON CONFLICT (msg_id)
-                                        DO NOTHING;
-                                    """
+        ADD_GALL_MSG=""" 
+            INSERT INTO gallery_messages(msg_id, ch_id, guild_id, auth_id, timestamp)
+
+            VALUES( CAST($1 AS BIGINT), CAST($2 AS BIGINT), CAST($3 AS BIGINT), CAST($4 AS BIGINT), $5)
+
+            ON CONFLICT (msg_id)
+                DO NOTHING;
+            """
 
         GET_GALL_MSG_AFTER=         "SELECT * FROM gallery_messages WHERE timestamp > $1"
         GET_GALL_MSG_BEFORE=        "SELECT * FROM gallery_messages WHERE timestamp < $1"
@@ -114,60 +115,50 @@ class DatabaseCmds(object):
 
 
     ### ============================== MEMBERS TABLE ==============================
-        CREATE_MEMBERS_TABLE =      """ 
-        CREATE TABLE IF NOT EXISTS members (
-            num             BIGSERIAL   PRIMARY KEY,
-            user_id         BIGINT      NOT NULL,
-            joindate        TIMESTAMP,
-            creationdate    TIMESTAMP,
-            ishere          BOOLEAN     DEFAULT TRUE,
-            nummsgs         BIGINT      DEFAULT 0,
-            last_msg        TIMESTAMP   DEFAULT (NOW() AT TIME ZONE 'utc'), 
-            gems            BIGINT      DEFAULT 0,
-            level           SMALLINT    DEFAULT 0,
-            bonus           TEXT        DEFAULT '',
-            CONSTRAINT mem_unique UNIQUE (user_id)
-            ); 
-        
-        COMMENT ON TABLE members is 'Members past and present who have joined the guild, it keeps track of their gems, levels, bonus's, message information and discord info.';
-        COMMENT ON COLUMN members.num is 'The guild members number in the order they joined the guild.This will also keep track of members who have left. Members who leave and rejoin will keep their number.';
-        COMMENT ON COLUMN members.user_id is 'This is a members discord user id. Useful for blocking them later.';
-        COMMENT ON COLUMN members.joindate is 'The date when a member first joined the guild.';
-        COMMENT ON COLUMN members.creationdate is 'The date the member created their discord account.'; 
-        COMMENT ON COLUMN members.ishere is 'Denotes if a member is actually in the guild or not.';
-        COMMENT ON COLUMN members.nummsgs is 'Automatic logging of the number of messages a member sent to the guild. This uses the msgIncrementer trigger set on the messages table.';
-        COMMENT ON COLUMN members.last_msg is 'This is the last known message a member sent within the guild.';
-        COMMENT ON COLUMN members.gems is 'Amount of un server currency the member has earned via leveling up, birthdays and holidays.';
-        COMMENT ON COLUMN members.level is 'Members level within the guild, calulated based on the amount of messages they sent on the guild.';
-        COMMENT ON COLUMN members.bonus is 'This doesn''t do anything, was planned to give bonuses on birthdays and holidays.';
-        """
+        CREATE_MEMBERS_TABLE =""" 
+            CREATE TABLE IF NOT EXISTS members (
+                num             BIGSERIAL   PRIMARY KEY,
+                user_id         BIGINT      NOT NULL,
+                joindate        TIMESTAMP,
+                creationdate    TIMESTAMP,
+                ishere          BOOLEAN     DEFAULT TRUE,
+                nummsgs         BIGINT      DEFAULT 0,
+                last_msg        TIMESTAMP   DEFAULT (NOW() AT TIME ZONE 'utc'), 
+                gems            BIGINT      DEFAULT 0,
+                level           SMALLINT    DEFAULT 0,
+                bonus           TEXT        DEFAULT '',
+                CONSTRAINT mem_unique UNIQUE (user_id)
+                ); 
+            
+            COMMENT ON TABLE members is                 'Members past and present who have joined the guild, it keeps track of their gems, levels, bonus's, message information and discord info.';
+            COMMENT ON COLUMN members.num is            'The guild members number in the order they joined the guild.This will also keep track of members who have left. Members who leave and rejoin will keep their number.';
+            COMMENT ON COLUMN members.user_id is        'This is a members discord user id. Useful for blocking them later.';
+            COMMENT ON COLUMN members.joindate is       'The date when a member first joined the guild.';
+            COMMENT ON COLUMN members.creationdate is   'The date the member created their discord account.'; 
+            COMMENT ON COLUMN members.ishere is         'Denotes if a member is actually in the guild or not.';
+            COMMENT ON COLUMN members.nummsgs is        'Automatic logging of the number of messages a member sent to the guild. This uses the msgIncrementer trigger set on the messages table.';
+            COMMENT ON COLUMN members.last_msg is       'This is the last known message a member sent within the guild.';
+            COMMENT ON COLUMN members.gems is           'Amount of un server currency the member has earned via leveling up, birthdays and holidays.';
+            COMMENT ON COLUMN members.level is          'Members level within the guild, calulated based on the amount of messages they sent on the guild.';
+            COMMENT ON COLUMN members.bonus is          'This doesn''t do anything, was planned to give bonuses on birthdays and holidays.';
+            """
 
+        add_a_member=""" 
+            INSERT INTO members( user_id, joindate, creationdate, ishere)
 
-        add_a_member=               """ 
-                                        INSERT INTO members(
-                                                user_id,
-                                                joindate,
-                                                creationdate,
-                                                ishere)
-                                        VALUES( CAST($1 AS BIGINT), 
-                                                $2,
-                                                $3,
-                                                $4
-                                                );
-                                    """
-        ADD_MEMBER_FUNC=            """ 
-                                        INSERT INTO members(
-                                                user_id,
-                                                joindate,
-                                                creationdate) 
-                                        VALUES( CAST($1 AS BIGINT), 
-                                                $2,
-                                                $3
-                                                )
-                                        ON CONFLICT (user_id)
-                                            DO
-                                                UPDATE SET ishere = TRUE;
-                                    """
+            VALUES( CAST($1 AS BIGINT), $2, $3, $4);
+            """
+
+        ADD_MEMBER_FUNC=""" 
+            INSERT INTO members(user_id, joindate, creationdate) 
+
+            VALUES( CAST($1 AS BIGINT), $2, $3 )
+            
+            ON CONFLICT (user_id)
+                DO
+                    UPDATE SET ishere = TRUE;
+            """
+
         readd_a_member=             "UPDATE members SET ishere = TRUE WHERE user_id = $1;"
         remove_a_member=            "DELETE FROM members WHERE user_id = CAST($1 AS BIGINT)"
         REMOVE_MEMBER_FUNC=         "UPDATE members SET ishere = FALSE WHERE user_id = $1;"
@@ -181,9 +172,13 @@ class DatabaseCmds(object):
 
 
     ### ============================== INVITE TABLE ==============================
-        CREATE_INVITE_TABLE=        """ 
-                                    CREATE TABLE IF NOT EXISTS invites (data jsonb PRIMARY KEY);
-                                    """
+        CREATE_INVITE_TABLE= """ 
+            CREATE TABLE IF NOT EXISTS invites (
+                data jsonb PRIMARY KEY
+                );
+            
+            COMMENT ON TABLE invites is 'Holds the invite data of the target guild.';
+            """
 
         ADD_INVITES=                """ 
                                     SELECT updatestoredinvites($1)
@@ -202,17 +197,21 @@ class DatabaseCmds(object):
 
 
     ### ============================== ARTIST INFO TABLE ==============================
-        CREATE_ARTIST_INFO_TABLE =  """ CREATE TABLE IF NOT EXISTS artist_info (
-                                            user_id BIGINT PRIMARY KEY,
-                                            info TEXT DEFAULT 'Artist provided no info.'
-                                            );
-                                    """
-        add_to_artist_info_table =  """ INSERT INTO artist_info(
-                                            user_id, 
-                                            info) 
-                                        VALUES( CAST($1 AS BIGINT), 
-                                                $2)
-                                    """
+        CREATE_ARTIST_INFO_TABLE =  """ 
+            CREATE TABLE IF NOT EXISTS artist_info (
+                user_id     BIGINT  PRIMARY KEY,
+                info        TEXT    DEFAULT 'Artist provided no info.'
+                );
+
+            COMMENT ON TABLE artist_info IS             'Table holding information that artists provide to the bot.';
+            COMMENT ON COLUMN artist_info.user_id IS    'Discord ID of the artists account.';
+            COMMENT ON COLUMN artist_info.info IS       'Text field storing the information artists provide.';
+            """
+        add_to_artist_info_table =  """ 
+            INSERT INTO artist_info(user_id, info) 
+
+            VALUES( CAST($1 AS BIGINT), $2);
+            """
         remove_from_artist_info_table = "DELETE FROM artist_info WHERE user_id = CAST($1 AS BIGINT)"
         GET_ALL_ARTIST_INFO=            "SELECT * FROM artist_info"
         UPDATE_ARTIST_INFO=             "SELECT updateartistInfo(CAST($1 AS BIGINT), $2)"
@@ -221,19 +220,20 @@ class DatabaseCmds(object):
 
                            
     ### ============================== WELCOME MESSAGE TABLE ==============================
-        CREATE_WEL_MSG_TABLE=       """ 
-                                    CREATE TABLE IF NOT EXISTS welcome_msg (
-                                        msg_id BIGINT PRIMARY KEY,
-                                        ch_id BIGINT NOT NULL,
-                                        srv_id BIGINT NOT NULL,
-                                        user_id BIGINT NOT NULL
-                                        );
-                                    """
+        CREATE_WEL_MSG_TABLE= """ 
+            CREATE TABLE IF NOT EXISTS welcome_msg (
+                msg_id BIGINT PRIMARY KEY,
+                ch_id BIGINT NOT NULL,
+                guild_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL
+                );
+            """
+            
         ADD_WEL_MSG=                """ 
                                     INSERT INTO welcome_msg (
                                         msg_id,
                                         ch_id,
-                                        srv_id,
+                                        guild_id,
                                         user_id)
                                     VALUES( CAST($1 AS BIGINT),
                                             CAST($2 AS BIGINT), 
@@ -252,7 +252,7 @@ class DatabaseCmds(object):
                                     CREATE TABLE IF NOT EXISTS reaction_messages (
                                         msg_id BIGINT PRIMARY KEY,
                                         ch_id BIGINT NOT NULL,
-                                        srv_id BIGINT NOT NULL,
+                                        guild_id BIGINT NOT NULL,
                                         function_name VARCHAR(50) NOT NULL,
                                         emojikey JSONB NOT NULL,
                                         num BIGSERIAL
@@ -263,7 +263,7 @@ class DatabaseCmds(object):
                                     INSERT INTO reaction_messages (
                                         msg_id,
                                         ch_id,
-                                        srv_id,
+                                        guild_id,
                                         function_name,
                                         emojikey)
                                     VALUES( CAST($1 AS BIGINT),
@@ -419,7 +419,7 @@ class DatabaseCmds(object):
                                     dmchannel_id BIGINT, 
                                     sent_msg_id BIGINT, 
                                     sent_chl_id BIGINT,
-                                    sent_srv_id BIGINT,
+                                    sent_guild_id BIGINT,
                                     timestamp TIMESTAMP
                                     );
                                 """
@@ -430,7 +430,7 @@ class DatabaseCmds(object):
                                     dmchannel_id,
                                     sent_msg_id,
                                     sent_chl_id,
-                                    sent_srv_id,
+                                    sent_guild_id,
                                     timestamp
                                     )
 
@@ -447,8 +447,8 @@ class DatabaseCmds(object):
                                     DO NOTHING;
                                 """
 
-        GET_MEM_DM_FEEDBACK=    "SELECT * FROM dm_feedback WHERE sent_msg_id = CAST($1 AS BIGINT) AND sent_srv_id = CAST($2 AS BIGINT)"
-        GET_MEM_CH_DM_FEEDBACK= "SELECT * FROM dm_feedback WHERE sent_msg_id = CAST($1 AS BIGINT) AND sent_chl_id = CAST($2 AS BIGINT) AND sent_srv_id = CAST($3 AS BIGINT)"
+        GET_MEM_DM_FEEDBACK=    "SELECT * FROM dm_feedback WHERE sent_msg_id = CAST($1 AS BIGINT) AND sent_guild_id = CAST($2 AS BIGINT)"
+        GET_MEM_CH_DM_FEEDBACK= "SELECT * FROM dm_feedback WHERE sent_msg_id = CAST($1 AS BIGINT) AND sent_chl_id = CAST($2 AS BIGINT) AND sent_guild_id = CAST($3 AS BIGINT)"
         EXISTS_DM_FEEDBACK=     "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'DM_FEEDBACK');"
 
 
