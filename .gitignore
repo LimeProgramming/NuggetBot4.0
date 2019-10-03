@@ -22,3 +22,5 @@ nuggetbot/plugins/__pycache__/artists.cpython-37.pyc
 nuggetbot/plugins/__pycache__/ctx_decorators.cpython-37.pyc
 nuggetbot/plugins/__pycache__/giveaway.cpython-37.pyc
 nuggetbot/util/__pycache__/gen_embed.cpython-37.pyc
+nuggetbot/__pycache__/database.cpython-37.pyc
+logs/nuggetbot.log

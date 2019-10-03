@@ -83,8 +83,7 @@ class DatabaseCmds(object):
                                         ch_id BIGINT NOT NULL,
                                         srv_id BIGINT NOT NULL,
                                         auth_id BIGINT,
-                                        timestamp TIMESTAMP NOT NULL,
-                                        num BIGSERIAL
+                                        timestamp TIMESTAMP NOT NULL
                                         ); 
                                     """
 
@@ -92,7 +91,7 @@ class DatabaseCmds(object):
                                     INSERT INTO gallery_messages(
                                         msg_id, 
                                         ch_id, 
-                                        srv_id,
+                                        guild_id,
                                         auth_id, 
                                         timestamp)
                                     VALUES( CAST($1 AS BIGINT), 
@@ -107,9 +106,11 @@ class DatabaseCmds(object):
         GET_GALL_MSG_AFTER=         "SELECT * FROM gallery_messages WHERE timestamp > $1"
         GET_GALL_MSG_BEFORE=         "SELECT * FROM gallery_messages WHERE timestamp < $1"
         GET_GALL_MSG_MEM_AFTER=     "SELECT * FROM gallery_messages WHERE auth_id = CAST($1 AS BIGINT) AND timestamp > $2"
-        GET_GALL_CHIDS_AFTER=       'SELECT DISTINCT ch_id FROM public.messages WHERE timestamp > $1'
+        GET_GALL_CHIDS_AFTER=       'SELECT DISTINCT ch_id FROM public.gallery_messages WHERE timestamp > $1'
+        GET_GALL_CHIDS_BEFORE=      'SELECT DISTINCT ch_id FROM public.gallery_messages WHERE timestamp < $1'
         EXISTS_GALL_MSGS_TABLE=     "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GALLERY_MESSAGES');"
-        DEL_GALL_MSGS_FROM_CH=      "DELETE FROM gallery_messages WHERE ch_id = CAST($1 AS BIGINT) AND srv_id = CAST($2 AS BIGINT);"
+        DEL_GALL_MSGS_FROM_CH=      "DELETE FROM gallery_messages WHERE ch_id = CAST($1 AS BIGINT) AND guild_id = CAST($2 AS BIGINT);"
+        DEL_GALL_MSGS_BEFORE=       "DELETE FROM public.gallery_messages WHERE guild_id = CAST($1 AS BIGINT) AND timestamp < $2;"
 
 
     ### ============================== MEMBERS TABLE ==============================

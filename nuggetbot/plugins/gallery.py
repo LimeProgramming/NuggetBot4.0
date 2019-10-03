@@ -35,8 +35,6 @@ class Gallery(commands.Cog):
 
         self.cogset = dict()
 
-        self.gal_channels=      []
-
         self.jobstore = SQLAlchemyJobStore(url='sqlite:///gallery.sqlite')
         jobstores = {"default": self.jobstore}
         self.scheduler = AsyncIOScheduler(jobstores=jobstores)
@@ -55,11 +53,8 @@ class Gallery(commands.Cog):
     async def cog_after_invoke(self, ctx):
         '''THIS IS CALLED AFTER EVERY COG COMMAND, IT DISCONNECTS FROM THE DATABASE AND DELETES INVOKING MESSAGE IF SET TO.'''
 
-        try:
-            await self.db.close()
-            await ctx.message.delete()
-        except Exception as e:
-            print(e)
+        await self.db.close()
+        await ctx.message.delete()
 
         return
 
@@ -166,17 +161,18 @@ class Gallery(commands.Cog):
         if  (  not self.cogset['enable'] 
             or not msg.guild
             or not msg.type == discord.MessageType.default
-            or not msg.author.id in self.cogset['user_wl']
+            or msg.author.id in self.cogset['user_wl']
             ):
             return 
 
-        if msg.channel in self.gal_channels:
+        if msg.channel.id in self.cogset['channel_ids']:
             valid = False
 
             ###=== IF MESSAGE HAS ATTACHMENTS ASSUME THE MESSAGE IS OF ART.
             if msg.attachments:
                 if not self.cogset['rem_low']:
                     valid = True 
+
                 else:
                     toosmall = False 
 
@@ -188,7 +184,7 @@ class Gallery(commands.Cog):
                     valid = not toosmall
             
             ###=== IF LINKS ARE ALLOWED IN GALLERY CHANNELS
-            elif self.cogset['allow_links']:
+            if self.cogset['allow_links']:
                 #- get the links from msg content
                 links = re.findall(r"(?P<url>http[s]?://[^\s]+)", msg.content)
 
@@ -205,14 +201,14 @@ class Gallery(commands.Cog):
                                 break
 
                 else:
-                    valid = True
+                    valid = False
 
             ###=== IF THE MESSAGE IS NOT VALID.
             if not valid:
                 credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
                 self.db = await asyncpg.create_pool(**credentials)
 
-                self.db.execute(pgCmds.ADD_GALL_MSG, msg.id, msg.channel.id, msg.guild.id, msg.author.id, msg.created_at)
+                await self.db.execute(pgCmds.ADD_GALL_MSG, msg.id, msg.channel.id, msg.guild.id, msg.author.id, msg.created_at)
                 await self.db.close()
 
 
@@ -301,14 +297,6 @@ class Gallery(commands.Cog):
         else:
             self.cogset['channel_ids'] = list(set(self.cogset['channel_ids']) + {ch_id})
             ret_msg = f"<#{ch_id}> has been made a gallery channel."
-
-        ###===== GET THE CHANNELS
-        if ctx.guild:
-            guild = ctx.guild 
-        else:
-            guild = self.bot.get_guild(self.cogset['guild_id'])
-
-        self.gal_channels = [channel for channel in guild.channels if channel.id in self.cogset['channel_ids']]
 
         ###===== SAVE SETTINGS  
         await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
@@ -508,75 +496,81 @@ class Gallery(commands.Cog):
         Useage:
             [prefix]galloadsettings
         """
-        try:
-            config = Config()
+        config = Config()
 
-            ###===== UPDATE THE SETTINGS IN THE LOCAL COG
-            self.cogset['guild_id'] =       config.target_guild_id
-            self.cogset['enable']=          config.galEnable
-            self.cogset['channel_ids'] =    config.gallerys["chls"]
-            self.cogset['text_expirein']=   config.gallerys['expire_in']
-            self.cogset['rem_low']=         config.gallerys['rem_low']
-            self.cogset['user_wl']=         config.gallerys["user_wl"]
-            self.cogset['allow_links']=     config.gallerys["links"]
-            self.cogset['link_wl']=         config.gallerys['link_wl']
+        ###===== UPDATE THE SETTINGS IN THE LOCAL COG
+        self.cogset['guild_id'] =       config.target_guild_id
+        self.cogset['enable']=          config.galEnable
+        self.cogset['channel_ids'] =    config.gallerys["chls"]
+        self.cogset['text_expirein']=   config.gallerys['expire_in']
+        self.cogset['rem_low']=         config.gallerys['rem_low']
+        self.cogset['user_wl']=         config.gallerys["user_wl"]
+        self.cogset['allow_links']=     config.gallerys["links"]
+        self.cogset['link_wl']=         config.gallerys['link_wl']
 
-            guild =                 self.bot.get_guild(self.cogset['guild_id'])
-            self.gal_channels=      [channel for channel in guild.channels if channel.id in self.cogset['channel_ids']]
-            
-            ###===== SAVE COG SETTING
-            print(1)
-            
-            await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
-            print(2)
-            ###===== RETURN
-            await ctx.channel.send(content="Gallery information has been updated from the setup.ini file", delete_after=15)
-        except Exception as e:
-            print(e)
+        ###===== SAVE COG SETTING
+        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        
+        ###===== RETURN
+        await ctx.channel.send(content="Gallery information has been updated from the setup.ini file", delete_after=15)
         return
 
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=False, name='getsettings', aliases=[])
-    async def cmd_galsettings(self, ctx):
-        try:
-            embed=discord.Embed(    
-                title=      "Gallery Channel Settings.",
-                description=f"**Enabled:** {self.cogset['enable']}"
-                            f"**Expire time:** {self.cogset['text_expirein']} hours",
-                colour=     RANDOM_DISCORD_COLOR(),
-                type=       "rich",
-                timestamp=  datetime.datetime.utcnow()
-                )
+    @commands.command(pass_context=True, hidden=False, name='galsettings', aliases=[])
+    async def cmd_galsettings(self, ctx, showlinks=False):
+        sched = None
+        for job in self.jobstore.get_all_jobs():
+            if ["_delete_gallery_messages"] == job.id.split(" "):
+                sched = job
 
-            embed.add_field(
-                name=       "Gallery Channels",
-                value=      "\n".join([f"<#{ch_id}>" for ch_id in self.cogset['channel_ids']]),
-                inline=     False
-                )    
+        embed=discord.Embed(    
+            title=      "Gallery Channel Settings.",
+            description=f"**Enabled:** {self.cogset['enable']}\n"
+                        f"**Expire time:** {self.cogset['text_expirein']} hours",
+            colour=     RANDOM_DISCORD_COLOR(),
+            type=       "rich",
+            timestamp=  datetime.datetime.utcnow()
+            )
 
-            embed.add_field(
-                name=       "Whitelisted Members",
-                value=      "\n".join([f"<#{user_id}>" for user_id in self.cogset['user_wl']]),
-                inline=     False
-                )
+        embed.add_field(
+            name=       "Gallery Channels",
+            value=      "\n".join([f"<#{ch_id}>" for ch_id in self.cogset['channel_ids']]) or "None",
+            inline=     False
+            )    
 
+        embed.add_field(
+            name=       "Whitelisted Members",
+            value=      "\n".join([f"<#{user_id}>" for user_id in self.cogset['user_wl']]) or "None",
+            inline=     False
+            )
+
+        if showlinks:
             links = "\n".join(self.cogset["link_wl"])
 
             embed.add_field(
                 name=       "Gallery Links",
-                value=      f'**Allowed:** {self.cogset["allow_links"]}'
+                value=      f'**Allowed:** {self.cogset["allow_links"]}\n'
                             f'**Links:** {links}',
                 inline=     False
                 )   
 
-            embed.set_footer(       
-                icon_url=   GUILD_URL_AS(ctx.guild) if ctx.guild else AVATAR_URL_AS(self.bot.user), 
-                text=       "Gallery Settings"
-                        )
+        if sched:
+            run_time = sched.next_run_time.__str__()
+        else:
+            run_time = "never"
 
-            await ctx.channel.send("force", embed=embed)
-        except Exception as e:
-            print(e)
+        embed.add_field(
+            name=       "Scheduler",
+            value=      f"**Next run time:** {run_time}",
+            inline=     False
+        )   
+
+        embed.set_footer(       
+            icon_url=   GUILD_URL_AS(ctx.guild) if ctx.guild else AVATAR_URL_AS(self.bot.user), 
+            text=       "Gallery Settings"
+                    )
+
+        await ctx.channel.send(embed=embed)
         return
 
   #-------------------- SCHEDULING --------------------
@@ -584,7 +578,6 @@ class Gallery(commands.Cog):
         """
         This exists too
         """
-
         asyncio.ensure_future(call_schedule(*event.job_id.split(" ")))
 
     @staticmethod
@@ -596,7 +589,7 @@ class Gallery(commands.Cog):
         return "{} {}".format(func.__name__, arg)
 
     @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='galinitiateschedule', aliases=[])
+    @commands.command(pass_context=True, hidden=False, name='galinitiateschedule', aliases=[])
     async def cmd_galinitiateschedule(self, ctx):
         
         ###===== DELETE THE JOB IF IT ALREADY EXISTS
@@ -613,12 +606,12 @@ class Gallery(commands.Cog):
                                )
 
         ###===== RETURN
-        ctx.channel.send(content=f"Gallery schedule has been set for {get_next(hours=self.cogset['text_expirein'])}")
+        await ctx.channel.send(content=f"Gallery schedule has been set for {get_next(hours=self.cogset['text_expirein'])}")
 
         return
 
 
-    async def _delete_gallery_messages(self):
+    async def _delete_gallery_messages(self, *args):
         ###===== QUIT ID GALLERIES ARE DISABLED.
         if not self.cogset['enable']:
             return 
@@ -627,10 +620,11 @@ class Gallery(commands.Cog):
         credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
         self.db = await asyncpg.create_pool(**credentials)
 
-        after = datetime.datetime.utcnow() - datetime.timedelta(hours=self.cogset['text_expirein'])
+        after = (datetime.datetime.utcnow() - datetime.timedelta(hours=self.cogset['text_expirein']))
 
-        t = await self.db.fetch(pgCmds.GET_GALL_MSG_AFTER, after)
-        ch_ids = await self.db.fetch(pgCmds.GET_GALL_CHIDS_AFTER, after)
+        t = await self.db.fetch(pgCmds.GET_GALL_MSG_BEFORE, after)
+        ch_ids = await self.db.fetch(pgCmds.GET_GALL_CHIDS_BEFORE, after)
+        await self.db.execute(pgCmds.DEL_GALL_MSGS_BEFORE, self.cogset['guild_id'], after)
 
         await self.db.close()
 
@@ -658,7 +652,7 @@ class Gallery(commands.Cog):
         # WITH FAST DELETE MESSAGES WE CAN DELETE MESSAGES IN BULK OF 100
         if fast_delete:
             for ch_id in fast_delete.keys():
-                msgs_ids = Gallery.split_list(fast_delete[ch_id], 100)
+                msgs_ids = await Gallery.split_list(fast_delete[ch_id], 100)
 
                 for msg_ids in msgs_ids:
                     if len(msg_ids) > 1:
@@ -667,9 +661,11 @@ class Gallery(commands.Cog):
                         await asyncio.sleep(0.5)
 
                     else:
-                        msg_id = msg_ids[0]
-                        await self.bot.http.delete_message(ch_id, msg_id, reason="Deleting Gallery Messages")
-                        await asyncio.sleep(0.5)
+                        # SOMETIMES AN EMPTY LIST MAKES IT HERE
+                        if msg_ids:
+                            msg_id = msg_ids[0]
+                            await self.bot.http.delete_message(ch_id, msg_id, reason="Deleting Gallery Messages")
+                            await asyncio.sleep(0.5)
 
         ###===== IF THERE IS SLOW DELETE DATA
         # WE CANNOT DELETE THESE MESSAGES IN BULK, ONLY ONE BY ONE.
