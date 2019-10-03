@@ -29,6 +29,7 @@ class GuildDB(commands.Cog):
         self.bot = bot
         self.db = None
         self.cog_ready = False
+        GuildDB.config = Config()
 
   #-------------------- STATIC METHOD --------------------  
     @staticmethod
@@ -104,7 +105,41 @@ class GuildDB(commands.Cog):
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
+        ###===== DELAY THE COG BY 2 MINUTES TO LET THE MAIN BOT DO IT'S WORK
+        await asyncio.sleep(120)
+
+        ###===== CONNECT TO THE POSTGRE DATABASE    
         await self.connect_db()
+
+        ###===== GET THE GUILD INFO FROM DATABASE
+        data = await self.db.fetchrow(pgCmds.GET_GUILD_DATA, GuildDB.config.target_guild_id)
+
+        ###===== IF THE THERE IS NO INFORMATION ABOUT THE GUILD IN THE DATABASE
+        if not data:
+            ###=== GET THE GUILD
+            guild = self.bot.get_guild(GuildDB.config.target_guild_id)
+
+            await self.db.execute(pgCmds.PRIME_GUILD_DATA, guild.id, guild.owner_id, guild.created_at, [role.id for role in guild.roles], [channel.id for channel in guild.channels])
+
+            ###=== GETS THE GUILDS ICON
+            i_id, ext = (guild.icon_url.__str__().split("/").pop()).split(".")
+
+            i_bytes = await guild.icon_url.read()
+
+            guild_icon = int(i_id), ext, i_bytes, datetime.datetime.utcnow()
+            
+            await self.db.execute(pgCmds.SET_GUILD_ICON, guild_icon, guild.id)
+
+            ###=== CYCLE THROUGH A GUILDS EMOJIS, ADDING THEM TO THE DATABASE
+            for emoji in guild.emojis:
+
+                e_id, ext = (emoji.url.__str__().split("/").pop()).split(".")
+
+                e_bytes = await emoji.url.read()
+
+                emoji_byte = int(e_id), ext, e_bytes, emoji.created_at
+
+                await self.db.execute(pgCmds.APPEND_GUILD_EMOJIS, emoji_byte, guild.id)
 
         self.cog_ready = True 
 
@@ -116,6 +151,8 @@ class GuildDB(commands.Cog):
 
         ###=====
 
+        return
+
    #-------------------- ROLE MANAGEMENT --------------------
     @commands.Cog.listener()        
     async def on_guild_role_create(self, role):
@@ -123,11 +160,15 @@ class GuildDB(commands.Cog):
         
         await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
 
+        return
+
     @commands.Cog.listener()        
     async def on_guild_role_delete(self, role):
         r = [role.id for role in role.guild.roles]
         
         await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
+
+        return
 
     @commands.Cog.listener()        
     async def on_guild_role_update(self, before, after):
@@ -163,11 +204,19 @@ class GuildDB(commands.Cog):
    #-------------------- CHANNEL MANAGEMENT --------------------
     @commands.Cog.listener()  
     async def on_guild_channel_delete(self, channel):
-        pass
+        r = [ch.id for ch in channel.guild.channels]
+        
+        await self.db.execute(pgCmds.SET_GUILD_CHANNELS, r , channel.guild.id) 
+
+        return
 
     @commands.Cog.listener()  
     async def on_guild_channel_create(self, channel):
-        pass
+        r = [ch.id for ch in channel.guild.channels]
+        
+        await self.db.execute(pgCmds.SET_GUILD_CHANNELS, r , channel.guild.id) 
+
+        return
 
     @commands.Cog.listener()  
     async def on_guild_channel_update(self, before, after):
@@ -213,7 +262,7 @@ class GuildDB(commands.Cog):
         #(User banned, staff_id, Reason, timestamp)
         data = self.get_ban_unban_data(discord.AuditLogAction.unban, user, guild)
 
-        await self.db.execute(pgCmds.APPEND_GUILD_UNBANS, data[:4])
+        await self.db.execute(pgCmds.APPEND_GUILD_UNBANS, data)
 
 
   #-------------------- FUNCTIONS --------------------

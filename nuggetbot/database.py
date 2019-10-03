@@ -448,32 +448,46 @@ class DatabaseCmds(object):
     ### ============================== GUILD TABLE ==============================
         CREATE_GUILD =          """ 
             CREATE TABLE IF NOT EXISTS guild (
-                guild_id        BIGINT          PRIMARY KEY,
-                owner_id        BIGINT          NOT NULL,
-                creation_date   TIMESTAMP       DEFAULT (NOW() at time zone 'utc'),
-                hstaff_r        BIGINT          DEFAULT 0,
-                lstaff_r        BIGINT          DEFAULT 0,
-                owner_hist      BIGINT[]        DEFAULT ARRAY[282293589713616896]::BIGINT[],
-                hstaff_hist     BIGINT[]        DEFAULT ARRAY[]::BIGINT[],
-                lstaff_hist     BIGINT[]        DEFAULT ARRAY[]::BIGINT[],
-                roles           BIGINT[]        DEFAULT ARRAY[]::BIGINT[],
-                channels        BIGINT[]        DEFAULT ARRAY[]::BIGINT[],
-                bans            DISCORD_BAN[],
-                unbans          DISCORD_BAN[],
-                emojis          DISCORD_EMOJI[]
+                guild_id        BIGINT              PRIMARY KEY,
+                owner_id        BIGINT              NOT NULL,
+                creation_date   TIMESTAMP           DEFAULT (NOW() at time zone 'utc'),
+                icon            DISCORD_EMOJI,
+                icon_hist       DISCORD_EMOJI[]     DEFAULT ARRAY[]::DISCORD_EMOJI[],
+                owner_hist      BIGINT[]            DEFAULT ARRAY[282293589713616896]::BIGINT[],
+                hstaff_hist     BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
+                lstaff_hist     BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
+                roles           BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
+                channels        BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
+                bans            DISCORD_BAN[]       DEFAULT ARRAY[]::DISCORD_BAN[],
+                unbans          DISCORD_BAN[]       DEFAULT ARRAY[]::DISCORD_BAN[],
+                emojis          DISCORD_EMOJI[]     DEFAULT ARRAY[]::DISCORD_EMOJI[],
             );
             """
 
         EXISTS_GUILD=           "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GUILD');"
         EXISTS_GUILD_DATA=      'SELECT EXISTS(SELECT * FROM public.guild WHERE guild_id = CAST($1 AS BIGINT));'
-        GET_GUILD_DATA=         'SELECT * FROM public.guild WHERE guild_id = CAST($1 AS BIGINT);'
+        GET_GUILD_DATA=         'SELECT * FROM public.guild WHERE guild_id = CAST($1 AS BIGINT);'      
+
+        PRIME_GUILD_DATA="""
+            INSERT INFO guild(
+                guild_id, owner_id, creation_date, roles, channels
+                )
+            VALUES(
+                CAST($1 AS BIGINT), CAST($2 AS BIGINT), $3, CAST($4 AS BIGINT[]), CAST($5 AS BIGINT[])
+                )
+            ON CONFLICT(guild_id)
+                DO NOTHING;
+            """
+            
         #SET_GUILD_DATA=
         SET_GUILD_OWNER=        'UPDATE guild SET owner_id = CAST($1 AS BIGINT) WHERE guild_id = CAST($2 AS BIGINT);'
         SET_GUILD_ROLES=        'UPDATE guild SET roles = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
+        SET_GUILD_CHANNELS=     'UPDATE guild SET channels = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
+        SET_GUILD_ICON=         'UPDATE guild SET icon = $1 WHERE guild_id = CAST($2 AS BIGINT);'
         APPEND_GUILD_BANS=      'UPDATE guild SET bans = array_append(bans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
         APPEND_GUILD_UNBANS=    'UPDATE guild SET unbans = array_append(unbans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
         APPEND_GUILD_EMOJIS=    'UPDATE guild SET emojis = array_append(emojis, $1) WHERE guild_id = CAST($2 AS BIGINT);'
-
+      
                  
         ###RETIRED CODE
         GET_GUILD_GALL_CONFIG=  "SELECT guild_id, gall_nbl, gall_ch, gall_text_exp, gall_user_wl, gall_nbl_links, gall_links FROM guild;"
@@ -503,6 +517,7 @@ class DatabaseCmds(object):
 
 
     ### ============================== TRIGGERS ==============================
+       #-------------------- MESSAGE TRIGGERS --------------------
         CREATE_MSGINCREMENTER="""
             DO
             $do$
@@ -529,7 +544,8 @@ class DatabaseCmds(object):
             """
 
         EXISTS_MSGINCREMENTER="SELECT EXISTS(SELECT * FROM information_schema.triggers WHERE upper(trigger_name) = 'MSGINCREMENTER');"
-
+       
+       #-------------------- GUILD TRIGGERS --------------------
         CREATE_GUILDOWNERHIST="""
             DO
             $do$
@@ -543,6 +559,7 @@ class DatabaseCmds(object):
                     COST 200 AS
                 $$BEGIN
                     UPDATE guild SET owner_hist = array_append(owner_hist, NEW.owner_id) WHERE guild_id = NEW.guild_id;
+                    RETURN NEW;
                 END;$$;
             END IF;    
 
@@ -554,7 +571,35 @@ class DatabaseCmds(object):
             $do$
             """
 
-            #UPDATE table SET array_field = array_append(array_field,'new item') WHERE
+        EXISTS_GUILDOWNERHIST="SELECT EXISTS(SELECT * FROM information_schema.triggers WHERE upper(trigger_name) = 'MANAGEOWNERHIST');"
+
+        CREATE_GUILDICONHIST="""
+            DO
+            $do$
+            BEGIN
+            IF NOT EXISTS (SELECT * 
+                    FROM pg_proc
+                    WHERE prorettype <> 0 AND proname = 'guild_manageIconHist' AND format_type(prorettype, NULL) = 'trigger') THEN
+
+                CREATE OR REPLACE FUNCTION guild_manageIconHist() RETURNS trigger
+                    LANGUAGE plpgsql
+                    COST 200 AS
+                $$BEGIN
+                    UPDATE guild SET icon_hist = array_append(icon_hist, NEW.icon) WHERE guild_id = NEW.guild_id;
+                    RETURN NEW;
+                END;$$;
+            END IF;    
+
+            IF NOT EXISTS(SELECT * FROM information_schema.triggers WHERE event_object_table = 'guild' AND trigger_name = 'manageIconHist') THEN
+                CREATE TRIGGER manageIconHist AFTER UPDATE OF icon ON guild FOR EACH ROW
+                    EXECUTE PROCEDURE guild_manageIconHist();
+            END IF;
+            END
+            $do$
+            """
+
+        EXISTS_GUILDICONHIST="SELECT EXISTS(SELECT * FROM information_schema.triggers WHERE upper(trigger_name) = 'MANAGEICONHIST');"
+
     ### ============================== FUNCTIONS ==============================
         
         # -------------------- UPDATE_INVITES --------------------
