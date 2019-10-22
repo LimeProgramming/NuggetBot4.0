@@ -187,8 +187,22 @@ class NuggetBot(commands.Bot):
             await self.logout()
             await self.close()
 
+        ###===== CREATE DATABASE COMPOSITE TYPES
+        database_types=[
+            {"exists":"EXISTS_DISCORD_EMOJI",       "create":"CREATE_DISCORD_EMOJI",        "log":"Created discord emoji type."},
+            {"exists":"EXISTS_DISCORD_BANS",        "create":"CREATE_DISCORD_BANS",         "log":"Created discord ban type."},
+            {"exists":"EXISTS_DISCORD_STAFF",       "create":"CREATE_DISCORD_STAFF",        "log":"Created discord staff type."} 
+        ]
 
-        #===== CREATE DATABASE TABLES AT STARTUP
+        dblog.info(" Checking PG database types.")
+
+        for dbTypes in database_types:
+            if not await self.db.fetchval(getattr(pgCmds, dbTypes['exists'])):
+                await self.db.execute(getattr(pgCmds, dbTypes['create']))
+                dblog.info(f" {dbTypes['log']}")
+
+
+        ###===== CREATE DATABASE TABLES AT STARTUP
         database_tables = [
             {"exists":"EXISTS_MSGS_TABLE",          "create":"CREATE_MSGS_TABLE",           "log":"Created messages table."},
             {"exists":"EXISTS_GALL_MSGS_TABLE",     "create":"CREATE_GALL_MSGS_TABLE",      "log":"Created gallery messages table."},
@@ -209,13 +223,22 @@ class NuggetBot(commands.Bot):
                 dblog.info(f" {dbTables['log']}")
 
 
-        #===== Create database triggers
-        if not await self.db.fetchval(pgCmds.EXISTS_MSGINCREMENTER):
-            await self.db.execute(pgCmds.CREATE_MSGINCREMENTER)
-            dblog.info(f" Created msgincrementer trigger.")
+        ###===== CREATE DATABASE TRIGGERS
+        database_triggers = [
+            {"exists":"EXISTS_MSGINCREMENTER",      "create":"CREATE_MSGINCREMENTER",       "log":"Created msg incrementer trigger."},
+            {"exists":"EXISTS_GUILDOWNERHIST",      "create":"CREATE_GUILDOWNERHIST",       "log":"Created guild owner history trigger."},
+            {"exists":"EXISTS_GUILDICONHIST",       "create":"CREATE_GUILDICONHIST",        "log":"Created guild icon history trigger."}
+        ]
+        
+        dblog.info(" Checking PG database triggers.")
+
+        for dbTrig in database_triggers:
+            if not await self.db.fetchval(getattr(pgCmds, dbTrig['exists'])):
+                await self.db.execute(getattr(pgCmds, dbTrig['create']))
+                dblog.info(f" {dbTrig['log']}")
 
 
-        #===== Create database functions
+        ###===== CREATE DATABASE FUNCTIONS
         database_funtion = [
             {"exists":"EXISTS_FUNC_UPDATE_INVITES",         "create":"CREATE_FUNC_UPDATE_INVITES",          "log":"Created UPDATE_INVITES function."},
             {"exists":"EXISTS_FUNC_HAS_MEMBER_LEVELED_UP",  "create":"CREATE_FUNC_HAS_MEMBER_LEVELED_UP",   "log":"Created HAS_MEMBER_LEVELED_UP function."},

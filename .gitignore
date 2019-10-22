@@ -24,3 +24,4 @@ nuggetbot/plugins/__pycache__/giveaway.cpython-37.pyc
 nuggetbot/util/__pycache__/gen_embed.cpython-37.pyc
 nuggetbot/__pycache__/database.cpython-37.pyc
 logs/nuggetbot.log
+nuggetbot/__pycache__/bot.cpython-37.pyc

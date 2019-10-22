@@ -24,6 +24,14 @@ from nuggetbot.util.chat_formatting import AVATAR_URL_AS
 
 import asyncpg
 import dblogin 
+import uuid
+import qrcode
+import pyzbar.pyzbar
+
+#import qrtools
+#from qrcode.image.pure import PymagingImage
+
+#from qrcode.image.pure.PymagingImage import 
 
 class ImageCog(commands.Cog):
     lvMSGS= ((0, 10), (10, 75), (75, 200), (200, 350), (350, 500), (500, 575), (575, 661), (661, 760), (760, 874), (874, 1005), (1005, 1156), (1156, 1318), (1318, 1503), (1503, 1713), (1713, 1953), (1953, 2226), (2226, 2538), (2538, 2893), (2893, 3298), (3298, 3760), (3760, 4286), (4286, 4843), (4843, 5473), (5473, 6184), (6184, 6988), (6988, 7896), (7896, 8922), (8922, 10082), (10082, 11393), (11393, 12874), (12874, 14548), (14548, 16294), (16294, 18249), (18249, 20439), (20439, 22892), (22892, 25639), (25639, 28716), (28716, 32162), (32162, 36021), (36021, 40344), (40344, 45185), (45185, 50155), (50155, 55672), (55672, 61796), (61796, 68594), (68594, 76139), (76139, 84514), (84514, 93811), (93811, 104130), (104130, 115584), (115584, 128298), (128298, 141769), (141769, 156655), (156655, 173104), (173104, 191280), (191280, 211364), (211364, 233557), (233557, 258080), (258080, 285178), (285178, 315122), (315122, 348210), (348210, 383031), (383031, 421334), (421334, 463467), (463467, 509814), (509814, 560795), (560795, 616874), (616874, 678561), (678561, 746417), (746417, 821059), (821059, 903165), (903165, 988966), (988966, 1082918), (1082918, 1185795), (1185795, 1298446), (1298446, 1421798), (1421798, 1556869), (1556869, 1704772), (1704772, 1866725), (1866725, 2044064), (2044064, 2238250), (2238250, 2439692), (2439692, 2659264), (2659264, 2898598), (2898598, 3159472), (3159472, 3443824), (3443824, 3753768), (3753768, 4091607), (4091607, 4459852), (4459852, 4861239), (4861239, 5298751), (5298751, 5749145), (5749145, 6237822), (6237822, 6768037), (6768037, 7343320), (7343320, 7967502), (7967502, 8644740), (8644740, 9379543), (9379543, 10176804), (10176804, 11041832))
@@ -322,6 +330,72 @@ class ImageCog(commands.Cog):
         ava_status.seek(0)
 
         return ava_status
+
+    @commands.command(pass_context=True, hidden=False, name='qrtest', aliases=[])
+    async def qrcodetest(self, ctx, *, member: discord.Member = None):
+        member = member or ctx.author
+
+        try:
+            #t = uuid.uuid4()
+            #img = qrcode.make(t)#, image_factory=qrcode.image.pure.PymagingImage)
+
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_M,
+                box_size=10,
+                border=1,
+            )
+
+            #qr.add_data(t)
+            #207344800381403137
+            qr.add_data(f"https://discordapp.com/users/{member.id}")
+            qr.make(fit=True)
+
+            img = qr.make_image(fill_color="black", back_color="white").get_image()
+
+            imgByteArr = BytesIO()
+            img.save(imgByteArr, format='png')
+            imgByteArr.seek(0)
+
+            file = discord.File(filename="qrtest.png", fp=imgByteArr)
+
+            # send it
+            await ctx.send(file=file)
+        except Exception as e:
+            print(e)
+
+        #>>> qr = qrtools.QR()
+        #>>> qr.decode("horn.png")
+
+    @commands.command(pass_context=True, hidden=False, name='qrtestdecode', aliases=[])
+    async def qrcodedecodetest(self, ctx):
+        
+        try:
+            if not ctx.message.attachments or len(ctx.message.attachments) > 1:
+                await ctx.send("You need to attach an image and only one image for me to decode.")
+
+            attach = ctx.message.attachments[0]
+
+            attach_img = await attach.read()
+
+            t = pyzbar.pyzbar.decode(Image.open(BytesIO(attach_img)))[0]
+        
+        except Exception as e:
+            print(e)
+            return
+
+        try:
+            
+            uid = uuid.UUID(t.data.decode('utf-8'))
+
+            await ctx.send(f"{str(uid)} UUID value of the scanned QR code.")
+
+        except ValueError:
+            text = t.data.decode('utf-8')
+
+            await ctx.send(f"{text} string value of the scanned QR code.")
+
+        return
 
     @commands.command()
     async def imagetest(self, ctx, *, member: discord.Member = None):

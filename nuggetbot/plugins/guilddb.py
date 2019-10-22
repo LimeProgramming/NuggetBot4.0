@@ -125,8 +125,13 @@ class GuildDB(commands.Cog):
             i_id, ext = (guild.icon_url.__str__().split("/").pop()).split(".")
 
             i_bytes = await guild.icon_url.read()
+            
+            #---------- Set the icon name
+            cdate = discord.utils.snowflake_time(i_id)
+            icon_name = "guild_icon_" + str(cdate.day) + str(cdate.month) + str(cdate.year)[2:]
 
-            guild_icon = int(i_id), ext, i_bytes, datetime.datetime.utcnow()
+            #---------- Ship to the DB
+            guild_icon = icon_name, int(i_id), ext, i_bytes, datetime.datetime.utcnow()
             
             await self.db.execute(pgCmds.SET_GUILD_ICON, guild_icon, guild.id)
 
@@ -137,11 +142,33 @@ class GuildDB(commands.Cog):
 
                 e_bytes = await emoji.url.read()
 
-                emoji_byte = int(e_id), ext, e_bytes, emoji.created_at
+                emoji_byte = str(emoji.name), int(e_id), ext, e_bytes, emoji.created_at
 
                 await self.db.execute(pgCmds.APPEND_GUILD_EMOJIS, emoji_byte, guild.id)
 
+            ###=== GUILD AUDIT LOGS
+            async for entry in guild.audit_logs(limit=None, oldest_first=True):
+                ###= GUILD BANS
+                if entry.action == discord.AuditLogAction.ban:
+                    #(User banned, staff_id, Reason, log_id, timestamp)
+                    ban = entry.target.id, entry.user.id, str(entry.reason)[:250] or "None", entry.id, entry.created_at
+                    #bannee:entry.target    #banner: entry.user
+                    #date:entry.created_at  #reason: entry.reason
+                    await self.db.execute(pgCmds.APPEND_GUILD_BANS, ban, guild.id)
+
+                ###= GUILD UNBANS
+                elif entry.action == discord.AuditLogAction.unban:
+                    unban = entry.target.id, entry.user.id, str(entry.reason)[:250] or "None", entry.id, entry.created_at
+                    await self.db.execute(pgCmds.APPEND_GUILD_UNBANS, unban, guild.id)
+
+            ###=== ROLES
+            for role in sorted(guild.roles, key=lambda x: x.position):
+                role_info = role.id, role.name, role.permissions.value, role.hoisted, role.is_default(), role.colour.value, role.created_at, False
+                await self.db.execute(pgCmds.APPEND_GUILD_ROLES, role_info, guild.id)
+
+            #id, name, perms, hoisted, default, colour, date
         self.cog_ready = True 
+
 
     @commands.Cog.listener()        
     async def on_guild_update(self, before, after):

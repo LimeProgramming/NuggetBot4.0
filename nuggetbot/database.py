@@ -427,6 +427,9 @@ class DatabaseCmds(object):
                 sent_guild_id   BIGINT,
                 timestamp       TIMESTAMP
                 );
+
+            COMMENT ON TABLE dm_feedback IS            'Holds the entry data for giveaways preformed by nuggetbot. It holds member id's and how many entries the member has.';
+            COMMENT ON COLUMN dm_feedback.num IS       'Discord ID of the member.';
             """
 
         ADD_DM_FEEDBACK="""
@@ -484,11 +487,34 @@ class DatabaseCmds(object):
         SET_GUILD_ROLES=        'UPDATE guild SET roles = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
         SET_GUILD_CHANNELS=     'UPDATE guild SET channels = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
         SET_GUILD_ICON=         'UPDATE guild SET icon = $1 WHERE guild_id = CAST($2 AS BIGINT);'
-        APPEND_GUILD_BANS=      'UPDATE guild SET bans = array_append(bans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
-        APPEND_GUILD_UNBANS=    'UPDATE guild SET unbans = array_append(unbans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
+        #APPEND_GUILD_BANS=      'UPDATE guild SET bans = array_append(bans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
+        #APPEND_GUILD_UNBANS=    'UPDATE guild SET unbans = array_append(unbans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
         APPEND_GUILD_EMOJIS=    'UPDATE guild SET emojis = array_append(emojis, $1) WHERE guild_id = CAST($2 AS BIGINT);'
-      
-                 
+        APPEND_GUILD_BANS="""
+            UPDATE guild 
+            SET 
+                bans = array_append(bans, CAST($1 AS DISCORD_BAN)) 
+            WHERE 
+                guild_id = CAST($2 AS BIGINT) AND 
+                NOT EXISTS (SELECT array_position((SELECT bans From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS DISCORD_BAN)));
+            """
+        APPEND_GUILD_UNBANS="""
+            UPDATE guild 
+            SET 
+                unbans = array_append(unbans, CAST($1 AS DISCORD_BAN)) 
+            WHERE 
+                guild_id = CAST($2 AS BIGINT) AND 
+                NOT EXISTS (SELECT array_position((SELECT unbans From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS DISCORD_BAN)));
+            """
+        APPEND_GUILD_ROLES="""
+            UPDATE guild 
+            SET 
+                roles = array_append(roles, CAST($1 AS discord_role)) 
+            WHERE 
+                guild_id = CAST($2 AS BIGINT) AND 
+                NOT EXISTS (SELECT array_position((SELECT roles From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS discord_role)));
+            """
+
         ###RETIRED CODE
         GET_GUILD_GALL_CONFIG=  "SELECT guild_id, gall_nbl, gall_ch, gall_text_exp, gall_user_wl, gall_nbl_links, gall_links FROM guild;"
         SET_GUILD_GALL_CONFIG=  """
@@ -513,7 +539,30 @@ class DatabaseCmds(object):
         SET_GUILD_GALL_LINK_DISABLE="UPDATE guild SET gall_nbl_links = FALSE WHERE guild.guild_id = CAST($1 AS BIGINT);"
         SET_GUILD_GALL_LINKS=       "UPDATE guild SET gall_links = CAST($1 AS BIGINT[]) WHERE guild.guild_id = CAST($2 AS BIGINT);"
 
-                                            
+    
+    ### ============================== UUID TICKETS TABLE ==============================                                           
+        CREATE_UUID_TICKET = """ 
+            CREATE TABLE IF NOT EXISTS uuid_tickets (
+                uid             UUID            PRIMARY KEY,
+                creation_date   TIMESTAMP       DEFAULT (NOW() AT TIME ZONE 'utc'),
+                expiry_date     TIMESTAMP       DEFAULT (TIMEZONE('utc'::text, NOW()) + '6 mons'::INTERVAL),
+                holder          BIGINT          DEFAULT 0,
+                redeemer        BIGINT,
+                used            BOOLEAN         DEFAULT FALSE,
+                image           BYTEA,
+                num             SERIAL
+                );
+
+            COMMENT ON TABLE uuid_tickets IS                'Holds a log of created UUID based tickets.';
+            COMMENT ON COLUMN uuid_tickets.uid IS           'UUID value of the ticket itself.';
+            COMMENT ON COLUMN uuid_tickets.creation_date IS 'Timestamp of when the ticket was created. Default is the current datetime in UTC.';
+            COMMENT ON COLUMN uuid_tickets.expiry_date IS   'Timestamp of when the ticket expires. Default is 6 months from the time of creation.';
+            COMMENT ON COLUMN uuid_tickets.holder IS        'The Discord id of the member the ticket was created for. Default is 0 meaning the ticket was not created for a spesific user.';
+            COMMENT ON COLUMN uuid_tickets.redeemer IS      'The Discord id ot the member who used the ticket.';
+            COMMENT ON COLUMN uuid_tickets.used IS          'True, False value indicating if the ticket has been redeemed or not. Default is false for a valid in-date ticket.';
+            COMMENT ON COLUMN uuid_tickets.image IS         'Store of the generated ticket image in bytes. Only really needed if a member loses their ticket.';
+            COMMENT ON COLUMN uuid_tickets.num  IS          'Incremental serial of the UUID based tickets.';
+        """
 
 
     ### ============================== TRIGGERS ==============================
@@ -599,6 +648,7 @@ class DatabaseCmds(object):
             """
 
         EXISTS_GUILDICONHIST="SELECT EXISTS(SELECT * FROM information_schema.triggers WHERE upper(trigger_name) = 'MANAGEICONHIST');"
+
 
     ### ============================== FUNCTIONS ==============================
         
@@ -948,52 +998,88 @@ class DatabaseCmds(object):
 
         EXISTS_FUNC_ARTIST_INFO=    "SELECT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'updateartistinfo')"
 
-    ### ============================== TEST STUFF ==============================
+
+    ### ============================== COMPOUND DATATYPES ==============================
         #(emoji.id, emoji.ext, emoji.bytes, emoji.timestamp)
-        discord_emoji="""
+        EXISTS_DISCORD_EMOJI=       "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_emoji')"
+        CREATE_DISCORD_EMOJI="""
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discord_emoji') THEN
                     CREATE TYPE discord_emoji AS
                     (
-                    field_1        BIGINT,
-                    field_2        VARCHAR(10),
-                    field_3        BYTEA,
-                    field_4		   TIMESTAMP
+                    emoji_id        BIGINT,
+                    emoji_name      TEXT,
+                    emoji_ext       VARCHAR(10),
+                    emoji_img       BYTEA,
+                    timestamp       TIMESTAMP
                     );
                 END IF;
             END$$;
+
+            COMMENT ON TYPE discord_emoji IS 'Holds the follow for each discord emoji; discord id, emoji name, emoji ext, emoji image in bytes, timestamp of when emoji was added to the database. Mostly useful for keeping a log of old emojis.';
             """
 
-        #(User banned, staff_id, Reason, timestamp)
-        discord_bans="""
+        #(User banned, staff_id, Reason, log_id, timestamp)
+        EXISTS_DISCORD_BANS=       "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_ban')"
+        CREATE_DISCORD_BANS="""
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discord_ban') THEN
                     CREATE TYPE discord_ban AS
                     (
-                    field_1     BIGINT,
-                    field_2     BIGINT,
-                    field_3     VARCHAR(250),
-                    field_4     TIMESTAMP
+                    user_id     BIGINT,
+                    staff_id    BIGINT,
+                    reason      VARCHAR(250),
+                    log_id      BIGINT,
+                    timestamp   TIMESTAMP
                     );
                 END IF;
             END$$;
+
+            COMMENT ON TYPE discord_ban IS 'Discord ban datatype. It holds the id of the user who has been banned, user id of who banned this user, reason as to why, Audit log id of the ban and timestamp of when this member was banned';
             """
 
         #staff.id, made staff by id, timestamp.
-        guild_staff= """
+        EXISTS_DISCORD_STAFF=       "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='guild_staff')"
+        CREATE_DISCORD_STAFF="""
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'guild_staff') THEN
                     CREATE TYPE guild_staff AS
                     (
-                    field_1     BIGINT,
-                    field_2     BIGINT,
-                    field_4     TIMESTAMP
+                    user_id     BIGINT,
+                    maker_id    BIGINT,
+                    timestamp   TIMESTAMP
                     );
                 END IF;
             END$$;
+
+            COMMENT ON TYPE guild_staff IS 'Staff member entry for the guild. This is mostly useful for historial purposes.';
+            """
+        
+
+        #id, name, perms, hoisted, default, colour, date
+        EXISTS_DISCORD_ROLE=        "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_role')"
+        CREATE_DISCORD_ROLE="""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discord_role') THEN
+                    CREATE TYPE discord_role AS
+                    (
+                    id          BIGINT,
+                    name        TEXT,
+                    perms       BIGINT,
+                    hoisted     BOOLEAN,
+                    default     BOOLEAN,
+                    colour      INTEGER,
+                    date        TIMESTAMP,
+                    deleted     BOOLEAN
+                    );
+                END IF;
+            END$$;
+
+            COMMENT ON TYPE discord_role IS 'This is some information about the roles within the discord guild. It contains enough information to remake the role should it ever be accidentally deleted.';
             """
 
 
