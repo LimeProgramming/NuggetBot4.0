@@ -122,17 +122,12 @@ class GuildDB(commands.Cog):
             await self.db.execute(pgCmds.PRIME_GUILD_DATA, guild.id, guild.owner_id, guild.created_at, [channel.id for channel in guild.channels])
 
             ###=== GETS THE GUILDS ICON
-            i_id, ext = (guild.icon_url.__str__().split("/").pop()).split(".")
+            icon_type = "gif" if guild.is_icon_animated() else "webp"
+            i_bytes = guild.icon_url_as(format=icon_type).read()
 
-            i_bytes = await guild.icon_url.read()
-            
-            #---------- Set the icon name
-            cdate = discord.utils.snowflake_time(i_id)
-            icon_name = "guild_icon_" + str(cdate.day) + str(cdate.month) + str(cdate.year)[2:]
+            guild_icon = guild.icon, icon_type, i_bytes, datetime.datetime.utcnow()
 
             #---------- Ship to the DB
-            guild_icon = icon_name, int(i_id), ext, i_bytes, datetime.datetime.utcnow()
-            
             await self.db.execute(pgCmds.SET_GUILD_ICON, guild_icon, guild.id)
 
             ###=== CYCLE THROUGH A GUILDS EMOJIS, ADDING THEM TO THE DATABASE
@@ -176,7 +171,17 @@ class GuildDB(commands.Cog):
         if before.owner_id != after.owner_id:
             await self.db.execute(pgCmds.SET_GUILD_OWNER, after.owner_id, after.id)
 
-        ###=====
+        ###===== GUILD ICON CHECK
+        elif before.icon != after.icon:
+
+            icon_type = "gif" if after.is_icon_animated() else "webp"
+            i_bytes = after.icon_url_as(format=icon_type).read()
+
+            guild_icon = after.icon, icon_type, i_bytes, datetime.datetime.utcnow()
+
+            #---------- Ship to the DB
+            await self.db.execute(pgCmds.SET_GUILD_ICON, guild_icon, after.id)
+
 
         return
 
@@ -248,6 +253,7 @@ class GuildDB(commands.Cog):
 
         return
 
+
    #-------------------- EMOJI MANAGEMENT --------------------
     @commands.Cog.listener()        
     async def on_guild_emojis_update(self, guild, before, after):
@@ -267,7 +273,7 @@ class GuildDB(commands.Cog):
 
             e_bytes = await emoji.url.read()
 
-            emoji_byte = int(e_id), ext, e_bytes, emoji.created_at
+            emoji_byte = str(emoji.name), int(e_id), ext, e_bytes, emoji.created_at
 
             await self.db.execute(pgCmds.APPEND_GUILD_EMOJIS, emoji_byte, guild.id)
 

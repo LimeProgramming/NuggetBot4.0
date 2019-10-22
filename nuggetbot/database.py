@@ -449,13 +449,13 @@ class DatabaseCmds(object):
 
 
     ### ============================== GUILD TABLE ==============================
-        CREATE_GUILD =          """ 
+        CREATE_GUILD_TABLE=""" 
             CREATE TABLE IF NOT EXISTS guild (
                 guild_id        BIGINT              PRIMARY KEY,
                 owner_id        BIGINT              NOT NULL,
                 creation_date   TIMESTAMP           DEFAULT (NOW() at time zone 'utc'),
-                icon            DISCORD_EMOJI,
-                icon_hist       DISCORD_EMOJI[]     DEFAULT ARRAY[]::DISCORD_EMOJI[],
+                icon            DISCORD_ICON,
+                icon_hist       DISCORD_ICON[]      DEFAULT ARRAY[]::DISCORD_ICON[],
                 owner_hist      BIGINT[]            DEFAULT ARRAY[282293589713616896]::BIGINT[],
                 hstaff_hist     BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
                 lstaff_hist     BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
@@ -463,11 +463,11 @@ class DatabaseCmds(object):
                 channels        BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
                 bans            DISCORD_BAN[]       DEFAULT ARRAY[]::DISCORD_BAN[],
                 unbans          DISCORD_BAN[]       DEFAULT ARRAY[]::DISCORD_BAN[],
-                emojis          DISCORD_EMOJI[]     DEFAULT ARRAY[]::DISCORD_EMOJI[],
+                emojis          DISCORD_EMOJI[]     DEFAULT ARRAY[]::DISCORD_EMOJI[]
             );
             """
 
-        EXISTS_GUILD=           "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GUILD');"
+        EXISTS_GUILD_TABLE=     "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GUILD');"
         EXISTS_GUILD_DATA=      'SELECT EXISTS(SELECT * FROM public.guild WHERE guild_id = CAST($1 AS BIGINT));'
         GET_GUILD_DATA=         'SELECT * FROM public.guild WHERE guild_id = CAST($1 AS BIGINT);'      
 
@@ -1027,6 +1027,25 @@ class DatabaseCmds(object):
             COMMENT ON TYPE discord_emoji IS 'Holds the follow for each discord emoji; discord id, emoji name, emoji ext, emoji image in bytes, timestamp of when emoji was added to the database. Mostly useful for keeping a log of old emojis.';
             """
 
+        EXISTS_DISCORD_ICON=       "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_icon')"
+        CREATE_DISCORD_ICON="""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discord_icon') THEN
+                    CREATE TYPE discord_icon AS
+                    (
+                    icon_id         VARCHAR(50),
+                    icon_ext        VARCHAR(10),
+                    icon_img        BYTEA,
+                    timestamp       TIMESTAMP
+                    );
+                END IF;
+            END$$;
+
+            COMMENT ON TYPE discord_icon IS 'Holds the following data related to guild icons: ';
+            """
+
+
         #(User banned, staff_id, Reason, log_id, timestamp)
         EXISTS_DISCORD_BANS=       "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_ban')"
         CREATE_DISCORD_BANS="""
@@ -1065,7 +1084,6 @@ class DatabaseCmds(object):
             COMMENT ON TYPE guild_staff IS 'Staff member entry for the guild. This is mostly useful for historial purposes.';
             """
         
-
         #id, name, perms, hoisted, default, colour, date, deleted
         EXISTS_DISCORD_ROLE=        "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_role')"
         CREATE_DISCORD_ROLE="""
@@ -1078,7 +1096,7 @@ class DatabaseCmds(object):
                     name        TEXT,
                     perms       BIGINT,
                     hoisted     BOOLEAN,
-                    default     BOOLEAN,
+                    everyone    BOOLEAN,
                     colour      INTEGER,
                     date        TIMESTAMP,
                     deleted     BOOLEAN

@@ -191,7 +191,8 @@ class NuggetBot(commands.Bot):
             {"exists":"EXISTS_DISCORD_EMOJI",       "create":"CREATE_DISCORD_EMOJI",        "log":"Created discord emoji type."},
             {"exists":"EXISTS_DISCORD_BANS",        "create":"CREATE_DISCORD_BANS",         "log":"Created discord ban type."},
             {"exists":"EXISTS_DISCORD_STAFF",       "create":"CREATE_DISCORD_STAFF",        "log":"Created discord staff type."},
-            {"exists":"EXISTS_DISCORD_ROLE",        "create":"CREATE_DISCORD_ROLE",         "log":"Created discord role type."} 
+            {"exists":"EXISTS_DISCORD_ROLE",        "create":"CREATE_DISCORD_ROLE",         "log":"Created discord role type."},
+            {"exists":"EXISTS_DISCORD_ICON",        "create":"CREATE_DISCORD_ICON",         "log":"Created discord icon type."}
         ]
 
         dblog.info(" Checking PG database types.")
@@ -214,8 +215,11 @@ class NuggetBot(commands.Bot):
             {"exists":"EXISTS_GVWY_PRE_WINS_TABLE", "create":"CREATE_GVWY_PRE_WINS_TABLE",  "log":"Created giveaway winners table."},
             {"exists":"EXISTS_GVWY_BLOCKS_TABLE",   "create":"CREATE_GVWY_BLOCKS_TABLE",    "log":"Created giveaway blacklist table."},
             {"exists":"EXISTS_GVWY_ENTRIES_TABLE",  "create":"CREATE_GVWY_ENTRIES_TABLE",   "log":"Created giveaway entries table."},
-            {"exists":"EXISTS_DM_FEEDBACK",         "create":"CREATE_DM_FEEDBACK",          "log":"Created DM Feedback table."}
+            {"exists":"EXISTS_DM_FEEDBACK",         "create":"CREATE_DM_FEEDBACK",          "log":"Created DM Feedback table."},
+            {"exists":"EXISTS_GUILD_TABLE",         "create":"CREATE_GUILD_TABLE",          "log":"Created Guild table."}
         ]
+
+        dblog.info(" Checking PG database tables.")
 
         for dbTables in database_tables:
             if not await self.db.fetchval(getattr(pgCmds, dbTables['exists'])):
@@ -245,6 +249,8 @@ class NuggetBot(commands.Bot):
             {"exists":"EXISTS_FUNC_ARTIST_INFO",            "create":"CREATE_FUNC_ARTIST_INFO",             "log":"Created ARTIST_INFO function."},
             {"exists":"EXISTS_FUNC_MEMBER_LEVEL_REWARD",    "create":"CREATE_FUNC_MEMBER_LEVEL_REWARD",     "log":"Created MEMBER_LEVEL_REWARD function."}
         ]
+
+        dblog.info(" Checking PG database functions.")
 
         for dbFunc in database_funtion:
             if not await self.db.fetchval(getattr(pgCmds, dbFunc['exists'])):
@@ -391,8 +397,16 @@ class NuggetBot(commands.Bot):
         await self.minimum_permissions_check()
 
        #===== CONNECT TO AND PRIME THE POSTGRE DATABASE
-        await self.pgdb_on_ready()
+        try:
+            await self.pgdb_on_ready()
+        except Exception as e:
+            print(e)
 
+        #try:
+        #    print(self.get_guild(605100382569365573).icon)
+        #except Exception as e:
+        #    print(e)
+        
         try:
             if False:
                 guild = self.get_guild(605100382569365573)

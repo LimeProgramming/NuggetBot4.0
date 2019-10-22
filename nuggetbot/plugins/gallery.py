@@ -151,6 +151,8 @@ class Gallery(commands.Cog):
 
             await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
 
+        await asyncio.sleep(120)
+        
         ###===== SCHEDULER
         self.scheduler.start()
 
