@@ -459,7 +459,7 @@ class DatabaseCmds(object):
                 owner_hist      BIGINT[]            DEFAULT ARRAY[282293589713616896]::BIGINT[],
                 hstaff_hist     BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
                 lstaff_hist     BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
-                roles           BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
+                roles           DISCORD_ROLE[]      DEFAULT ARRAY[]::DISCORD_ROLE[],
                 channels        BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
                 bans            DISCORD_BAN[]       DEFAULT ARRAY[]::DISCORD_BAN[],
                 unbans          DISCORD_BAN[]       DEFAULT ARRAY[]::DISCORD_BAN[],
@@ -473,10 +473,10 @@ class DatabaseCmds(object):
 
         PRIME_GUILD_DATA="""
             INSERT INFO guild(
-                guild_id, owner_id, creation_date, roles, channels
+                guild_id, owner_id, creation_date, channels
                 )
             VALUES(
-                CAST($1 AS BIGINT), CAST($2 AS BIGINT), $3, CAST($4 AS BIGINT[]), CAST($5 AS BIGINT[])
+                CAST($1 AS BIGINT), CAST($2 AS BIGINT), $3, CAST($4 AS BIGINT[])
                 )
             ON CONFLICT(guild_id)
                 DO NOTHING;
@@ -484,11 +484,10 @@ class DatabaseCmds(object):
             
         #SET_GUILD_DATA=
         SET_GUILD_OWNER=        'UPDATE guild SET owner_id = CAST($1 AS BIGINT) WHERE guild_id = CAST($2 AS BIGINT);'
-        SET_GUILD_ROLES=        'UPDATE guild SET roles = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
+        SET_GUILD_ROLES=        'UPDATE guild SET roles = CAST($1 AS DISCORD_ROLE[]) WHERE guild_id = CAST($2 AS BIGINT);'
         SET_GUILD_CHANNELS=     'UPDATE guild SET channels = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
         SET_GUILD_ICON=         'UPDATE guild SET icon = $1 WHERE guild_id = CAST($2 AS BIGINT);'
-        #APPEND_GUILD_BANS=      'UPDATE guild SET bans = array_append(bans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
-        #APPEND_GUILD_UNBANS=    'UPDATE guild SET unbans = array_append(unbans, $1) WHERE guild_id = CAST($2 AS BIGINT);'
+        GET_GUILD_ROLES=        'SELECT roles FROM public.guild WHERE guild_id = CAST($1 AS BIGINT);'
         APPEND_GUILD_EMOJIS=    'UPDATE guild SET emojis = array_append(emojis, $1) WHERE guild_id = CAST($2 AS BIGINT);'
         APPEND_GUILD_BANS="""
             UPDATE guild 
@@ -513,6 +512,14 @@ class DatabaseCmds(object):
             WHERE 
                 guild_id = CAST($2 AS BIGINT) AND 
                 NOT EXISTS (SELECT array_position((SELECT roles From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS discord_role)));
+            """
+
+        UPDATE_GUILD_ROLE="""
+            UPDATE guild 
+            SET 
+                roles = array_replace(roles, CAST($1 AS DISCORD_ROLE), CAST($2 AS DISCORD_ROLE)) 
+            WHERE 
+                guild_id = CAST($3 AS BIGINT);
             """
 
         ###RETIRED CODE
@@ -1059,7 +1066,7 @@ class DatabaseCmds(object):
             """
         
 
-        #id, name, perms, hoisted, default, colour, date
+        #id, name, perms, hoisted, default, colour, date, deleted
         EXISTS_DISCORD_ROLE=        "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_role')"
         CREATE_DISCORD_ROLE="""
             DO $$

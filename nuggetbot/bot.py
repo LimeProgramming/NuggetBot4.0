@@ -126,7 +126,6 @@ class NuggetBot(commands.Bot):
             except discord.ext.commands.ExtensionFailed:
                 print(f"The extension or its setup function had an execution error, {plugin}.")
 
-
             except Exception as e:
                 print(e)
                 print(f'Failed to load extension {plugin}.', file=sys.stderr) 
@@ -191,7 +190,8 @@ class NuggetBot(commands.Bot):
         database_types=[
             {"exists":"EXISTS_DISCORD_EMOJI",       "create":"CREATE_DISCORD_EMOJI",        "log":"Created discord emoji type."},
             {"exists":"EXISTS_DISCORD_BANS",        "create":"CREATE_DISCORD_BANS",         "log":"Created discord ban type."},
-            {"exists":"EXISTS_DISCORD_STAFF",       "create":"CREATE_DISCORD_STAFF",        "log":"Created discord staff type."} 
+            {"exists":"EXISTS_DISCORD_STAFF",       "create":"CREATE_DISCORD_STAFF",        "log":"Created discord staff type."},
+            {"exists":"EXISTS_DISCORD_ROLE",        "create":"CREATE_DISCORD_ROLE",         "log":"Created discord role type."} 
         ]
 
         dblog.info(" Checking PG database types.")

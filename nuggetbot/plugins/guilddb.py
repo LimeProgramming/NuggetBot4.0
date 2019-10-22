@@ -119,7 +119,7 @@ class GuildDB(commands.Cog):
             ###=== GET THE GUILD
             guild = self.bot.get_guild(GuildDB.config.target_guild_id)
 
-            await self.db.execute(pgCmds.PRIME_GUILD_DATA, guild.id, guild.owner_id, guild.created_at, [role.id for role in guild.roles], [channel.id for channel in guild.channels])
+            await self.db.execute(pgCmds.PRIME_GUILD_DATA, guild.id, guild.owner_id, guild.created_at, [channel.id for channel in guild.channels])
 
             ###=== GETS THE GUILDS ICON
             i_id, ext = (guild.icon_url.__str__().split("/").pop()).split(".")
@@ -183,17 +183,38 @@ class GuildDB(commands.Cog):
    #-------------------- ROLE MANAGEMENT --------------------
     @commands.Cog.listener()        
     async def on_guild_role_create(self, role):
-        r = [role.id for role in role.guild.roles]
-        
-        await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
+
+        role_info = role.id, role.name, role.permissions.value, role.hoisted, role.is_default(), role.colour.value, role.created_at, False
+        await self.db.execute(pgCmds.APPEND_GUILD_ROLES, role_info, role.guild.id)
 
         return
 
     @commands.Cog.listener()        
-    async def on_guild_role_delete(self, role):
-        r = [role.id for role in role.guild.roles]
+    async def on_guild_role_delete(self, role): 
+        ###===== FETCH DATA FROM THE DATABASE
+        dbroles = await self.db.fetch(pgCmds.GET_GUILD_ROLES, role.guild.id)
+        oldentry = None 
+        newentry = None 
+
+        #id, name, perms, hoisted, default, colour, date, deleted
+        for dbrole in dbroles:
+            ###=== IF THE DELETED ROLE ID MATCHES A ROLE ID FROM THE DATABASE
+            if dbrole[0] == role.id:
+
+                newentry = dbrole
+                oldentry = dbrole
+                newentry[7] = True
+
+                break
         
-        await self.db.execute(pgCmds.SET_GUILD_ROLES, r , role.guild.id) 
+        ###===== IF DELETED ROLE WAS NOT FOUND IN THE DATABASE, ADD IT AS A DELETED ROLE.
+        if not oldentry:
+            role_info = role.id, role.name, role.permissions.value, role.hoisted, role.is_default(), role.colour.value, role.created_at, True
+            await self.db.execute(pgCmds.APPEND_GUILD_ROLES, role_info, role.guild.id)
+
+        ###===== ELSE IS THE ROLE WAS FOUND IN THE DATABASE, UPDATE THE ENTRY TO MARK THE ROLE AS DELETED
+        else:
+            await self.db.execute(pgCmds.UPDATE_GUILD_ROLE, oldentry, newentry, role.guild.id) 
 
         return
 
