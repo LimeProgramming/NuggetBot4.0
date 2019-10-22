@@ -513,7 +513,6 @@ class DatabaseCmds(object):
                 guild_id = CAST($2 AS BIGINT) AND 
                 NOT EXISTS (SELECT array_position((SELECT roles From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS discord_role)));
             """
-
         UPDATE_GUILD_ROLE="""
             UPDATE guild 
             SET 

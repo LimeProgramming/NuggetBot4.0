@@ -406,7 +406,7 @@ class NuggetBot(commands.Bot):
         #    print(self.get_guild(605100382569365573).icon)
         #except Exception as e:
         #    print(e)
-        
+    
         try:
             if False:
                 guild = self.get_guild(605100382569365573)

@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, tasks
 import discord
 import asyncio
 import asyncpg
@@ -11,7 +11,7 @@ from typing import Union
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
-from .cog_utils import in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF
+from .cog_utils import in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF, SAVE_COG_CONFIG, LOAD_COG_CONFIG
 
 import dblogin 
 
@@ -24,12 +24,12 @@ class GuildDB(commands.Cog):
     delete_after = 15
     
     def __init__(self, bot):
-        self.RafEntryActive = False
-        self.RafDatetime = []
         self.bot = bot
         self.db = None
         self.cog_ready = False
+        self.cogset = None
         GuildDB.config = Config()
+
 
   #-------------------- STATIC METHOD --------------------  
     @staticmethod
@@ -105,11 +105,21 @@ class GuildDB(commands.Cog):
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
-        ###===== DELAY THE COG BY 2 MINUTES TO LET THE MAIN BOT DO IT'S WORK
-        await asyncio.sleep(120)
-
         ###===== CONNECT TO THE POSTGRE DATABASE    
         await self.connect_db()
+
+        ###===== LOAD THE COGSET
+        self.cogset = await LOAD_COG_CONFIG(cogname="guilddb")
+
+        if not self.cogset:
+            self.cogset= dict(
+                lastAuditLog=    None
+            )
+
+            await SAVE_COG_CONFIG(self.cogset, cogname="guilddb")
+
+        ###===== DELAY THE COG BY 2 MINUTES TO LET THE MAIN BOT DO IT'S WORK
+        await asyncio.sleep(120)
 
         ###===== GET THE GUILD INFO FROM DATABASE
         data = await self.db.fetchrow(pgCmds.GET_GUILD_DATA, GuildDB.config.target_guild_id)
@@ -145,10 +155,7 @@ class GuildDB(commands.Cog):
             async for entry in guild.audit_logs(limit=None, oldest_first=True):
                 ###= GUILD BANS
                 if entry.action == discord.AuditLogAction.ban:
-                    #(User banned, staff_id, Reason, log_id, timestamp)
                     ban = entry.target.id, entry.user.id, str(entry.reason)[:250] or "None", entry.id, entry.created_at
-                    #bannee:entry.target    #banner: entry.user
-                    #date:entry.created_at  #reason: entry.reason
                     await self.db.execute(pgCmds.APPEND_GUILD_BANS, ban, guild.id)
 
                 ###= GUILD UNBANS
@@ -156,12 +163,15 @@ class GuildDB(commands.Cog):
                     unban = entry.target.id, entry.user.id, str(entry.reason)[:250] or "None", entry.id, entry.created_at
                     await self.db.execute(pgCmds.APPEND_GUILD_UNBANS, unban, guild.id)
 
+                ###= TAKE NOTE OF THE LAST AUDIT LOG ID
+                if self.cogset['lastAuditLog'] < entry.id:
+                    self.cogset['lastAuditLog'] = entry.id
+
             ###=== ROLES
             for role in sorted(guild.roles, key=lambda x: x.position):
                 role_info = role.id, role.name, role.permissions.value, role.hoisted, role.is_default(), role.colour.value, role.created_at, False
                 await self.db.execute(pgCmds.APPEND_GUILD_ROLES, role_info, guild.id)
 
-            #id, name, perms, hoisted, default, colour, date
         self.cog_ready = True 
 
 
@@ -381,6 +391,22 @@ class GuildDB(commands.Cog):
 
         return data[:4]
 
+
+  #-------------------- TASKS --------------------
+    @tasks.loop(hours=24.0)
+    async def auditlog_update(self):
+        """
+        Daily task:
+            This stores the last the most recent audit log id into the cogset store.
+            The value is used to pull relivant audit log data upon a bot restart.
+        """
+        guild = self.bot.get_guild(GuildDB.config.target_guild_id)
+
+        entry = await guild.audit_logs(limit=1, oldest_first=False, action=None).flatten()
+
+        self.cogset['lastAuditLog'] = entry[0].id
+
+        await SAVE_COG_CONFIG(self.cogset, cogname="guilddb")
 
 def setup(bot):
     bot.add_cog(GuildDB(bot))
