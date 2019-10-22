@@ -220,8 +220,33 @@ class GuildDB(commands.Cog):
 
     @commands.Cog.listener()        
     async def on_guild_role_update(self, before, after):
-        pass
+        ###===== IF ROLE CHANGE IS NOT SOMETHING WHICH WE STORE IN THE DATABASE, IGNORE THE CHANGE
+        if not ((after.name != before.name)         or (after.permissions.value != before.permissions.value)
+            or (after.hoisted != before.hoisted)    or (after.colour.value != before.colour.value)):
+            return
 
+        ###===== FETCH DATA FROM THE DATABASE
+        dbroles = await self.db.fetch(pgCmds.GET_GUILD_ROLES, after.guild.id)
+        role_found = False
+
+        ###===== LOOP THROUGH THE DATA STORED IN THE DB
+        for dbrole in dbroles:
+            ###=== IF THE EDITED ROLE ID MATCHES A ROLE ID FROM THE DATABASE
+            if dbrole[0] == after.id:
+                role_found = dbrole
+                break
+        
+        ###===== IF ROLE WAS FOUND IN THE DB STORE
+        if role_found:
+            role_info = after.id, after.name, after.permissions.value, after.hoisted, after.is_default(), after.colour.value, after.created_at, False
+            await self.db.execute(pgCmds.UPDATE_GUILD_ROLE, role_found, role_info, after.guild.id) 
+
+        ###===== IF TOLE WAS NOT FOUND IN THE DB STORE, ADD IT TO THE DB STORE
+        else:
+            role_info = after.id, after.name, after.permissions.value, after.hoisted, after.is_default(), after.colour.value, after.created_at, False
+            await self.db.execute(pgCmds.APPEND_GUILD_ROLES, role_info, after.guild.id)
+
+        return
 
    #-------------------- EMOJI MANAGEMENT --------------------
     @commands.Cog.listener()        
