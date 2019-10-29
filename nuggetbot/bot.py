@@ -247,8 +247,9 @@ class NuggetBot(commands.Bot):
             {"exists":"EXISTS_FUNC_UPDATE_INVITES",         "create":"CREATE_FUNC_UPDATE_INVITES",          "log":"Created UPDATE_INVITES function."},
             {"exists":"EXISTS_FUNC_HAS_MEMBER_LEVELED_UP",  "create":"CREATE_FUNC_HAS_MEMBER_LEVELED_UP",   "log":"Created HAS_MEMBER_LEVELED_UP function."},
             {"exists":"EXISTS_FUNC_ARTIST_INFO",            "create":"CREATE_FUNC_ARTIST_INFO",             "log":"Created ARTIST_INFO function."},
-            {"exists":"EXISTS_FUNC_MEMBER_LEVEL_REWARD",    "create":"CREATE_FUNC_MEMBER_LEVEL_REWARD",     "log":"Created MEMBER_LEVEL_REWARD function."}
-        ]
+            {"exists":"EXISTS_FUNC_MEMBER_LEVEL_REWARD",    "create":"CREATE_FUNC_MEMBER_LEVEL_REWARD",     "log":"Created MEMBER_LEVEL_REWARD function."},
+            {"exists":"CREATE_FUNC_LOG_MSG",                "create":"CREATE_FUNC_LOG_MSG",                 "log":"Created LOG_MESSAGE function."}
+        ]   
 
         dblog.info(" Checking PG database functions.")
 
@@ -406,7 +407,7 @@ class NuggetBot(commands.Bot):
         #    print(self.get_guild(605100382569365573).icon)
         #except Exception as e:
         #    print(e)
-    
+
         try:
             if False:
                 guild = self.get_guild(605100382569365573)
