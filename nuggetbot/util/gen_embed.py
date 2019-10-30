@@ -652,23 +652,6 @@ async def getNuggetHelp(msg, avatar_url, command_prefix, reception_channel_id, s
     
     return embed 
 
-async def getMemberLeveledUP(msg, level, reward, total):
-    embed = discord.Embed(      description=    f"Level: {level} | Reward: {reward} :gem:\n"
-                                                f"Total Gems: {total}",
-                                colour =        0xbe95c6,
-                                timestamp=      datetime.datetime.utcnow(),
-                                type=           "rich"
-                    )
-    embed.set_author(           name=       "Level Up!",
-                                icon_url=   AVATAR_URL_AS(user=msg.author)
-                    )
-    embed.set_thumbnail(        url=        AVATAR_URL_AS(user=msg.author))
-
-    embed.set_footer(           icon_url=   GUILD_URL_AS(msg.guild),
-                                text=       "{0.name}#{0.discriminator}".format(msg.author)
-                    )
-    return embed
-
 async def getUserProfile(msg, info):
     embed = discord.Embed(      description=    f"Level: {info['level']}\n"
                                                 f"Gems: {info['gems']} :gem:\n",

@@ -180,6 +180,7 @@ class DatabaseCmds(object):
         get_member_leaderboard =    "SELECT * FROM members WHERE ishere = TRUE ORDER BY nummsgs DESC LIMIT 10;"
         member_table_empty_test=    "SELECT * FROM members ORDER BY num ASC LIMIT 1"
         EXISTS_MEMBERS_TABLE=       "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'MEMBERS');"
+        LEVELUP_MEMBER=             "SELECT * FROM  levelUpMember(CAST($1 AS INTEGER), CAST($2 AS INTEGER), CAST($3 AS BIGINT))"
 
 
     ### ============================== INVITE TABLE ==============================
@@ -691,154 +692,7 @@ class DatabaseCmds(object):
 
         EXISTS_FUNC_UPDATE_INVITES= "SELECT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'updatestoredinvites')"
         
-
-        # -------------------- HAS_MEMBER_LEVELED_UP --------------------
-        CREATE_FUNC_HAS_MEMBER_LEVELED_UP=  """
-            DO
-            $do$
-            BEGIN
-            IF NOT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'hasmemberleveledup') THEN 
-                CREATE FUNCTION hasMemberLeveledUp(u BIGINT) 
-                RETURNS TABLE (
-                    new_level SMALLINT,
-                    has_leveled_up BOOLEAN
-                ) AS
-                '
-                DECLARE
-                new_level SMALLINT;
-                old_level SMALLINT := (	SELECT level
-                        FROM members 
-                        WHERE user_id = u);
-                new_nummsgs BIGINT := (	SELECT nummsgs
-                        FROM members 
-                        WHERE user_id = u);
-                leveled_up BOOLEAN := 	FALSE;
-
-                BEGIN
-                    CASE 
-                    WHEN new_nummsgs >= 0 AND new_nummsgs < 10 THEN new_level = 0;
-                    WHEN new_nummsgs >= 10 AND new_nummsgs < 75 THEN new_level = 1;
-                    WHEN new_nummsgs >= 75 AND new_nummsgs < 200 THEN new_level = 2;
-                    WHEN new_nummsgs >= 200 AND new_nummsgs < 350 THEN new_level = 3;
-                    WHEN new_nummsgs >= 350 AND new_nummsgs < 500 THEN new_level = 4;
-                    WHEN new_nummsgs >= 500 AND new_nummsgs < 575 THEN new_level = 5;
-                    WHEN new_nummsgs >= 575 AND new_nummsgs < 661 THEN new_level = 6;
-                    WHEN new_nummsgs >= 661 AND new_nummsgs < 760 THEN new_level = 7;
-                    WHEN new_nummsgs >= 760 AND new_nummsgs < 874 THEN new_level = 8;
-                    WHEN new_nummsgs >= 874 AND new_nummsgs < 1005 THEN new_level = 9;
-                    WHEN new_nummsgs >= 1005 AND new_nummsgs < 1156 THEN new_level = 10;
-                    WHEN new_nummsgs >= 1156 AND new_nummsgs < 1318 THEN new_level = 11;
-                    WHEN new_nummsgs >= 1318 AND new_nummsgs < 1503 THEN new_level = 12;
-                    WHEN new_nummsgs >= 1503 AND new_nummsgs < 1713 THEN new_level = 13;
-                    WHEN new_nummsgs >= 1713 AND new_nummsgs < 1953 THEN new_level = 14;
-                    WHEN new_nummsgs >= 1953 AND new_nummsgs < 2226 THEN new_level = 15;
-                    WHEN new_nummsgs >= 2226 AND new_nummsgs < 2538 THEN new_level = 16;
-                    WHEN new_nummsgs >= 2538 AND new_nummsgs < 2893 THEN new_level = 17;
-                    WHEN new_nummsgs >= 2893 AND new_nummsgs < 3298 THEN new_level = 18;
-                    WHEN new_nummsgs >= 3298 AND new_nummsgs < 3760 THEN new_level = 19;
-                    WHEN new_nummsgs >= 3760 AND new_nummsgs < 4286 THEN new_level = 20;
-                    WHEN new_nummsgs >= 4286 AND new_nummsgs < 4843 THEN new_level = 21;
-                    WHEN new_nummsgs >= 4843 AND new_nummsgs < 5473 THEN new_level = 22;
-                    WHEN new_nummsgs >= 5473 AND new_nummsgs < 6184 THEN new_level = 23;
-                    WHEN new_nummsgs >= 6184 AND new_nummsgs < 6988 THEN new_level = 24;
-                    WHEN new_nummsgs >= 6988 AND new_nummsgs < 7896 THEN new_level = 25;
-                    WHEN new_nummsgs >= 7896 AND new_nummsgs < 8922 THEN new_level = 26;
-                    WHEN new_nummsgs >= 8922 AND new_nummsgs < 10082 THEN new_level = 27;
-                    WHEN new_nummsgs >= 10082 AND new_nummsgs < 11393 THEN new_level = 28;
-                    WHEN new_nummsgs >= 11393 AND new_nummsgs < 12874 THEN new_level = 29;
-                    WHEN new_nummsgs >= 12874 AND new_nummsgs < 14548 THEN new_level = 30;
-                    WHEN new_nummsgs >= 14548 AND new_nummsgs < 16294 THEN new_level = 31;
-                    WHEN new_nummsgs >= 16294 AND new_nummsgs < 18249 THEN new_level = 32;
-                    WHEN new_nummsgs >= 18249 AND new_nummsgs < 20439 THEN new_level = 33;
-                    WHEN new_nummsgs >= 20439 AND new_nummsgs < 22892 THEN new_level = 34;
-                    WHEN new_nummsgs >= 22892 AND new_nummsgs < 25639 THEN new_level = 35;
-                    WHEN new_nummsgs >= 25639 AND new_nummsgs < 28716 THEN new_level = 36;
-                    WHEN new_nummsgs >= 28716 AND new_nummsgs < 32162 THEN new_level = 37;
-                    WHEN new_nummsgs >= 32162 AND new_nummsgs < 36021 THEN new_level = 38;
-                    WHEN new_nummsgs >= 36021 AND new_nummsgs < 40344 THEN new_level = 39;
-                    WHEN new_nummsgs >= 40344 AND new_nummsgs < 45185 THEN new_level = 40;
-                    WHEN new_nummsgs >= 45185 AND new_nummsgs < 50155 THEN new_level = 41;
-                    WHEN new_nummsgs >= 50155 AND new_nummsgs < 55672 THEN new_level = 42;
-                    WHEN new_nummsgs >= 55672 AND new_nummsgs < 61796 THEN new_level = 43;
-                    WHEN new_nummsgs >= 61796 AND new_nummsgs < 68594 THEN new_level = 44;
-                    WHEN new_nummsgs >= 68594 AND new_nummsgs < 76139 THEN new_level = 45;
-                    WHEN new_nummsgs >= 76139 AND new_nummsgs < 84514 THEN new_level = 46;
-                    WHEN new_nummsgs >= 84514 AND new_nummsgs < 93811 THEN new_level = 47;
-                    WHEN new_nummsgs >= 93811 AND new_nummsgs < 104130 THEN new_level = 48;
-                    WHEN new_nummsgs >= 104130 AND new_nummsgs < 115584 THEN new_level = 49;
-                    WHEN new_nummsgs >= 115584 AND new_nummsgs < 128298 THEN new_level = 50;
-                    WHEN new_nummsgs >= 128298 AND new_nummsgs < 141769 THEN new_level = 51;
-                    WHEN new_nummsgs >= 141769 AND new_nummsgs < 156655 THEN new_level = 52;
-                    WHEN new_nummsgs >= 156655 AND new_nummsgs < 173104 THEN new_level = 53;
-                    WHEN new_nummsgs >= 173104 AND new_nummsgs < 191280 THEN new_level = 54;
-                    WHEN new_nummsgs >= 191280 AND new_nummsgs < 211364 THEN new_level = 55;
-                    WHEN new_nummsgs >= 211364 AND new_nummsgs < 233557 THEN new_level = 56;
-                    WHEN new_nummsgs >= 233557 AND new_nummsgs < 258080 THEN new_level = 57;
-                    WHEN new_nummsgs >= 258080 AND new_nummsgs < 285178 THEN new_level = 58;
-                    WHEN new_nummsgs >= 285178 AND new_nummsgs < 315122 THEN new_level = 59;
-                    WHEN new_nummsgs >= 315122 AND new_nummsgs < 348210 THEN new_level = 60;
-                    WHEN new_nummsgs >= 348210 AND new_nummsgs < 383031 THEN new_level = 61;
-                    WHEN new_nummsgs >= 383031 AND new_nummsgs < 421334 THEN new_level = 62;
-                    WHEN new_nummsgs >= 421334 AND new_nummsgs < 463467 THEN new_level = 63;
-                    WHEN new_nummsgs >= 463467 AND new_nummsgs < 509814 THEN new_level = 64;
-                    WHEN new_nummsgs >= 509814 AND new_nummsgs < 560795 THEN new_level = 65;
-                    WHEN new_nummsgs >= 560795 AND new_nummsgs < 616874 THEN new_level = 66;
-                    WHEN new_nummsgs >= 616874 AND new_nummsgs < 678561 THEN new_level = 67;
-                    WHEN new_nummsgs >= 678561 AND new_nummsgs < 746417 THEN new_level = 68;
-                    WHEN new_nummsgs >= 746417 AND new_nummsgs < 821059 THEN new_level = 69;
-                    WHEN new_nummsgs >= 821059 AND new_nummsgs < 903165 THEN new_level = 70;
-                    WHEN new_nummsgs >= 903165 AND new_nummsgs < 988966 THEN new_level = 71;
-                    WHEN new_nummsgs >= 988966 AND new_nummsgs < 1082918 THEN new_level = 72;
-                    WHEN new_nummsgs >= 1082918 AND new_nummsgs < 1185795 THEN new_level = 73;
-                    WHEN new_nummsgs >= 1185795 AND new_nummsgs < 1298446 THEN new_level = 74;
-                    WHEN new_nummsgs >= 1298446 AND new_nummsgs < 1421798 THEN new_level = 75;
-                    WHEN new_nummsgs >= 1421798 AND new_nummsgs < 1556869 THEN new_level = 76;
-                    WHEN new_nummsgs >= 1556869 AND new_nummsgs < 1704772 THEN new_level = 77;
-                    WHEN new_nummsgs >= 1704772 AND new_nummsgs < 1866725 THEN new_level = 78;
-                    WHEN new_nummsgs >= 1866725 AND new_nummsgs < 2044064 THEN new_level = 79;
-                    WHEN new_nummsgs >= 2044064 AND new_nummsgs < 2238250 THEN new_level = 80;
-                    WHEN new_nummsgs >= 2238250 AND new_nummsgs < 2439692 THEN new_level = 81;
-                    WHEN new_nummsgs >= 2439692 AND new_nummsgs < 2659264 THEN new_level = 82;
-                    WHEN new_nummsgs >= 2659264 AND new_nummsgs < 2898598 THEN new_level = 83;
-                    WHEN new_nummsgs >= 2898598 AND new_nummsgs < 3159472 THEN new_level = 84;
-                    WHEN new_nummsgs >= 3159472 AND new_nummsgs < 3443824 THEN new_level = 85;
-                    WHEN new_nummsgs >= 3443824 AND new_nummsgs < 3753768 THEN new_level = 86;
-                    WHEN new_nummsgs >= 3753768 AND new_nummsgs < 4091607 THEN new_level = 87;
-                    WHEN new_nummsgs >= 4091607 AND new_nummsgs < 4459852 THEN new_level = 88;
-                    WHEN new_nummsgs >= 4459852 AND new_nummsgs < 4861239 THEN new_level = 89;
-                    WHEN new_nummsgs >= 4861239 AND new_nummsgs < 5298751 THEN new_level = 90;
-                    WHEN new_nummsgs >= 5298751 AND new_nummsgs < 5749145 THEN new_level = 91;
-                    WHEN new_nummsgs >= 5749145 AND new_nummsgs < 6237822 THEN new_level = 92;
-                    WHEN new_nummsgs >= 6237822 AND new_nummsgs < 6768037 THEN new_level = 93;
-                    WHEN new_nummsgs >= 6768037 AND new_nummsgs < 7343320 THEN new_level = 94;
-                    WHEN new_nummsgs >= 7343320 AND new_nummsgs < 7967502 THEN new_level = 95;
-                    WHEN new_nummsgs >= 7967502 AND new_nummsgs < 8644740 THEN new_level = 96;
-                    WHEN new_nummsgs >= 8644740 AND new_nummsgs < 9379543 THEN new_level = 97;
-                    WHEN new_nummsgs >= 9379543 AND new_nummsgs < 10176804 THEN new_level = 98;
-                    WHEN new_nummsgs >= 10176804 AND new_nummsgs < 11041832 THEN new_level = 99;
-                    ELSE new_level = 100;
-                    END CASE;
-                    
-                    IF new_level > old_level THEN
-                    leveled_up = TRUE;
-                    END IF;
-
-                    return QUERY SELECT new_level, leveled_up;
-                END;
-                '
-                LANGUAGE plpgsql
-                COST 200;
-            END IF;
-            END
-            $do$
-            """
-
-        EXISTS_FUNC_HAS_MEMBER_LEVELED_UP= "SELECT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'hasmemberleveledup')"
-        HAS_MEMBER_LEVELED_UP = "SELECT * FROM hasMemberLeveledUp(CAST($1 AS BIGINT))"
-        MEMBER_LEVELED_UP = "UPDATE members SET level = CAST($1 AS INTEGER), gems = CAST($2 AS BIGINT) WHERE user_id = CAST($3 AS BIGINT)"
-
         # -------------------- GEMS --------------------
-
         CREATE_FUNC_MEMBER_LEVEL_REWARD="""        
             DO
             $do$
@@ -962,7 +816,7 @@ class DatabaseCmds(object):
                     END CASE;
 
                     total = reward + old_gems;
-                    return QUERY SELECT reward, total;
+                    return QUERY SELECT reward, total, old_gems;
 
                 END;
                 '
@@ -1163,7 +1017,46 @@ class DatabaseCmds(object):
             $do$
             """
 
-        CREATE_FUNC_LOG_MSG=    "SELECT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'logmembermessage');"
+        EXISTS_FUNC_LOG_MSG=    "SELECT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'logmembermessage');"
+
+        # -------------------- LEVEL_UP_MEMBER --------------------
+
+        EXISTS_FUNC_LEVEL_UP_MEMBER= "SELECT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'levelupmember');"
+
+        CREATE_FUNC_LEVEL_UP_MEMBER= """
+            DO
+            $do$
+            BEGIN
+            IF NOT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'levelupmember') THEN 
+            CREATE FUNCTION levelUpMember(newlevel INTEGER, incgems INTEGER, authid BIGINT) 
+
+            RETURNS TABLE ( 
+                user_gems INTEGER, 
+                user_rank INTEGER
+            ) AS
+            '
+
+            DECLARE
+                oldgems INTEGER := (SELECT gems FROM public.members WHERE user_id = authid);
+                tgems INTEGER := (oldgems + incgems);
+                rank INTEGER  := (Select Count(user_id) from public.members where nummsgs > (Select nummsgs from public.members where user_id = authid));
+
+            BEGIN
+                UPDATE members SET level = newlevel, gems = tgems WHERE user_id = authid;
+
+                return QUERY SELECT tgems, rank + 1;
+            END;
+            '
+            LANGUAGE plpgsql
+            COST 150;
+
+            COMMENT ON FUNCTION logmembermessage IS 'This function both updates a member with their new gems and level within the database and returns thier rank and total gems.';
+
+            END IF;
+            END
+            $do$
+            """
+
 
     ### ============================== COMPOUND DATATYPES ==============================
         #(emoji.id, emoji.ext, emoji.bytes, emoji.timestamp)

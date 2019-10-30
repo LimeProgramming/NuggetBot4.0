@@ -62,7 +62,8 @@ plugins = (
     ('nuggetbot.plugins.delMsgLogging', 'Deleted Message Logging'),
     ('nuggetbot.plugins.memberdms',     'Feedback'),
     ('nuggetbot.plugins.gallery',       'Gallery'),
-    ('nuggetbot.plugins.help',          'Help')
+    ('nuggetbot.plugins.help',          'Help'),
+    ('nuggetbot.plugins.member_leveling', 'Member Leveing')
 )
 
 class ChnlID():
@@ -245,10 +246,10 @@ class NuggetBot(commands.Bot):
         ###===== CREATE DATABASE FUNCTIONS
         database_funtion = [
             {"exists":"EXISTS_FUNC_UPDATE_INVITES",         "create":"CREATE_FUNC_UPDATE_INVITES",          "log":"Created UPDATE_INVITES function."},
-            {"exists":"EXISTS_FUNC_HAS_MEMBER_LEVELED_UP",  "create":"CREATE_FUNC_HAS_MEMBER_LEVELED_UP",   "log":"Created HAS_MEMBER_LEVELED_UP function."},
             {"exists":"EXISTS_FUNC_ARTIST_INFO",            "create":"CREATE_FUNC_ARTIST_INFO",             "log":"Created ARTIST_INFO function."},
             {"exists":"EXISTS_FUNC_MEMBER_LEVEL_REWARD",    "create":"CREATE_FUNC_MEMBER_LEVEL_REWARD",     "log":"Created MEMBER_LEVEL_REWARD function."},
-            {"exists":"CREATE_FUNC_LOG_MSG",                "create":"CREATE_FUNC_LOG_MSG",                 "log":"Created LOG_MESSAGE function."}
+            {"exists":"EXISTS_FUNC_LOG_MSG",                "create":"CREATE_FUNC_LOG_MSG",                 "log":"Created LOG_MESSAGE function."},
+            {"exists":"EXISTS_FUNC_LEVEL_UP_MEMBER",        "create":"CREATE_FUNC_LEVEL_UP_MEMBER",         "log":"Created LEVEL_UP_MEMBER function."}
         ]   
 
         dblog.info(" Checking PG database functions.")
@@ -832,23 +833,6 @@ class NuggetBot(commands.Bot):
                 
                 except Exception as e:
                     print(e)   
-
-        #===== log messages
-        if message.type == discord.MessageType.default and not message.author.bot and message.guild and not message.content.startswith("?"):
-
-            await self.db.execute(pgCmds.ADD_MSG, message.id, message.channel.id, message.guild.id, message.author.id, message.created_at)
-
-            #= MEMBER LEVELING
-            r = await self.db.fetchrow(pgCmds.HAS_MEMBER_LEVELED_UP, message.author.id)
-
-            if r["has_leveled_up"]: 
-                #gets: reward total 
-                g = await self.db.fetchrow(pgCmds.GET_LEVEL_UP_REWARD, message.author.id, r["new_level"])
-                await self.db.execute(pgCmds.MEMBER_LEVELED_UP, r["new_level"], g['total'], message.author.id)
-
-                #= tell user they leveled up
-                embed = await GenEmbed.getMemberLeveledUP(message, level=r["new_level"], reward=g['reward'], total=g['total'])
-                await self.safe_send_message(dest=message.channel, embed=embed)
 
         await NuggetBot.bot.process_commands(message)
 
