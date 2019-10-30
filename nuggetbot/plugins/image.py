@@ -331,6 +331,96 @@ class ImageCog(commands.Cog):
 
         return ava_status
 
+    @staticmethod
+    def GenLevelUPImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], level: int, rank: int, gems: int, nummsgs:int) -> BytesIO:
+        #===== VARS
+        out_image = BytesIO()
+
+        head = os.path.split(os.path.realpath(__file__))[0]
+        imagedir = os.path.join(head, "images")
+
+        mstat = member.status.__str__()
+        if mstat not in ["offline", "online", "dnd", "idle"]:
+            mstat = "online"
+
+        ###===== OPEN STATUS IMAGE
+        status = Image.open(os.path.join(imagedir, f"{mstat}.png")).convert('RGBA')
+
+        ###===== ADD A SMALL BLUR TO THE EDGES OF THE USER AVATAR
+        with Image.open(BytesIO(avatar_bytes)).convert('RGBA') as rgba_avatar:
+
+            RADIUS = 2
+            diam = 2*RADIUS
+    
+            background = Image.new('RGBA', (rgba_avatar.size[0]+diam, rgba_avatar.size[1]+diam), (0,0,0,0))
+            background.paste(rgba_avatar, (RADIUS, RADIUS))
+
+            ###=== CREATE PASTE MASK
+            mask = Image.new('L', background.size, 0)
+            draw = ImageDraw.Draw(mask)
+            x0, y0 = 0, 0
+            x1, y1 = background.size
+            for d in range(diam+RADIUS):
+                x1, y1 = x1-1, y1-1
+                alpha = 255 if d<RADIUS else int(255*(diam+RADIUS-d)/diam)
+                draw.rectangle([x0, y0, x1, y1], outline=alpha)
+                x0, y0 = x0+1, y0+1
+
+            blur = background.filter(ImageFilter.GaussianBlur(RADIUS/2))
+            background.paste(blur, mask=mask)
+            
+            img = Image.alpha_composite(background, status)
+
+        ###===== OPEN THE MAIN BACKGROUND IMAGE FOR THE LEVELUP IMAGE
+        with Image.open(os.path.join(imagedir, "levelupbg2.png")) as background:
+
+            ###=====    ADD THE PROFILE IMAGE
+            background.paste(img, (10, 10), mask=img)
+
+            ###=====    ADD THE GEM IMAGES
+            gem1 = Image.open(os.path.join(imagedir, "gem1.png")).convert('RGBA')
+            gem2 = Image.open(os.path.join(imagedir, "gem2.png")).convert('RGBA')
+            gem3 = Image.open(os.path.join(imagedir, "gem3.png")).convert('RGBA')
+
+            background.paste(gem2, (550, 109), mask=gem2)
+            background.paste(gem1, (577, 109), mask=gem1)
+            background.paste(gem3, (608, 109), mask=gem3)
+
+
+            background.paste(gem1, (187, 64), mask=gem1)
+
+            ###=====    ADD THE TEXT
+            #-------    FONTS
+            lfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
+            zfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
+            sfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Light.ttf"), 32)
+
+            draw = ImageDraw.Draw(background)
+
+            #= username
+            draw.text((160, 105), f"{member.name}#{member.discriminator}", fill=(230, 230, 230, 255), font=sfont)
+            #= Level up
+            draw.text((259, 0), "Level Up", fill=(230, 230, 230, 255), font=lfont)
+            #= Reward
+            draw.text((222, 50), "Reward: 123456", fill=(230, 230, 230, 255), font=zfont)
+            #= Level
+            draw.text((550, 0), "LV:", fill=(230, 230, 230, 255), font=zfont)
+            draw.text((650, 0), f"{level}", fill=(230, 230, 230, 255), font=lfont)
+            #= Rank
+            draw.text((550, 46), f"Rank:", fill=(230, 230, 230, 255), font=zfont)
+            draw.text((650, 46), f"{rank}", fill=(230, 230, 230, 255), font=lfont)
+            #= Gems
+            draw.text((650, 92), f"{gems}", fill=(230, 230, 230, 255), font=lfont)
+
+            background.save(out_image, "png")
+
+
+        out_image.seek(0)
+
+        return out_image
+
+
+
     @commands.command(pass_context=True, hidden=False, name='qrtest', aliases=[])
     async def qrcodetest(self, ctx, *, member: discord.Member = None):
         member = member or ctx.author
@@ -396,6 +486,31 @@ class ImageCog(commands.Cog):
             await ctx.send(f"{text} string value of the scanned QR code.")
 
         return
+
+    @commands.command(pass_context=True, hidden=False, name='leveluptest', aliases=[])
+    async def leveluptest(self, ctx, *, member: discord.Member = None):
+        member = member or ctx.author
+
+        async with ctx.typing():
+            rank = await self.db.fetchval('Select Count(user_id) from public.members where nummsgs > (Select nummsgs from public.members where user_id = CAST($1 AS BIGINT))', member.id)
+            rank = rank + 1 
+
+            level, nummsgs, gems = await self.db.fetchrow('Select level, nummsgs, gems from public.members where user_id = CAST($1 AS BIGINT)', member.id)
+            
+            ###===== GET USER AVATAR AS BYTES
+            avatar_bytes = await member.avatar_url_as(format='png', static_format='webp', size=128).read()
+
+
+            fn = partial(self.GenLevelUPImage, avatar_bytes, member, level, rank, gems, nummsgs)
+            final_buffer = await self.bot.loop.run_in_executor(None, fn)
+
+
+            file = discord.File(filename="circle.png", fp=final_buffer)
+            await ctx.send(file=file)
+
+        return
+
+
 
     @commands.command()
     async def imagetest(self, ctx, *, member: discord.Member = None):

@@ -60,8 +60,19 @@ class MemberLeveling(commands.Cog):
         if msg.type != discord.MessageType.default or msg.author.bot or not msg.guild:
             return
 
-        await self.db.execute(pgCmds.ADD_MSG, msg.id, msg.channel.id, msg.guild.id, msg.author.id, msg.created_at)
+        ###===== WRITE THE DATA TO THE DATABASE
+        r = await self.db.fetchrow(pgCmds.ADD_MSG, msg.id, msg.channel.id, msg.guild.id, msg.author.id, msg.created_at)
 
+
+        #has_leveled_up BOOLEAN, 
+        #new_level SMALLINT, 
+        #old_level SMALLINT
+
+        if r["has_leveled_up"]: 
+            pass
+
+
+        
         ###=== MEMBER LEVELING
         r = await self.db.fetchrow(pgCmds.HAS_MEMBER_LEVELED_UP, message.author.id)
 
