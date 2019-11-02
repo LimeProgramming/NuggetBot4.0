@@ -11,6 +11,7 @@ from typing import Union
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
+from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR
 from .cog_utils import in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF, SAVE_COG_CONFIG, LOAD_COG_CONFIG
 
 import dblogin 
@@ -58,11 +59,31 @@ class GuildDB(commands.Cog):
         arrs.append(arr)
         return arrs
 
+    @staticmethod
+    async def StripMention(content):
+        try:
+            if isinstance(content, int):
+                return content
+
+            #=== SPLIT, REMOVE MENTION WRAPPER AND CONVERT TO INT
+            content = content.replace("<", "").replace("@", "").replace("!", "").replace(">", "")
+            content = int(content)
+            return content
+
+        except (IndexError, ValueError):
+            return False
+
 
   #-------------------- LOCAL COG STUFF --------------------  
     async def on_cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
-            ctx.guild.owner.send(content=f"{ctx.author.mention} tried to use the owner only command{ctx.invoked_with}")
+            await ctx.guild.owner.send(content=f"{ctx.author.mention} tried to use the owner only command{ctx.invoked_with}")
+
+        elif isinstance(error, discord.ext.commands.errors.MissingRequiredArgument):
+            await ctx.send_help(ctx.command)
+
+        elif isinstance(error, discord.ext.commands.errors.MissingPermissions):
+            await ctx.channel.send('Admin permissions are required to use this command.')
 
     async def cog_after_invoke(self, ctx):
         if GuildDB.config.delete_invoking:
@@ -90,19 +111,68 @@ class GuildDB(commands.Cog):
 
 
   #-------------------- COMMANDS --------------------
-    @commands.is_owner()
-    @commands.command(pass_context=True, hidden=True, name='GuildPopulateBans', aliases=[])
-    async def GuildPopulateBans(self, ctx):
-        valid = GuildDB.oneline_valid(ctx.message.content)
+    @commands.has_permissions(administrator=True)
+    @commands.guild_only()
+    @commands.command(pass_context=True, hidden=False, name='logstaff', aliases=[], brief='[Admin] Log history of staff change.')
+    async def cmd_logstaff(self, ctx, *, staff_id: Union[int, str], maker_id=0, received_role=0, removed_role=0, reason="None"):
+        """
+        [Admin] Log history of staff change.
 
-        if not valid:
-            ctx.channel.send(content="`Useage: [p]GuildPopulateBans, [Bot Owner] adds any missing ban information to the database.`")
-            return 
-        
+        Args:
+            staff_id : ID of the member who has been added/removed from staff
+            maker_id : ID of the existing staff who added/removed staff_id from staff. If not provided, it is assumed the owner edited the roles of ex/staff.
+            received_role : Role ID of the staff role which has been applied to the new guy, this is 0 if role was removed.
+            removed_role : Role ID of the staff tole which has been removed from the ex-staff, this is 0 if the role was added.
+            reason : Reason for this changed, limited to 1000 chatactors.
+        """
+
+        ###===== MAKE SURE A ROLE IS EITHER ADDED OR REMOVED.
+        if received_role == 0 and removed_role == 0:
+            await ctx.send("`A role needs to be added or removed.`")
+            await ctx.send_help('logstaff')
+            return
+
+        ###===== ASSUME THE COMMAND INVOKER EDITED THE EX/STAFF
+        if maker_id == 0:
+            maker_id = ctx.author.id
+
+
+        ###===== MAKE SURE ALL VARIABLES WHICH SHOULD BE INTS, ARE INT. 
+        try:
+            maker_id = GuildDB.StripMention(maker_id)
+            staff_id = GuildDB.StripMention(staff_id)
+            maker_id = int(maker_id)
+            received_role = int(received_role)
+            removed_role = int(received_role)
+
+        ###===== IF A VARIABLE IS NOT AN INT, THEN CALL THE USER A MORON.
+        except ValueError:
+            await ctx.send("`All id's provided **must** be a number.`")
+            await ctx.send_help('logstaff')
+            return
+
+        ###===== COMMIT DATA TO DATABASE
+        staff_data = staff_id, maker_id, received_role, removed_role, reason[:1000]
+
+        await self.db.execute(pgCmds.APPEND_GUILD_STAFF, staff_data, ctx.guild.id)
+
+        ###===== GIVE A RETURN SO THE INVOKER DOESN'T THINK THAT NOTHING HAPPENED.
+        embed = discord.Embed(  
+            description=f"Ex/Staff:         <@{staff_id}>"
+                        f"Maker:            <@{maker_id}>"
+                        f"Received Role:    <@{received_role}>"
+                        f"Removed Role:     <@{removed_role}>"
+                        f"Reason:           {reason}", 
+                        colour=     RANDOM_DISCORD_COLOR(),
+                        type=       "rich",
+                        timestamp=  datetime.datetime.utcnow()
+                    )
+
+        await ctx.channel.send(embed=embed)
+
         return
-
  
-  #-------------------- LISTENERS --------------------
+  #-------------------- READY LISTENER --------------------
     @commands.Cog.listener()
     async def on_ready(self):
         ###===== CONNECT TO THE POSTGRE DATABASE    
@@ -175,6 +245,7 @@ class GuildDB(commands.Cog):
         self.cog_ready = True 
 
 
+  #-------------------- OTHER LISTENERS --------------------
     @commands.Cog.listener()        
     async def on_guild_update(self, before, after):
         ###===== OWNER CHECK

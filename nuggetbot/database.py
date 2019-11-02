@@ -460,8 +460,7 @@ class DatabaseCmds(object):
                 icon            DISCORD_ICON,
                 icon_hist       DISCORD_ICON[]      DEFAULT ARRAY[]::DISCORD_ICON[],
                 owner_hist      BIGINT[]            DEFAULT ARRAY[282293589713616896]::BIGINT[],
-                hstaff_hist     BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
-                lstaff_hist     BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
+                staff_hist      GUILD_STAFF[]       DEFAULT ARRAY[]::GUILD_STAFF[],
                 roles           DISCORD_ROLE[]      DEFAULT ARRAY[]::DISCORD_ROLE[],
                 channels        BIGINT[]            DEFAULT ARRAY[]::BIGINT[],
                 bans            DISCORD_BAN[]       DEFAULT ARRAY[]::DISCORD_BAN[],
@@ -493,7 +492,7 @@ class DatabaseCmds(object):
         GET_GUILD_ROLES=        'SELECT roles FROM public.guild WHERE guild_id = CAST($1 AS BIGINT);'
         APPEND_GUILD_EMOJIS=    'UPDATE guild SET emojis = array_append(emojis, $1) WHERE guild_id = CAST($2 AS BIGINT);'
         APPEND_GUILD_BANS="""
-            UPDATE guild 
+            UPDATE public.guild 
             SET 
                 bans = array_append(bans, CAST($1 AS DISCORD_BAN)) 
             WHERE 
@@ -501,7 +500,7 @@ class DatabaseCmds(object):
                 NOT EXISTS (SELECT array_position((SELECT bans From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS DISCORD_BAN)));
             """
         APPEND_GUILD_UNBANS="""
-            UPDATE guild 
+            UPDATE public.guild 
             SET 
                 unbans = array_append(unbans, CAST($1 AS DISCORD_BAN)) 
             WHERE 
@@ -523,6 +522,13 @@ class DatabaseCmds(object):
             WHERE 
                 guild_id = CAST($3 AS BIGINT);
             """
+        APPEND_GUILD_STAFF='''
+            UPDATE public.guild 
+            SET 
+                staff_hist = array_append(staff_hist, CAST($1 AS GUILD_STAFF)) 
+            WHERE
+                guild_id = CAST($2 AS BIGINT)
+            '''
 
         ###RETIRED CODE
         GET_GUILD_GALL_CONFIG=  "SELECT guild_id, gall_nbl, gall_ch, gall_text_exp, gall_user_wl, gall_nbl_links, gall_links FROM guild;"
@@ -1118,7 +1124,7 @@ class DatabaseCmds(object):
             COMMENT ON TYPE discord_ban IS 'Discord ban datatype. It holds the id of the user who has been banned, user id of who banned this user, reason as to why, Audit log id of the ban and timestamp of when this member was banned';
             """
 
-        #staff.id, made staff by id, timestamp.
+        #staff.id, madeer id, received role, removed role, reason, timestamp.
         EXISTS_DISCORD_STAFF=       "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='guild_staff')"
         CREATE_DISCORD_STAFF="""
             DO $$
@@ -1126,16 +1132,20 @@ class DatabaseCmds(object):
                 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'guild_staff') THEN
                     CREATE TYPE guild_staff AS
                     (
-                    user_id     BIGINT,
-                    maker_id    BIGINT,
-                    timestamp   TIMESTAMP
+                    user_id         BIGINT,
+                    maker_id        BIGINT,
+                    received_role   BIGINT,
+                    removed_role    BIGINT,
+                    reason          VARCHAR(1000),
+                    timestamp       TIMESTAMP
                     );
                 END IF;
             END$$;
 
             COMMENT ON TYPE guild_staff IS 'Staff member entry for the guild. This is mostly useful for historial purposes.';
             """
-        
+
+
         #id, name, perms, hoisted, default, colour, date, deleted
         EXISTS_DISCORD_ROLE=        "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_role')"
         CREATE_DISCORD_ROLE="""
