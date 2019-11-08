@@ -63,7 +63,7 @@ plugins = (
     ('nuggetbot.plugins.memberdms',     'Feedback'),
     ('nuggetbot.plugins.gallery',       'Gallery'),
     ('nuggetbot.plugins.help',          'Help'),
-    ('nuggetbot.plugins.member_leveling', 'Member Leveing')
+    ('nuggetbot.plugins.member_leveling', 'Member Leveling')
 )
 
 class ChnlID():
@@ -249,7 +249,8 @@ class NuggetBot(commands.Bot):
             {"exists":"EXISTS_FUNC_ARTIST_INFO",            "create":"CREATE_FUNC_ARTIST_INFO",             "log":"Created ARTIST_INFO function."},
             {"exists":"EXISTS_FUNC_MEMBER_LEVEL_REWARD",    "create":"CREATE_FUNC_MEMBER_LEVEL_REWARD",     "log":"Created MEMBER_LEVEL_REWARD function."},
             {"exists":"EXISTS_FUNC_LOG_MSG",                "create":"CREATE_FUNC_LOG_MSG",                 "log":"Created LOG_MESSAGE function."},
-            {"exists":"EXISTS_FUNC_LEVEL_UP_MEMBER",        "create":"CREATE_FUNC_LEVEL_UP_MEMBER",         "log":"Created LEVEL_UP_MEMBER function."}
+            {"exists":"EXISTS_FUNC_LEVEL_UP_MEMBER",        "create":"CREATE_FUNC_LEVEL_UP_MEMBER",         "log":"Created LEVEL_UP_MEMBER function."},
+            {"exists":"EXISTS_FUNC_MEMBER_PRO_INFO",        "create":"CREATE_FUNC_MEMBER_PRO_INFO",         "log":"Created MEMBER_PRO_INFO function."}
         ]   
 
         dblog.info(" Checking PG database functions.")
@@ -375,7 +376,7 @@ class NuggetBot(commands.Bot):
 
 #======================================== Bot Events ========================================
     async def on_ready(self):
-        print('\rConnected!  NuggetBot v3.1\n')
+        print('\rConnected!  NuggetBot v3.2\n')
 
         self.safe_print("--------------------------------------------------------------------------------")
         self.safe_print("Bot:   {0.name}#{0.discriminator} \t\t| ID: {0.id}".format(self.user))
@@ -409,6 +410,12 @@ class NuggetBot(commands.Bot):
         #except Exception as e:
         #    print(e)
 
+        #guild = self.get_guild(605100382569365573)
+        #lime = guild.get_member(282293589713616896)
+
+        #print(f"member url: {str(lime.avatar_url)}")
+        #print(f"member url: {str(lime.avatar)}")
+        #print(f"member url dir: {dir(lime.avatar_url)}")
         try:
             if False:
                 guild = self.get_guild(605100382569365573)
@@ -755,85 +762,50 @@ class NuggetBot(commands.Bot):
 
     async def on_message(self, message):
 
-        #===== If the bot is still setting up
+        ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.wait_until_ready()
 
-        #===== Block self messages
+        ###===== IGNORE OWN MESSAGES, BOT SHOULD DO THIS AUTOMATICALLY ANYWAY.
         if message.author == self.user:
             return
+
+        #------------------------------ LEGACY BOT CLASS COMMANDS ------------------------------
+        if message.guild and message.guild.id == self.config.target_guild_id and message.clean_content.startswith(self.config.command_prefix):
         
-        #--------------------------------------------------Private feedback system--------------------------------------------------
-        if isinstance(message.channel, discord.abc.PrivateChannel):
-            #=== Handle the cancel serverhide
-            #if message.clean_content.strip().lower() == "{}{}".format(self.config.command_prefix, "cancel_hideserver"):
-            #    await self.cmd_cancel_hideserver(message)
-            #    return
-            
-            #=== Block Feedback without command
-            if message.clean_content.strip().lower().startswith("{}{}".format(self.config.command_prefix, "feedback")):
+            command = message.clean_content[len(self.config.command_prefix):].lower().split(" ")
 
-                srv = self.get_guild(self.config.target_guild_id)
-                srvUser = srv.get_member(message.author.id)
+            if (len(command) > 1) and command[0] in self.bot_oneline_commands:
+                return
 
-                #=== if user is member of guild
-                if not srvUser == None:
+            handler = getattr(self, "cmd_" + command[0], None)
 
-                    #= if user has fresh role
-                    if (self.config.newuser_role in srvUser.roles):
-                        await self.safe_send_message(message.channel,
-                                                    "Not much point in messaging me. \n"
-                                                    "I suggest pinging the helpdesk in <#" + self.config.channels['entrance_gate_id'] + "> to be let in to the rest of the server first.")
-                    #= if user was let into the server
-                    else:
-                        await self.handle_survey(message)
+            if not handler:
+                return
 
-                #if user is not a member of server
-                else:
-                    await self.safe_send_message(message.channel,"It seems you're not a member {0}.\nI suggest joining {0}.".format(srv.name))
-
-        #--------------------------------------------------Everything else--------------------------------------------------
-        if message.guild and message.guild.id == self.config.target_guild_id:
-            
-            #=== Cleanup Dyno messages
-            if (message.author.id == "155149108183695360") and (message.channel.id == self.config.channels['reception_id']) and (message.clean_content.startswith("<:dynoSuccess:314691591484866560> Changed roles for")):
-                asyncio.ensure_future(self._del_msg_later(message, 1.5))
-            
-            #=== Make the commands work
-            if message.clean_content.startswith(self.config.command_prefix):
-                command = message.clean_content[len(self.config.command_prefix):].lower().split(" ")
-
-                if (len(command) > 1) and command[0] in self.bot_oneline_commands:
-                    return
-
-
-                handler = getattr(self, "cmd_" + command[0], None)
-
-                if not handler:
-                    return
-
-                try:
-                    r = await handler(message)
-                    
-                    if isinstance(r, Response):
-                        if r.reply:
-
-                            if r.content and r.embed:
-                                await self.safe_send_message(message.channel, content=r.content, embed=r.embed, expire_in=r.delete_after)
-
-                            elif r.content:
-                                await self.safe_send_message(message.channel, content=r.content, expire_in=r.delete_after)
-                            
-                            elif r.embed:
-                                await self.safe_send_message(message.channel, embed=r.embed, expire_in=r.delete_after)
-
-                        await self.safe_delete_message(message)
-
-                except exceptions.Signal:
-                    raise
+            try:
+                r = await handler(message)
                 
-                except Exception as e:
-                    print(e)   
+                if isinstance(r, Response):
+                    if r.reply:
 
+                        if r.content and r.embed:
+                            await self.safe_send_message(message.channel, content=r.content, embed=r.embed, expire_in=r.delete_after)
+
+                        elif r.content:
+                            await self.safe_send_message(message.channel, content=r.content, expire_in=r.delete_after)
+                        
+                        elif r.embed:
+                            await self.safe_send_message(message.channel, embed=r.embed, expire_in=r.delete_after)
+
+                    await self.safe_delete_message(message)
+
+            except exceptions.Signal:
+                raise
+            
+            except Exception as e:
+                print(e)   
+
+        #------------------------------ UPDATED commands.Bot COMMANDS ------------------------------
         await NuggetBot.bot.process_commands(message)
 
 
@@ -2064,63 +2036,6 @@ class NuggetBot(commands.Bot):
         return Response(reply=False)
 
 
-#======================================== User Help ========================================
-    ###user help
-    @in_reception
-    @is_core
-    async def cmd_nuggethelp(self, msg):
-        """
-        Useage:
-            [prefix]NuggetHelp
-        [Core] Prints a help message for the users.
-        """
-
-        embed = await GenEmbed.getNuggetHelp(   
-            msg = msg, 
-            avatar_url = self.user.avatar_url, 
-            command_prefix = self.config.command_prefix, 
-            reception_channel_id = self.config.channels["reception_id"],
-            self_mention = self.user.mention
-                                            )
-
-        return Response(embed=embed, delete_after=100)
-
-
-#======================================== FUN COMMANDS ========================================
-    @is_core
-    @in_reception
-    async def cmd_leaderboard(self, msg):
-
-        printout = ""
-
-        for i, result in enumerate(await self.db.fetch(DatabaseCmds.get_member_leaderboard)):
-            printout += f"{(i+1)}:\t<@{result['user_id']}>\tLvl: {result['level']}\n"
-
-        embed = discord.Embed(  description=printout,
-                                colour=     RANDOM_DISCORD_COLOR(),
-                                type=       'rich',
-                                timestamp = datetime.datetime.utcnow()
-                            )
-
-        embed.set_author(       name=       "Dragon Roost Leaderboard",
-                                icon_url=   msg.guild.icon_url
-                        )
-        embed.set_footer(       text=       msg.guild.name,
-                                icon_url=   msg.guild.icon_url
-                        )
-
-        return Response(embed=embed, delete_after=120)
-
-    @is_core
-    @in_reception
-    async def cmd_profile(self, msg):
-        info = await self.db.fetchrow(DatabaseCmds.get_member_id, int(msg.author.id))
-
-        embed = await GenEmbed.getUserProfile(msg, info)
-        
-        return Response(embed=embed)
-
-
 #======================================== Staff Commands ========================================
     ###Kick members who have sat in the entrance gate for 14 days or more.
     @has_role(["Minister"])
@@ -2376,16 +2291,7 @@ class NuggetBot(commands.Bot):
 
         return Response(reply=False)
 
-#======================================== GALLARY STUFF ========================================
 
-    #async def delete_logic(self):
-    #fast delete = dict()
-    #                    channelid = list(msgids)
-
-        #id = self.db.fetch(pgCmds.GET_GALL_CHIDS_AFTER, datetime.datetime.utcnow())
-
-        #id2 = [chid for ch["ch_id"] in id]
-    #await self.bot.http.delete_messages(channelID, listofMSGids, reason=reason)
 #======================================== OWNER COMMANDS ========================================
     @owner_only
     async def cmd_restart(self, msg):

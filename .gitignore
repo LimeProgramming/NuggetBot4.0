@@ -26,3 +26,7 @@ nuggetbot/__pycache__/database.cpython-37.pyc
 logs/nuggetbot.log
 nuggetbot/__pycache__/bot.cpython-37.pyc
 images/qrtest2.png
+*.pyc
+nuggetbot/util/__pycache__/gen_embed.cpython-37.pyc
+data/
+nuggetbot/util/__pycache__/

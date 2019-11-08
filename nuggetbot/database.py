@@ -180,7 +180,8 @@ class DatabaseCmds(object):
         get_member_leaderboard =    "SELECT * FROM members WHERE ishere = TRUE ORDER BY nummsgs DESC LIMIT 10;"
         member_table_empty_test=    "SELECT * FROM members ORDER BY num ASC LIMIT 1"
         EXISTS_MEMBERS_TABLE=       "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'MEMBERS');"
-        LEVELUP_MEMBER=             "SELECT * FROM  levelUpMember(CAST($1 AS INTEGER), CAST($2 AS INTEGER), CAST($3 AS BIGINT))"
+        LEVELUP_MEMBER=             "SELECT * FROM levelUpMember(CAST($1 AS INTEGER), CAST($2 AS INTEGER), CAST($3 AS BIGINT))"
+        GET_MEMBER_PROFILE=         "SELECT * FROM memberProfileInfo(CAST($1 AS BIGINT));"
 
 
     ### ============================== INVITE TABLE ==============================
@@ -1044,8 +1045,8 @@ class DatabaseCmds(object):
 
             DECLARE
                 oldgems INTEGER := (SELECT gems FROM public.members WHERE user_id = authid);
-                tgems INTEGER := (oldgems + incgems);
-                rank INTEGER  := (Select Count(user_id) from public.members where nummsgs > (Select nummsgs from public.members where user_id = authid));
+                tgems INTEGER   := (oldgems + incgems);
+                rank INTEGER    := (SELECT Count(*) FROM public.members WHERE nummsgs > (SELECT nummsgs FROM public.members WHERE user_id = authid AND ishere = true));
 
             BEGIN
                 UPDATE members SET level = newlevel, gems = tgems WHERE user_id = authid;
@@ -1063,6 +1064,44 @@ class DatabaseCmds(object):
             $do$
             """
 
+        # -------------------- MEMBER_PROFILE_INFO --------------------
+
+        EXISTS_FUNC_MEMBER_PRO_INFO= "SELECT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'memberprofileinfo');"
+
+        CREATE_FUNC_MEMBER_PRO_INFO= """
+            DO
+            $do$
+            BEGIN
+            IF NOT EXISTS(SELECT * FROM pg_proc WHERE prorettype <> 0 AND proname = 'memberprofileinfo') THEN 
+            CREATE FUNCTION memberProfileInfo(authid BIGINT) 
+
+            RETURNS TABLE ( 
+                user_level SMALLINT,
+                user_nummsgs BIGINT,
+                user_gems INTEGER, 
+                user_rank INTEGER
+            ) AS
+            '
+
+            DECLARE
+                c_level SMALLINT    := (SELECT level FROM public.members WHERE user_id = authid);
+                c_nummsgs BIGINT    := (SELECT nummsgs FROM public.members WHERE user_id = authid);
+                c_gems INTEGER      := (SELECT gems FROM public.members WHERE user_id = authid);
+                c_rank INTEGER      := (SELECT Count(*) FROM public.members WHERE nummsgs > (SELECT nummsgs FROM public.members WHERE user_id = authid AND ishere = true));
+
+            BEGIN
+                return QUERY SELECT c_level, c_nummsgs, c_gems, c_rank + 1;
+            END;
+            '
+            LANGUAGE plpgsql
+            COST 150;
+
+            COMMENT ON FUNCTION logmembermessage IS 'This function returns all the neccessary intformation needed to generate the member profile message, saves the bot querying the database multiple times.';
+
+            END IF;
+            END
+            $do$
+            """
 
     ### ============================== COMPOUND DATATYPES ==============================
         #(emoji.id, emoji.ext, emoji.bytes, emoji.timestamp)

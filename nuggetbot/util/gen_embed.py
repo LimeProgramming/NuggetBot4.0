@@ -594,64 +594,6 @@ async def getRolePermsAdmin(role, msg):
 
 
 
-async def getNuggetHelp(msg, avatar_url, command_prefix, reception_channel_id, self_mention):
-    embed = discord.Embed(  title=      "Self Assignable Roles:",
-                            description="**SFW Roles:**\n"
-                                        "" + command_prefix + "NotifyMe:\tA role that we use to ping people about goings on.\n"
-                                        "" + command_prefix + "Book_Wyrm:\tUsed to access <#304365533619421184> text and voice channels.\n"
-                                        "" + command_prefix + "RP:\tUsed to access the SFW RP channels.\n"
-                                        "" + command_prefix + "Artist:\tArtists who are open to commissions. Plus gain write permissions in <#382167213521633280>\n"
-                                        "\n"
-                                        "**NSFW Roles (NSFW Role required):**\n"
-                                        "" + command_prefix + "RP_Lewd:\tUsed to access the NSFW RP channels.\n"
-                                        "\n",
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow(),
-                            colour=     0x51B5CC
-                        )
-
-    embed.set_author(   name=   "Nugget Help",
-                        icon_url=avatar_url)
-
-    embed.add_field(    name=   "NSFW Access",
-                        value=  "To get access to the NSFW channels just ping staff in <#{}> with your age.".format(reception_channel_id),
-                        inline= False)
-
-    embed.add_field(    name=   "Private Feedback:",
-                        value=  "You can always DM me {} with feedback for the staff.\nFeedback can be submitted anonymously this way.".format(self_mention),
-                        inline= False)
-    
-    embed.add_field(    name=   "Fun Commands:",
-                        value=  f"{command_prefix}RPS <rock/paper/scissors>:\tPlay rock paper scissors with me.\n"
-                                f"{command_prefix}8ball <question>:\tAsk your question and I shall consult the ball of knowledge.\n"
-                                f"{command_prefix}Roll <number>:\tRole a dice, you tell me how high I can go.\n"
-                                f"{command_prefix}Leaderboard:\tTop 10 most popular, I hope I'm on that list.\n",
-                        inline= False
-                    )
-    
-    embed.add_field(    name=   "Art and Commissions:",
-                        value=  
-                                f"{command_prefix}Commissioner:\tAdds commissioner role, meant for people looking for commissions.\n"
-                                f"{command_prefix}FindArtists:\tDMs you info about any artist who have registered with us.\n"
-                                f"{command_prefix}OpenCommissions:\tAdds OpenCommissions role to artists, to show you have slots open.\n"
-                                f"{command_prefix}ArtistRegister <info>: For artists registering their info with us.\n"
-                                f"{command_prefix}PingCommissioners: Artists can ping people with the Commissioner role.\n"
-                                "[Note: expect more info on this subject soon]",
-                        inline= False)
-
-    embed.add_field(    name=   "Need a break?:",
-                        value=  "If you want to hide the server from yourself for a while; "
-                                f"you can post {command_prefix}HideServer <xDxHxMxS/seconds> and "
-                                "I'll try hide the server from you for a bit. You can re-show the server anytime. \n"
-                                "If you're stressed, don't worry: https://www.youtube.com/watch?v=L3HQMbQAWRc,",
-                        inline= False)
-
-    embed.set_footer(   text=    msg.guild.name,
-                        icon_url=GUILD_URL_AS(msg.guild)
-    )
-    
-    return embed 
-
 async def getUserProfile(msg, info):
     embed = discord.Embed(      description=    f"Level: {info['level']}\n"
                                                 f"Gems: {info['gems']} :gem:\n",

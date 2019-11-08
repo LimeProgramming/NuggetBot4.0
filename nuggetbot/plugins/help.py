@@ -6,6 +6,7 @@ from discord.ext import commands
 from nuggetbot.config import Config
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS, escape
 from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, in_channel, in_channel_name, IN_RECEPTION, IS_ANY_STAFF, IS_CORE, IS_HIGH_STAFF, IS_HIGHEST_STAFF
+from .util import checks
 
 class Help(commands.Cog):
     '''
@@ -26,18 +27,26 @@ class Help(commands.Cog):
             await ctx.message.delete()
 
         return
+    
+    async def cog_command_error(self, ctx, error):
+        print(error)
+
 
   #-------------------- COMMANDS --------------------   
-    @IS_HIGHEST_STAFF()
+    @checks.IS_HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=False, name='adminhelp', aliases=['bossHelp'])
     async def cmd_adminhelp(self, ctx):
-        command = ctx.message.content[(len(ctx.prefix) + len(ctx.invoked_with)):]
+        try:
+            command = ctx.message.content[(len(ctx.prefix) + len(ctx.invoked_with)):]
 
-        if command:
-            await ctx.send_help(command)
-        else:
-           await ctx.send_help() 
-        return
+            if command:
+                await ctx.send_help(command)
+            else:
+                await ctx.send_help() 
+            return
+
+        except Exception as e:
+            print(e)
 
     @IS_CORE()
     @IN_RECEPTION()

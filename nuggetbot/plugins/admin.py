@@ -204,7 +204,7 @@ class Admin(commands.Cog):
 
 
   #-------------------- LOCAL COG STUFF --------------------
-    async def on_cog_command_error(self, ctx, error):
+    async def cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
             try:
                 owner = (self.bot.application_info()).owner
@@ -216,6 +216,7 @@ class Admin(commands.Cog):
             return 
 
         if isinstance(error, discord.ext.commands.errors.CheckFailure):
+            print(error)
             pass
 
     async def cog_before_invoke(self, ctx):

@@ -21,10 +21,15 @@ from io import BytesIO
 from typing import Union
 
 from nuggetbot.util.chat_formatting import AVATAR_URL_AS
+from nuggetbot.plugins.cog_utils import GET_AVATAR_BYTES
 
+from pathlib import Path
 import asyncpg
+import asyncio
 import dblogin 
 import uuid
+import yaml
+import datetime
 import qrcode
 import pyzbar.pyzbar
 
@@ -46,6 +51,33 @@ class ImageCog(commands.Cog):
         # create a ClientSession to be used for downloading avatars
         self.session = aiohttp.ClientSession(loop=bot.loop)
 
+  #-------------------- READY LISTENER --------------------
+    @commands.Cog.listener()
+    async def on_ready(self):
+        #await asyncio.sleep(5)
+        #guild = self.bot.get_guild(605100382569365573)
+        #dr = guild.get_member(386352001392312321)
+
+        #print(dr.default_avatar.value)
+        #print(dr.default_avatar.index)
+        #print(dir(dr.default_avatar))
+
+        return
+        await asyncio.sleep(10)
+
+        try:
+            guild = self.bot.get_guild(605100382569365573)
+            lime = guild.get_member(282293589713616896)
+
+            r = await GET_AVATAR_BYTES(user = lime, size = 128)
+            print(r[:10])
+            #await asyncio.sleep(10)
+            #r = await self.GET_AVATAR_BYTES(user = lime, size = 128)
+            #print(r[:10])
+        
+        except Exception as e:
+            print(e)
+
   #-------------------- LOCAL COG STUFF -------------------- 
     async def cog_before_invoke(self, ctx):
         '''THIS IS CALLED BEFORE EVERY COG COMMAND, IT'S SOLE PURPOSE IS TO CONNECT TO THE DATABASE'''
@@ -60,6 +92,8 @@ class ImageCog(commands.Cog):
 
         return
 
+    async def on_cog_command_error(self, ctx, error):
+        print(error)
 
     async def get_avatar(self, user: Union[discord.User, discord.Member]) -> bytes:
 
@@ -419,7 +453,36 @@ class ImageCog(commands.Cog):
 
         return out_image
 
+    @staticmethod
+    def mask_circle_solid(pil_img, background_color, blur_radius, offset=0):
+        background = Image.new(pil_img.mode, pil_img.size, background_color)
 
+        offset = blur_radius * 2 + offset
+        mask = Image.new("L", pil_img.size, 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((offset, offset, pil_img.size[0] - offset, pil_img.size[1] - offset), fill=255)
+        mask = mask.filter(ImageFilter.GaussianBlur(blur_radius))
+
+        return Image.composite(pil_img, background, mask)
+
+    @staticmethod
+    def circle_image_test(avatar_bytes: bytes):
+        ava_status = BytesIO()
+        rgba_avatar = Image.open(BytesIO(avatar_bytes)).convert('RGBA')
+
+        with Image.new("RGBA", (68, 68), (35, 39, 42)) as background:
+            background.paste(rgba_avatar, (2, 2), mask=rgba_avatar)
+
+            im_thumb = ImageCog.mask_circle_solid(background, (35, 39, 42), 2)
+
+        rgba_avatar.close()
+
+        im_thumb.save(ava_status, "png")
+
+        ava_status.seek(0)
+
+        return ava_status
+        #im = Image.open('data/src/lena.jpg')
 
     @commands.command(pass_context=True, hidden=False, name='qrtest', aliases=[])
     async def qrcodetest(self, ctx, *, member: discord.Member = None):
@@ -513,6 +576,26 @@ class ImageCog(commands.Cog):
 
 
     @commands.command()
+    async def circletest(self, ctx, *, member: discord.Member = None):
+        """Display the user's avatar on their colour."""
+
+        # this means that if the user does not supply a member, it will default to the
+        # author of the message.
+        member = member or ctx.author
+
+        async with ctx.typing():
+            avatar_bytes = await GET_AVATAR_BYTES(user = member, size = 64)
+            fn = partial(self.circle_image_test, avatar_bytes)
+
+            final_buffer = await self.bot.loop.run_in_executor(None, fn)
+
+            # prepare the file
+            file = discord.File(filename="circle.png", fp=final_buffer)
+
+            await ctx.send(file=file)
+
+    ### playground code for the profile command
+    @commands.command()
     async def imagetest(self, ctx, *, member: discord.Member = None):
         """Display the user's avatar on their colour."""
 
@@ -525,7 +608,8 @@ class ImageCog(commands.Cog):
 
 
             # grab the user's avatar as bytes
-            avatar_bytes = await member.avatar_url_as(format='png', static_format='webp', size=128).read()
+            avatar_bytes = await GET_AVATAR_BYTES(user = member, size = 128)
+            #avatar_bytes = await member.avatar_url_as(format='png', static_format='webp', size=128).read()
 
             try:
                 rank = await self.db.fetchval('Select Count(user_id) from public.members where nummsgs > (Select nummsgs from public.members where user_id = CAST($1 AS BIGINT))', member.id)
