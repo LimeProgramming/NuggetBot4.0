@@ -346,7 +346,16 @@ class ImageCog(commands.Cog):
                 draw = ImageDraw.Draw(background)
 
                 #= username
-                draw.text((160, 105), f"{member.name}#{member.discriminator}", fill=(230, 230, 230, 255), font=sfont)
+                if len(f"{member.name}#{member.discriminator}") <= 22:
+                    name = f"{member.name}#{member.discriminator}"
+
+                elif len(f"{member.name}") <= 22:
+                    name = f"{member.name}"
+
+                else:
+                    name = f"{member.name}..."
+
+                draw.text((160, 105), name, fill=(230, 230, 230, 255), font=sfont)
                 #= Level
                 draw.text((550, 0), "LV:", fill=(230, 230, 230, 255), font=zfont)
                 draw.text((650, 0), f"{level}", fill=(230, 230, 230, 255), font=lfont)
@@ -431,8 +440,18 @@ class ImageCog(commands.Cog):
 
             draw = ImageDraw.Draw(background)
 
+
             #= username
-            draw.text((160, 105), f"{member.name}#{member.discriminator}", fill=(230, 230, 230, 255), font=sfont)
+            if len(f"{member.name}#{member.discriminator}") <= 22:
+                name = f"{member.name}#{member.discriminator}"
+
+            elif len(f"{member.name}") <= 22:
+                name = f"{member.name}"
+
+            else:
+                name = f"{member.name}..."
+
+            draw.text((160, 105), name, fill=(230, 230, 230, 255), font=sfont)
             #= Level up
             draw.text((259, 0), "Level Up", fill=(230, 230, 230, 255), font=lfont)
             #= Reward

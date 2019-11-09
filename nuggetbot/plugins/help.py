@@ -33,7 +33,7 @@ class Help(commands.Cog):
 
 
   #-------------------- COMMANDS --------------------   
-    @checks.IS_HIGHEST_STAFF()
+    @checks.HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=False, name='adminhelp', aliases=['bossHelp'])
     async def cmd_adminhelp(self, ctx):
         try:
