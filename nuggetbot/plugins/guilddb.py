@@ -12,7 +12,7 @@ from nuggetbot.config import Config
 from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR
-from .cog_utils import in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF, SAVE_COG_CONFIG, LOAD_COG_CONFIG
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 
 import dblogin 
 
@@ -75,7 +75,7 @@ class GuildDB(commands.Cog):
 
 
   #-------------------- LOCAL COG STUFF --------------------  
-    async def on_cog_command_error(self, ctx, error):
+    async def cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
             await ctx.guild.owner.send(content=f"{ctx.author.mention} tried to use the owner only command{ctx.invoked_with}")
 

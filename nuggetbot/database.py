@@ -182,6 +182,7 @@ class DatabaseCmds(object):
         EXISTS_MEMBERS_TABLE=       "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'MEMBERS');"
         LEVELUP_MEMBER=             "SELECT * FROM levelUpMember(CAST($1 AS INTEGER), CAST($2 AS INTEGER), CAST($3 AS BIGINT))"
         GET_MEMBER_PROFILE=         "SELECT * FROM memberProfileInfo(CAST($1 AS BIGINT));"
+        ADDREM_MEMBER_GEMS=         "UPDATE members SET gems = (SELECT gems FROM public.members WHERE user_id = CAST($2 AS BIGINT)) + CAST($1 AS INTEGER) WHERE user_id = CAST($2 AS BIGINT);"
 
 
     ### ============================== INVITE TABLE ==============================

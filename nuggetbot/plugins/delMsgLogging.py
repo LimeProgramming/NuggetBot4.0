@@ -8,9 +8,8 @@ from discord.ext import commands
 from nuggetbot.config import Config
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS, escape
 
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, in_channel, in_channel_name, IS_ANY_STAFF, IS_CORE, IS_HIGH_STAFF, IS_HIGHEST_STAFF
-
-compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
+from .util import checks
 
 class DelMsgLogging(commands.Cog):
     """
@@ -232,8 +231,8 @@ class DelMsgLogging(commands.Cog):
 
   #-------------------- COG COMMANDS --------------------
     
-    @IS_HIGHEST_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='toggledelmsglog', aliases=['toggleDelMsgLog'])
+    @checks.HIGHEST_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='toggledelmsglog', aliases=['toggleDelMsgLog'])
     async def cmd_toggleDelMsgLog(self, ctx):
         """
         Useage:
@@ -255,8 +254,8 @@ class DelMsgLogging(commands.Cog):
         await ctx.channel.send(f"Deleted message logging has been set to {self.cogset['enableDelMsgLog']}")
         return
 
-    @IS_HIGHEST_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='toggledelmsgattach', aliases=['toggleDelMsgAttach'])
+    @checks.HIGHEST_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='toggledelmsgattach', aliases=['toggleDelMsgAttach'])
     async def cmd_toggleDelMsgAttach(self, ctx):
         """
         Useage:
@@ -278,8 +277,8 @@ class DelMsgLogging(commands.Cog):
         await ctx.channel.send(f"Deleted message logging download attachments has been set to {self.cogset['save_attach']}")
         return
 
-    @IS_HIGHEST_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='delmsglogchannel', aliases=['DelMsgLogChannel'])
+    @checks.HIGHEST_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='delmsglogchannel', aliases=['DelMsgLogChannel'])
     async def cmd_DelMsgLogChannel(self, ctx):
         """
         Useage:
@@ -310,8 +309,8 @@ class DelMsgLogging(commands.Cog):
         await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
         return
 
-    @IS_HIGHEST_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='delmsglogmember', aliases=['DelMsgLogMember'])
+    @checks.HIGHEST_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='delmsglogmember', aliases=['DelMsgLogMember'])
     async def cmd_DelMsgLogMember(self, ctx):
         """
         Useage:
@@ -339,8 +338,8 @@ class DelMsgLogging(commands.Cog):
         await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
         return
 
-    @IS_HIGHEST_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='delmsgreportchannel', aliases=['DelMsgReportChannel'])
+    @checks.HIGHEST_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='delmsgreportchannel', aliases=['DelMsgReportChannel'])
     async def cmd_DelMsgReportChannel(self, ctx):
         """
         Useage:

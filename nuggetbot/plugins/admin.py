@@ -18,7 +18,8 @@ from nuggetbot.config import Config
 from nuggetbot.util import gen_embed as GenEmbed
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, IS_HIGH_STAFF, IS_HIGHEST_STAFF, is_owner, turned_off
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
+from .util import checks
 import dblogin 
 
 class GlobalChannel(commands.Converter):
@@ -276,7 +277,7 @@ class Admin(commands.Cog):
 
   #-------------------- COMMANDS --------------------
 
-    @IS_HIGH_STAFF()
+    @checks.HIGH_STAFF()
     @commands.command(pass_context=True, hidden=False, name='loginvites', aliases=['logInvites', 'LogInvites'])
     async def cmd_loginvites(self, ctx):
         """
@@ -318,7 +319,7 @@ class Admin(commands.Cog):
 
         return
 
-    #@is_any_staff
+    @checks.ANY_STAFF()
     @commands.command(pass_context=True, hidden=False, name='userperms', aliases=['UserPerms', 'userPerms'])
     async def cmd_userperms(self, ctx):
         """
@@ -519,7 +520,7 @@ class Admin(commands.Cog):
 
         return    
 
-    #@is_any_staff
+    @checks.ANY_STAFF()
     @commands.command(pass_context=True, hidden=False, name='roleperms', aliases=['RolePerms', 'rolePerms'])
     async def cmd_roleperms(self, ctx):
         """
@@ -695,7 +696,7 @@ class Admin(commands.Cog):
 
         return
 
-    @is_owner()
+    @checks.GUILD_OWNER()
     @commands.command(pass_context=True, hidden=True, name='postaswebhook', aliases=[])
     async def cmd_postaswebhook(self, ctx):
         """
@@ -756,8 +757,8 @@ class Admin(commands.Cog):
 
         return
 
-    @IS_HIGH_STAFF() #new
-    @commands.command(pass_context=True, hidden=True, name='banbyid', aliases=[])
+    @checks.HIGH_STAFF() #new
+    @commands.command(pass_context=True, hidden=False, name='banbyid', aliases=[])
     async def cmd_banbyid(self, ctx):
         """
         Useage:
@@ -780,7 +781,7 @@ class Admin(commands.Cog):
         
         return
     
-    @is_owner()
+    @checks.GUILD_OWNER()
     @commands.command(pass_context=True, hidden=True, name='hoststats', aliases=[])
     async def cmd_hoststats(self, ctx):
         valid = await self.oneline_valid(ctx.message.content)
@@ -857,7 +858,8 @@ class Admin(commands.Cog):
 
         await ctx.channel.send(embed = embed)
         return
-
+    
+    @checks.GUILD_OWNER()
     @commands.command(hidden=True)
     async def load(self, ctx, *, module):
         """Loads a module."""
@@ -868,6 +870,7 @@ class Admin(commands.Cog):
         else:
             await ctx.send('\N{OK HAND SIGN}')
 
+    @checks.GUILD_OWNER()
     @commands.command(hidden=True)
     async def unload(self, ctx, *, module):
         """Unloads a module."""
@@ -884,7 +887,7 @@ class Admin(commands.Cog):
         except commands.ExtensionNotLoaded:
             self.bot.load_extension(module)
 
-
+    @checks.GUILD_OWNER()
     @commands.command(hidden=True)
     async def sudo(self, ctx, channel: Optional[GlobalChannel], who: discord.User, *, command: str):
         """Run a command as another user optionally in another channel."""

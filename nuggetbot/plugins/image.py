@@ -33,6 +33,7 @@ import datetime
 import qrcode
 import pyzbar.pyzbar
 
+from .util import checks
 #import qrtools
 #from qrcode.image.pure import PymagingImage
 

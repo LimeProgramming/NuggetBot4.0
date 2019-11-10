@@ -17,7 +17,7 @@ from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
 
 import dblogin 
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, GET_AVATAR_BYTES, IS_CORE, IN_RECEPTION
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, GET_AVATAR_BYTES
 from .util import checks
 
 
@@ -153,8 +153,7 @@ class MemberLeveling(commands.Cog):
         return
 
 
-  #-------------------- COMMANDS --------------------
-    
+  #-------------------- COMMANDS --------------------  
     #@checks.GUILD_OWNER()
     @commands.command(pass_context=False, hidden=False, name='giftGems', aliases=['giftgems'])
     async def cmd_giftGems(self, ctx, member: discord.Member, gems: int):
@@ -167,9 +166,13 @@ class MemberLeveling(commands.Cog):
 
         async with ctx.typing():
 
+            ###=== WRITE CHANGES TO THE DATABASE
+            await self.db.execute(pgCmds.ADDREM_MEMBER_GEMS, gems, member.id)
+
             ###=== GET THE USERS PFP AS BYTES
             avatar_bytes = await GET_AVATAR_BYTES(user = member, size = 128)
 
+            ###=== SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
             final_buffer = await self.bot.loop.run_in_executor(None, partial(self.GenGiftedGemsImage, avatar_bytes, member, gems))
             
             ###=== SEND THE RETURN IMAGE
@@ -206,8 +209,8 @@ class MemberLeveling(commands.Cog):
             ###=== SEND THE RETURN IMAGE
             await ctx.send(file=discord.File(filename="profile.png", fp=final_buffer))
 
-    @IS_CORE()
-    @IN_RECEPTION()
+    @checks.CORE()
+    @checks.RECEPTION()
     @commands.command(pass_context=False, hidden=False, name='profile', aliases=[])
     async def cmd_profile(self, ctx):
         """Display the user's avatar on their colour."""
@@ -227,8 +230,8 @@ class MemberLeveling(commands.Cog):
             ###=== SEND THE RETURN IMAGE
             await ctx.send(file=discord.File(filename="profile.png", fp=final_buffer))
 
-    @IS_CORE()
-    @IN_RECEPTION()
+    @checks.CORE()
+    @checks.RECEPTION()
     @commands.command(pass_context=False, hidden=False, name='leaderboard', aliases=[])
     async def cmd_leaderboard(self, ctx):
 
@@ -407,7 +410,7 @@ class MemberLeveling(commands.Cog):
             draw = ImageDraw.Draw(background)
 
             #= username
-            draw.text((160, 105), MemberLeveling.__gen_member_name(member), fill=(230, 230, 230, 255), font=sfont)
+            draw.text((160, 105), MemberLeveling.__gen_member_name(member, 40), fill=(230, 230, 230, 255), font=sfont)
             #= Level up
             draw.text((259, 0), "Received", fill=(230, 230, 230, 255), font=lfont)
             #= Reward

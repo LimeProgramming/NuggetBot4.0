@@ -6,9 +6,9 @@ from random import choice, randint
 import random
 from enum import Enum
 
+from .util import checks
 from nuggetbot.config import Config
 from nuggetbot.util.chat_formatting import AVATAR_URL_AS, GUILD_URL_AS, RANDOM_DISCORD_COLOR
-from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
 
 class RPS(Enum):
     rock     = "\N{MOYAI}"
@@ -29,15 +29,17 @@ class Fun(commands.Cog):
         self.bot = bot
         Fun.config = Config()
 
+  #-------------------- LOCAL COG STUFF --------------------
     async def cog_after_invoke(self, ctx):
         if Fun.config.delete_invoking:
             await ctx.message.delete()
 
         return
 
-    #@is_core
+  #-------------------- COG COMMANDS --------------------
+
     #@in_channel([ChnlID.reception, ChnlID.blessrng])
-    @is_core()
+    @checks.CORE()
     @commands.command(pass_context=True, hidden=False, name='rps', aliases=[])
     async def cmd_rps(self, ctx):
         """
@@ -89,9 +91,8 @@ class Fun(commands.Cog):
 
         return
 
-    #@is_core
     #@in_channel([ChnlID.reception, ChnlID.blessrng])
-    @is_core()
+    @checks.CORE()
     @commands.command(pass_context=True, hidden=False, name='8ball', aliases=[])
     async def cmd_8ball(self, ctx):
         """
@@ -136,10 +137,8 @@ class Fun(commands.Cog):
 
         return
 
-
-    #@is_core
     #@in_channel([ChnlID.reception, ChnlID.blessrng])
-    @is_core()
+    @checks.CORE()
     @commands.command(pass_context=True, hidden=False, name='roll', aliases=[])
     async def cmd_roll(self, ctx):
         """

@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from nuggetbot.config import Config
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS, escape
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, in_channel, in_channel_name, IN_RECEPTION, IS_ANY_STAFF, IS_CORE, IS_HIGH_STAFF, IS_HIGHEST_STAFF
+from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 from .util import checks
 
 class Help(commands.Cog):
@@ -48,8 +48,8 @@ class Help(commands.Cog):
         except Exception as e:
             print(e)
 
-    @IS_CORE()
-    @IN_RECEPTION()
+    @checks.CORE()
+    @checks.RECEPTION()
     @commands.command(pass_context=True, hidden=False, name='nuggethelp', aliases=[])
     async def nuggethelp(self, ctx):
         """
