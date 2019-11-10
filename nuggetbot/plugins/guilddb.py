@@ -172,6 +172,7 @@ class GuildDB(commands.Cog):
 
         return
  
+ 
   #-------------------- READY LISTENER --------------------
     @commands.Cog.listener()
     async def on_ready(self):

@@ -222,6 +222,89 @@ def ANY_STAFF(*args):
 
     return commands.check(pred)
 
+##Disables a bot command
+def DISABLED(*args):
+    return commands.check(False)
+
+##########################################################################################################
+###-------------------------- COMMANDS.COMMAND WRAPPERS, DM CHANNELS ALLOWED --------------------------###
+##########################################################################################################
+
+#if user has core_role  or user with admin perm
+def CORE_DM(*args):
+
+    async def pred(ctx):
+        if not ctx:
+            return False 
+
+        guild, invoker = __get_guild_and_invoker(ctx)
+
+        return bool (   (any(role.id in config.roles["user_staff"] for role in invoker.roles))
+                    or  (__admin_or_bgowner(ctx))
+                    )
+
+    return commands.check(pred)
+
+def HIGHEST_STAFF_DM(*args):
+    async def pred(ctx):
+        if not ctx:
+            return False   
+
+        guild, invoker = __get_guild_and_invoker(ctx)
+
+        if  (   (any(role.id in config.roles["admins"] for role in invoker.roles))
+            or  (__admin_or_bgowner(ctx))
+            ):
+
+            return True
+
+        else:    
+            await ctx.channel.send(content="`You lack the permissions to run this command.`")
+            return False
+
+    return commands.check(pred)
+
+##Staff role decor | Bastion or Minister or user with admin perm
+def HIGH_STAFF_DM(*args):
+
+    async def pred(ctx):
+        if not ctx:
+            return False   
+
+        guild, invoker = __get_guild_and_invoker(ctx)
+
+        if  (   (any(role.id in config.roles["high_staff"] for role in invoker.roles))
+            or  (__admin_or_bgowner(ctx))
+            ):
+
+            return True
+
+        else:
+            await ctx.channel.send(content="`You lack the permissions to run this command.`")
+            return False
+
+    return commands.check(pred)
+
+##Staff role decor | Support orBastion or Minister or user with admin perm
+def ANY_STAFF_DM(*args):
+    async def pred(ctx):
+        if not ctx:
+            return False   
+
+        guild, invoker = __get_guild_and_invoker(ctx)
+
+        if  (   (any(role.id in config.roles["any_staff"] for role in invoker.roles))
+            or  (__admin_or_bgowner(ctx))
+            ):
+
+            return True
+
+        else:
+            await ctx.channel.send(content="`You lack the permissions to run this command.`")
+            return False
+
+    return commands.check(pred)
+
 
 ###########################################################################################
 ###------------------------------ SOME CLEANUP FUNCTIONS -------------------------------###
@@ -238,9 +321,15 @@ def __admin_or_bgowner(ctx):
                 or  (ctx.author.id == config.owner_id)
     )
 
+def __get_guild_and_invoker(ctx):
+    guild = ctx.bot.get_guild(config.target_guild_id)
+    invoker = guild.get_member(ctx.author.id)
+
+    return guild, invoker
+
 
 ###########################################################################################
-###------------------------------ SOME CLEANUP FUNCTIONS -------------------------------###
+###--------------------------------- EMBED GENERATORS ----------------------------------###
 ###########################################################################################
 async def __gen_recep_embed(ctx, ch_id):
     embed = discord.Embed(
