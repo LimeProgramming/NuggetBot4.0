@@ -225,6 +225,52 @@ class NewMembers(commands.Cog):
         
         return
 
+  #-------------------- COMMANDS --------------------
+    ###Kick members who have sat in the entrance gate for 14 days or more.
+    @checks.HIGHEST_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='clearEntranceGate', aliases=['clearentrancegate'])
+    async def cmd_clearentrancegate(self, msg):
+        """
+        Useage:
+            [prefix]clearentrancegate
+        [Minister] Kick members who have sat in the entrance gate for 14 days or more.
+        """
+
+        freshRole = discord.utils.get(msg.guild.roles, name=self.config.roles['gated'])
+        coreRole = discord.utils.get(msg.guild.roles, name=self.config.roles['member'])
+        currDateTime = datetime.datetime.utcnow()
+
+        oldFreshUsers = [member for member in msg.guild.members if (freshRole in member.roles) and (coreRole not in member.roles) and ((currDateTime - member.joined_at).days > 13)]
+
+        if len(oldFreshUsers) == 0:
+            return Response(content="No members need to be kicked at this time.", delete_after=10)
+
+        react = await self.ask_yn(msg,
+                             "{} fresh users will be kicked.\nAre you sure you want to continue?".format(len(oldFreshUsers)),
+                             timeout=120,
+                             expire_in=2)
+
+        #===== if user says yes
+        if react:
+            try:
+                for member in oldFreshUsers:
+                    await member.kick(reason=f"Manual clearing of the entrance gate by {msg.author.id}")
+
+                return Response(content="Done, {} members kicked".format(len(oldFreshUsers)), delete_after=10)
+
+            except discord.errors.Forbidden:
+                return Response(content="Can't kick members due to lack of permissions.", delete_after=10)
+
+            except discord.errors.HTTPException:
+                return Response(content="Some error occurred. Go blame discord and try again later.", delete_after=10)
+
+        #===== Time out handing
+        elif react == None:
+            return Response(content="You took too long respond. Cancelling action.", delete_after=10)
+
+        #===== if user says no
+        return Response(content="Alright then, no members kicked.", delete_after=10)
+
   #-------------------- FUNCTIONS --------------------
     @asyncio.coroutine
     async def safe_send_msg_chid(self, chid, content=None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:discord.Message = None, quiet=True):

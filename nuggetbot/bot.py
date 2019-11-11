@@ -650,9 +650,9 @@ class NuggetBot(commands.Bot):
         after_roles = [role.name for role in after.roles]
 
         #===== If a user gets the core role
-        if (self.config.user_role not in before_roles) and (self.config.user_role in after_roles):
+        if (self.config.roles['member'] not in before_roles) and (self.config.roles['member'] in after_roles):
 
-            if self.config.newuser_role in after_roles:
+            if self.config.roles['gated'] in after_roles:
                 #= schedule role removeal
                 await self.schedule_rem_newuser_role(after, daysUntilRemove=7, days=7)
 
@@ -1277,8 +1277,8 @@ class NuggetBot(commands.Bot):
         #===== variable setup
         guild = self.get_guild(self.config.target_guild_id)
         now = datetime.datetime.utcnow()
-        fresh = discord.utils.get(guild.roles, name=self.config.newuser_role)
-        core = discord.utils.get(guild.roles, name=self.config.user_role)
+        fresh = discord.utils.get(guild.roles, name=self.config.roles['gated'])
+        core = discord.utils.get(guild.roles, name=self.config.roles['member'])
 
         for member in guild.members:
             #=== is member has the fresh role and not the core role
@@ -1356,7 +1356,7 @@ class NuggetBot(commands.Bot):
             return
         
         try:
-            await member.remove_roles(discord.utils.get(guild.roles, name=self.config.newuser_role), reason="Auto remove Fresh role")
+            await member.remove_roles(discord.utils.get(guild.roles, name=self.config.roles['gated']), reason="Auto remove Fresh role")
         
             embed = await GenEmbed.genRemNewRole(member=member)
             await self.safe_send_message(report_channel, embed=embed)
@@ -1432,8 +1432,8 @@ class NuggetBot(commands.Bot):
         if member == None:
             return
         
-        freshRole = discord.utils.get(guild.roles, name=self.config.newuser_role)
-        userRole = discord.utils.get(guild.roles, name=self.config.user_role)
+        freshRole = discord.utils.get(guild.roles, name=self.config.roles['gated'])
+        userRole = discord.utils.get(guild.roles, name=self.config.roles['member'])
 
         try:
             #=== if member has fresh role and not core role
@@ -1951,8 +1951,8 @@ class NuggetBot(commands.Bot):
         [Minister] Kick members who have sat in the entrance gate for 14 days or more.
         """
 
-        freshRole = discord.utils.get(msg.guild.roles, name=self.config.newuser_role)
-        coreRole = discord.utils.get(msg.guild.roles, name=self.config.user_role)
+        freshRole = discord.utils.get(msg.guild.roles, name=self.config.roles['gated'])
+        coreRole = discord.utils.get(msg.guild.roles, name=self.config.roles['member'])
         currDateTime = datetime.datetime.utcnow()
 
         oldFreshUsers = [member for member in msg.guild.members if (freshRole in member.roles) and (coreRole not in member.roles) and ((currDateTime - member.joined_at).days > 13)]

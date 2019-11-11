@@ -19,7 +19,7 @@ def in_channel(channel_ids):
 
             if ((not og_msg)
             or (og_msg.channel.id in channel_ids) 
-            or (any(role.name in config.roles["any_staff"] for role in og_msg.author.roles))
+            or (any(role.id in config.roles["any_staff"] for role in og_msg.author.roles))
             or (og_msg.author.guild_permissions.administrator)
             or (og_msg.author.id == config.owner_id)):
                 return await func(self, msg=og_msg)
@@ -41,7 +41,7 @@ def in_channel_name(channel_names):
 
             if ((not og_msg)
             or (og_msg.channel.name in channel_names)
-            or (any(role.name in config.roles["any_staff"] for role in og_msg.author.roles))
+            or (any(role.id in config.roles["any_staff"] for role in og_msg.author.roles))
             or (og_msg.author.guild_permissions.administrator)
             or (og_msg.author.id == config.owner_id)):
                 return await func(self, msg=og_msg)
@@ -61,7 +61,7 @@ def in_reception(func):
 
         if ((not og_msg)
         or (og_msg.channel.id == config.channels["reception_id"]) 
-        or (any(role.name in config.roles["any_staff"] for role in og_msg.author.roles))
+        or (any(role.id in config.roles["any_staff"] for role in og_msg.author.roles))
         or (og_msg.author.guild_permissions.administrator)
         or (og_msg.author.id == config.owner_id)):
             return await func(self, msg=og_msg)
@@ -79,7 +79,7 @@ def is_core(func):
         og_msg = _get_variable('message')
 
         if ((not og_msg)
-        or (any(role.name in config.roles["user_staff"] for role in og_msg.author.roles))
+        or (any(role.id in config.roles["user_staff"] for role in og_msg.author.roles))
         or (og_msg.author.guild_permissions.administrator)
         or (og_msg.author.id == config.owner_id)):
             return await func(self, msg=og_msg)
@@ -99,7 +99,7 @@ def has_role(role_name):
 
             if ((not og_msg)
             or (any(role.name in role_name for role in og_msg.author.roles))
-            or (any(role.name in config.roles["any_staff"] for role in og_msg.author.roles))
+            or (any(role.id in config.roles["any_staff"] for role in og_msg.author.roles))
             or (og_msg.author.guild_permissions.administrator)
             or (og_msg.author.id == config.owner_id)):
                 return await func(self, msg=og_msg)
@@ -119,7 +119,7 @@ def is_high_staff(func):
         og_msg = _get_variable('message')
 
         if ((not og_msg)
-        or (any(role.name in config.roles["high_staff"] for role in og_msg.author.roles))
+        or (any(role.id in config.roles["high_staff"] for role in og_msg.author.roles))
         or (og_msg.author.guild_permissions.administrator)
         or (og_msg.author.id == config.owner_id)):
             return await func(self, msg=og_msg)
@@ -137,7 +137,7 @@ def is_any_staff(func):
         og_msg = _get_variable('message')
 
         if ((not og_msg)
-        or (any(role.name in config.roles["any_staff"] for role in og_msg.author.roles))
+        or (any(role.id in config.roles["any_staff"] for role in og_msg.author.roles))
         or (og_msg.author.guild_permissions.administrator)
         or (og_msg.author.id == config.owner_id)):
             return await func(self, msg=og_msg)
