@@ -4,6 +4,7 @@ asyncpg
 apscheduler
 sqlalchemy
 pillow
+PYyaml
 
 
 #Encode QR codes

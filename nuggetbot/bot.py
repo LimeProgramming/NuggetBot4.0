@@ -634,94 +634,6 @@ class NuggetBot(commands.Bot):
 
         return
 
-    #updated
-    async def on_member_join(self, m): 
-        #===== If the bot is still setting up
-        await self.wait_until_ready()
-
-        #--------------------------------------------------get the invite info--------------------------------------------------
-        invite = await self._get_invite_used()
-
-        #--------------------------------------------------New User Logging--------------------------------------------------
-        embed = await GenEmbed.getMemJoinStaff(member=m, invite=invite)
-        await self.safe_send_message(dest=m.guild.get_channel(self.config.channels['bot_log']), embed=embed)
-
-        #-------------------------------------------------- Welcome message --------------------------------------------------
-        fmt = random.choice([f'Oh {m.mention} steps up to my dinner plate, I mean to {m.guild.name}!',
-                            f"I'm so excited to have {m.mention} join us, that I think I'll tear up the couch!",
-                            f"Well dip me in batter and call me a nugget, {m.mention} has joined us at {m.guild.name}!",
-                            f"The gates of {m.guild.name} have opened to: {m.mention}.",
-                            f"Attention {m.mention}, all new members of {m.guild.name} must be approved by me and I approve of you *hugs*."])
-
-        #fmt += "\nPlease give the rules in <#" + self.config.channels['public_rules_id'] + "> a read and when you're ready make a post in <#" + self.config.channels['entrance_gate_id'] + "> saying that you agreed to the rules."
-
-        await asyncio.sleep(0.5)
-        welMSG = await self.safe_send_message(m.guild.get_channel(self.config.channels['bot_log']), fmt)
-
-        #-------------------------------------------------- Update Database --------------------------------------------------
-        await self.db.execute(pgCmds.ADD_WEL_MSG, welMSG.id, welMSG.channel.id, welMSG.guild.id, m.id)
-        await self.db.execute(pgCmds.ADD_MEMBER_FUNC, m.id, m.joined_at, m.created_at)
-
-        #-------------------------------------------------- AUTO ROLES --------------------------------------------------
-        if self.config.roles["autorole"]:
-            fresh = discord.utils.get(m.guild.roles, name=self.config.roles["autorole"])
-            await m.add_roles(fresh, reason="Auto Roles")
-
-        #-------------------------------------------------- Schedule a kick --------------------------------------------------
-        await self.schedule_kick(m, daysUntilKick=14, days=14)
-
-    async def on_member_remove(self, m):
-        #===== If the bot is still setting up
-        await self.wait_until_ready()
-
-        #===== Ignore non target servers
-        if m.guild.id != self.config.target_guild_id:
-            return 
-        
-        #--------------------------------------------------Cancel scheduled kick--------------------------------------------------
-        await self.cancel_scheduled_kick(member=m)
-
-        #-------------------------------------------------- IF MEMBER IS KICKED OR BANNED --------------------------------------------------
-        #===== WAIT A BIT TO MAKE SURE THE GUILD AUDIT LOGS ARE UPDATED BEFORE READING THEM
-        await asyncio.sleep(0.2)
-
-        banOrKick = list() 
-        past_id = discord.utils.time_snowflake(datetime.datetime.utcnow() - datetime.timedelta(seconds=10), high=True)
-
-        try:
-            for i in [discord.AuditLogAction.ban, discord.AuditLogAction.kick]:
-
-                async for entry in m.guild.audit_logs(limit=30, action=i, oldest_first=False):
-                    if entry.id >= past_id and entry.target.id == m.id:
-
-                        if banOrKick:
-                            if entry.id > banOrKick[4]:
-                                banOrKick = [entry.action, entry.target, entry.user, entry.reason or "None", entry.id]
-
-                        else:
-                            banOrKick = [entry.action, entry.target, entry.user, entry.reason or "None", entry.id]
-
-        except discord.errors.Forbidden:
-            self.safe_print("[Info]  Missing view_audit_log permission.")
-
-        except discord.errors.HTTPException:
-            self.safe_print("[Info]  HTTP error occured, likly being rate limited or blocked by cloudflare. Restart recommended.")
-
-        #--------------------------------------------------Removed User Logging--------------------------------------------------
-        embed = await GenEmbed.getMemLeaveStaff(m, banOrKick)
-        await self.safe_send_msg_chid(self.config.channels['bot_log'], embed=embed)
-
-        #=public version
-        if bool([x for x in m.roles if x.name == self.config.user_role]):
-
-            embed = await GenEmbed.getMemLeaveUser(m, banOrKick)
-            await self.safe_send_msg_chid(self.config.channels['public_bot_log'], embed=embed)
-
-        #--------------------------------------------------Remove User Welcome Messages--------------------------------------------------
-        await self.del_user_welcome(m)
-        
-        #--------------------------------------------------Update Database--------------------------------------------------
-        await self.db.execute(pgCmds.REMOVE_MEMBER_FUNC, m.id)
 
     async def on_member_update(self, before, after):
         """When there is an update to a users user data"""
@@ -810,12 +722,12 @@ class NuggetBot(commands.Bot):
 
 
 #======================================== Custom Functions ========================================
-    #updated
+    #updated ##cut
     async def del_user_welcome(self, user):
         """Custom func to delete a users welcome message"""
         
         #===== get any and all user welcome messages from the database
-        welcomeMessages = await self.db.fetch(pgCmds.GET_MEM_WEL_MSG, int(user.id))
+        welcomeMessages = await self.db.fetch(pgCmds.GET_MEM_WEL_MSG, user.id)
         if welcomeMessages:
             for MYDM in welcomeMessages:
                 #= create a fake message object to delete the welcome message
@@ -1056,7 +968,7 @@ class NuggetBot(commands.Bot):
             if not quiet:
                 self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", message not found")
     
-    #updated
+    #updated 
     async def safe_delete_message_id(self, message, channel, reason=None, quiet=False):
         """
         Message ID's are to be routed though here
@@ -1155,7 +1067,7 @@ class NuggetBot(commands.Bot):
 
         return False
 
-    ###===== Invite stuff ===== #updated
+    ###===== Invite stuff ===== #updated #cut
     async def _get_invite_info(self, quiet=False):
         """Returns a dict with the information on the invites of selected guild"""
 
@@ -1209,7 +1121,7 @@ class NuggetBot(commands.Bot):
         else:
             return inviteLog
 
-    #updated
+    #updated ###cut
     async def _get_invite_used(self):
         """
         When called it tries to find the invite used by calling the equivalent handler.
@@ -1236,7 +1148,7 @@ class NuggetBot(commands.Bot):
 
         return invite
 
-    #updated untested
+    #updated untested ###cut
     async def _get_invite_used_handler(self, current_invite_info):
         """
         Tries to find which invite was used by a user joining.
@@ -1302,15 +1214,7 @@ class NuggetBot(commands.Bot):
             else:
                 MRLoggedMessage = MRLoggedMessage["timestamp"] + datetime.timedelta(seconds = 1)
 
-            #if ((channel.id in [self.config.channels['entrance_gate_id'],
-            #                    self.config.channels['ministry_archive_id'],
-            #                    self.config.channels['reception_id'],
-            #                    self.config.channels['servey_id'],
-            #                    self.config.channels['sys_ops_id'],
-            #                    self.config.channels['nugget_welcome_id'],
-            #                    self.config.channels['public_ministry_archive_id'],
-            #                    self.config.channels['embassy_id'],
-            #                    self.config.channels['warning_log_id']])
+
 
             #or (channel.permissions_for(guild.get_member(self.user.id)).read_message_history == False)):
             #    continue
@@ -1506,6 +1410,7 @@ class NuggetBot(commands.Bot):
                                kwargs={"func": "_kick_entrance",
                                        "arg": str(member.id)})
 
+    #cut
     async def _kick_entrance(self, user_id):
         """
         [Assumed to be called by the scheduler]
@@ -1537,7 +1442,7 @@ class NuggetBot(commands.Bot):
                 await member.kick(reason="Waited in entrance for too long.")
 
                 #= report event
-                embed = await GenEmbed.genKickEntrance(member, self.config.channels['entrance_gate_id'])
+                embed = await GenEmbed.genKickEntrance(member, self.config.channels['entrance_gate'])
                 await self.safe_send_message(report_channel, embed=embed)
         
         #===== Error if bot lacks permission
@@ -1678,14 +1583,14 @@ class NuggetBot(commands.Bot):
         #===== Error if bot lacks permission
         except discord.errors.Forbidden:
             self.safe_print("[Error] (Scheduled event) could not complete show server for a user.")
-            await self.safe_send_message(discord.Object(id=self.config.channels['ministry_archive_id']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
+            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
             await self.safe_send_message(msg.author, "```cs\n# Permission Error```\nI do not have permission to manage roles, so I can't un-hide the server for you.")
             return None
         
         #===== Error for generic error, eg discord api gateway down
         except discord.errors.HTTPException:
             self.safe_print("[Error] (Scheduled event) could not complete show server for a user.")
-            await self.safe_send_message(discord.Object(id=self.config.channels['ministry_archive_id']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
+            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
             await self.safe_send_message(msg.author, "```cs\n# Generic Error```\nDue to an error I can't un-hide the server for you.")
             return None
 
@@ -1741,12 +1646,12 @@ class NuggetBot(commands.Bot):
 
         except discord.errors.Forbidden:
             self.safe_print('[Error] (Scheduled event) could not complete "hide server" for a user.')
-            await self.safe_send_message(discord.Object(id=self.config.channels['ministry_archive_id']), 'I could not complete "hide server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
+            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "hide server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
             return None
 
         except discord.errors.HTTPException:
             self.safe_print('[Error] (Scheduled event) could not complete "hide server" for a user.')
-            await self.safe_send_message(discord.Object(id=self.config.channels['ministry_archive_id']), 'I could not complete "hide server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
+            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "hide server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
             return None
 
         await self.safe_send_message(member, embed=embed)
@@ -1781,12 +1686,12 @@ class NuggetBot(commands.Bot):
         #===== Error if bot lacks permission
         except discord.errors.Forbidden:
             self.safe_print("[Error] (Scheduled event) could not complete show server for a user.")
-            await self.safe_send_message(discord.Object(id=self.config.channels['ministry_archive_id']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
+            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
         
         #===== Error for generic error, eg discord api gateway down
         except discord.errors.HTTPException:
             self.safe_print("[Error] (Scheduled event) could not complete show server for a user.")
-            await self.safe_send_message(discord.Object(id=self.config.channels['ministry_archive_id']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
+            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
 
         #===== Dm the user
         embed = discord.Embed(  description="{} has been made available to you again.\n"

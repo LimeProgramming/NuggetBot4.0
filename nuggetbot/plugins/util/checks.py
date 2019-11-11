@@ -122,7 +122,7 @@ def RECEPTION(*args):
             return False 
 
         if  (  (ctx.channel.id == config.channels["reception_id"]) 
-            or (any(role.name in config.roles["any_staff"] for role in ctx.author.roles))
+            or (any(role.id in config.roles["any_staff"] for role in ctx.author.roles))
             or (__admin_or_bgowner(ctx))
             ):
             return True

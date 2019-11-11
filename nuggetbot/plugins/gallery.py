@@ -57,7 +57,7 @@ class Gallery(commands.Cog):
 
         return
 
-    async def on_cog_command_error(self, ctx, error):
+    async def cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
             try:
                 owner = (self.bot.application_info()).owner

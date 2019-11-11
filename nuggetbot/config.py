@@ -42,39 +42,38 @@ class Config:
       #-------------------------------------------------- CHANNELS --------------------------------------------------
         self.channels = {}
 
-        self.channels['bot_log']=        config.get('Guild', 'bot_log',          fallback=default_value)
-        self.channels['public_bot_log']= config.get('Guild', 'public_bot_log',   fallback=default_value)
-        self.channels['feedback_id']=    config.get('Guild', 'feedback_id',      fallback=default_value)
-        self.channels['reception_id']=   config.get('Guild', 'reception_id',     fallback=default_value)
-        #self.channels['bot_log_id'] = config.getint('guild', 'bot_log', fallback=None)
-
-        #self.channels['entrance_gate_id'] = config.getint('guild', 'entrance_gate_id', fallback=default_value)
-
-        #self.channels['reception_id'] = config.getint('guild', 'reception_channel', fallback=default_value)
+        self.channels['bot_log']=                       config.get( 'Guild', 'bot_log',                  fallback=default_value)
+        self.channels['public_bot_log']=                config.get( 'Guild', 'public_bot_log',           fallback=default_value)
+        self.channels['feedback_id']=                   config.get( 'Guild', 'feedback_id',              fallback=default_value)
+        self.channels['reception_id']=                  config.get( 'Guild', 'reception_id',             fallback=default_value)
 
 
-        self.channels['warning_log_id']=        config.getint('Guild', 'warning_log',   fallback=default_value)
-        self.channels['embassy_id']=            config.getint('Guild', 'embassy',       fallback=default_value)
-        self.channels['nugget_welcome_id']=     config.getint('Guild', 'nugget_welcome_channel',    fallback=default_value)
-        self.channels['ministry_archive_id']=   config.getint('Guild', 'ministry_archive_channel',  fallback=default_value)
-        self.channels['public_ministry_archive_id']= config.getint('Guild', 'public_ministry_archive_channel', fallback=default_value)
-        self.channels['entrance_gate_id']= config.getint('Guild', 'entrance_gate_id', fallback=default_value)
-        self.channels['sys_ops_id']= config.getint('Guild', 'sys_ops_channel', fallback=default_value)
-        self.channels['servey_id']= config.getint('Guild', 'servey_channel', fallback=default_value)
-        self.channels['public_rules_id']= config.getint('Guild', 'public_rules', fallback=default_value)
+        self.channels['nugget_welcome_id']=             config.getint(  'Guild', 'nugget_welcome_channel',    fallback=default_value)
+        self.channels['entrance_gate']=              config.getint(  'Guild', 'entrance_gate',      fallback=default_value)
+        self.channels['public_rules_id']=               config.getint(  'Guild', 'public_rules',          fallback=default_value)
         
       #-------------------------------------------------- ROLES --------------------------------------------------
         self.roles = {}
+    
+       #===== MEMBER ROLES
+        self.roles['member']=                           config.getint(  'Roles', 'Member',          fallback=None)
+        self.roles['newmember']=                        config.getint(  'Roles', 'New-Member',      fallback=None)
+        self.roles['gated']=                            config.getint(  'Roles', 'Gated',           fallback=None)
+        autoroles=                  self.none_if_empty( config.get(     'Roles', 'Auto-Roles',      fallback=None))
 
-        self.roles['admin']=    config.get('Roles', 'Admin',    fallback=ConfigDefaults.admin_role)
-        self.roles['mod']=      config.get('Roles', 'Mod',      fallback=ConfigDefaults.mod_role)
-        self.roles['tmod']=     config.get('Roles', 'Tmod',     fallback=ConfigDefaults.tmod_role)
-        self.roles['user']=     config.get('Roles', 'User',     fallback=ConfigDefaults.user_role)
-        self.roles['newuser']=  config.get('Roles', 'Newuser',  fallback=ConfigDefaults.newuser_role)
-        self.roles['autorole']= config.get('Roles', 'Autorole', fallback=None)
+        if autoroles:
+            self.roles['autoroles']= self.split_id_list(autoroles)
+        else:
+            self.roles['autoroles'] = False
 
-        self.user_role=     self.roles['user']
-        self.newuser_role=  self.roles['newuser']
+        self.roles["uninformed"]=                       config.getint(  'Roles', 'Uninformed',      fallback=None)
+
+       #===== STAFF ROLES
+
+        self.roles['admin']=                            config.getint('Roles', 'Admin',    fallback=ConfigDefaults.admin_role)
+        self.roles['mod']=                              config.getint('Roles', 'Mod',      fallback=ConfigDefaults.mod_role)
+        self.roles['tmod']=                             config.getint('Roles', 'Tmod',     fallback=ConfigDefaults.tmod_role)
+
 
         self.roles['high_staff']= [self.roles['admin'], self.roles['mod']]
         self.roles['any_staff']=  [self.roles['admin'], self.roles['mod'], self.roles['tmod']]
@@ -197,13 +196,6 @@ class Config:
                     preface=self._confpreface2
                 )               
 
-        if not self.channels["servey_id"]:
-            raise HelpfulError(
-                "servey_channel channel has not been specified in the config.",
-                "Add one",
-                preface=self._confpreface
-            )
-
         if not self.channels["reception_id"]:
             raise HelpfulError(
                 "Reception channel has not been specified in the config.",
@@ -268,10 +260,11 @@ class Config:
             (list) Set of Discord id's converted to an int.
         '''
 
-        #===== REMOVE SOME COMMON ILLEGAL CHARACTERS
-        strids = self.__rem_illegal(strids)
+        if not isinstance(strids, list):
+            #=== REMOVE SOME COMMON ILLEGAL CHARACTERS
+            strids = self.__rem_illegal(strids)
+            strids = strids.split(" ")
 
-        strids = strids.split(" ")
         strid = ""
         intids = []
 
@@ -294,7 +287,7 @@ class Config:
                 preface=self._confpreface2
             )
 
-        #===== RETURN A SET OF INTS
+        #===== RETURN A LIST OF INTS    
         return intids
         
     def time_pat_to_hrs(self, t):

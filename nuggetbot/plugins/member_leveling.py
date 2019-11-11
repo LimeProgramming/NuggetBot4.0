@@ -154,7 +154,7 @@ class MemberLeveling(commands.Cog):
 
 
   #-------------------- COMMANDS --------------------  
-    #@checks.GUILD_OWNER()
+    @checks.GUILD_OWNER()
     @commands.command(pass_context=False, hidden=False, name='giftGems', aliases=['giftgems'])
     async def cmd_giftGems(self, ctx, member: discord.Member, gems: int):
         """
