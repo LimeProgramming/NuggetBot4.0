@@ -30,6 +30,7 @@
 
 from discord.ext import commands
 import asyncio
+from nuggetbot import exceptions
 
 def to_emoji(c):
     base = 0x1f1e6
@@ -43,15 +44,19 @@ class Test(commands.Cog):
 
 
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_ready(self):
         return
-        if message.author.bot:
-            return 
+        #test = self.bot.get_guild(348609968292888577)
+        #for e in test.emojis:
+        #    if e.animated:
+        #        print("{0.name}:{0.id}".format(e))
 
-        try:    
-            await message.channel.send("Test")
-        except Exception as e:
-            print(e)
+        #raise exceptions.PostAsWebhook("This issue is a test, please ignore. <a:foxban:405724216197906455>")
+
+    @commands.Cog.listener()
+    async def on_message(self, msg):
+        return
+        print(msg.clean_content)
 
 
 def setup(bot):

@@ -1,28 +1,23 @@
-import re
-import sys
-import json
+import discord
+from discord.ext import commands
 import asyncio
 import aiohttp
-import discord
-import asyncpg
-import logging
+import time #TIME.SLEEP
+from random import randint
 import datetime
-
-from discord.ext import commands
-
-
-# import os
-# import time
-# import random
-# import asyncio
-# import traceback
-
-# from enum import Enum
-# from random import randint
-# from functools import wraps
-# from discord.ext.commands.bot import _get_variable
-
-# test imports
+import sys
+import os
+import random
+import json
+import re
+from functools import wraps
+#from discord.ext.commands.bot import _get_variable
+import asyncio
+import asyncpg
+import time
+from enum import Enum
+import logging
+import traceback
 from PIL import Image
 from io import BytesIO
 
@@ -70,8 +65,16 @@ plugins = (
     ('nuggetbot.plugins.help',          'Help'),
     ('nuggetbot.plugins.member_leveling', 'Member Leveling')
 )
-#    ('nuggetbot.plugins.new_members',   'New Members')
-#)
+
+class ChnlID():
+    reception = int()
+    giveaway = int()
+
+    artistcorner = "463559553775042562"
+    commissions = "382167265673609226"
+    advertself = "382167213521633280"
+    nsfwadvertself = "392465704865103873"
+    blessrng = "436548720515874817"
 
 class NuggetBot(commands.Bot):
 
@@ -303,6 +306,13 @@ class NuggetBot(commands.Bot):
 
         return
 
+    async def setup_chnlID(self):
+        """
+        Some permission wrappers need an ID but I can't feed them this ID from self, so an external class is used.
+        """
+        ChnlID.reception = self.config.channels['reception_id']
+        ChnlID.giveaway = self.config.gvwy_channel_id
+
     async def minimum_permissions_check(self, ch_reqs=['send_messages', 'add_reactions', 'create_instant_invite', 'attach_files'], guild_reqs=['kick_members']):
 
         raw_perms = ['create_instant_invite', 'kick_members', 'ban_members', 'administrator', 
@@ -395,6 +405,17 @@ class NuggetBot(commands.Bot):
         except Exception as e:
             print(e)
 
+        #try:
+        #    print(self.get_guild(605100382569365573).icon)
+        #except Exception as e:
+        #    print(e)
+
+        #guild = self.get_guild(605100382569365573)
+        #lime = guild.get_member(282293589713616896)
+
+        #print(f"member url: {str(lime.avatar_url)}")
+        #print(f"member url: {str(lime.avatar)}")
+        #print(f"member url dir: {dir(lime.avatar_url)}")
         try:
             if False:
                 guild = self.get_guild(605100382569365573)
@@ -510,6 +531,7 @@ class NuggetBot(commands.Bot):
        #===== scheduler
         self.scheduler.start()
         self.scheduler.print_jobs()
+        await self.check_new_members()
 
         #ch = self.get_guild(605100382569365573).owner
         #print(AVATAR_URL_AS(user=ch))
@@ -548,20 +570,6 @@ class NuggetBot(commands.Bot):
             await self.db.close()
             await self.logout()
             await self.close()
-
-        elif ex_type == exceptions.PostAsWebhook:
-
-            channel = self.get_channel(614956834771566594)
-            Webhook = discord.utils.get(await channel.webhooks(), name='NugBotErrors')
-
-            await Webhook.send(
-                content=        ex.message,
-                username=       "NuggetBotErrors",
-                avatar_url=     self.user.avatar_url,
-                tts=            False,
-                files=          None,
-                embeds=         None
-            )
 
         else:
             #pass
@@ -626,6 +634,7 @@ class NuggetBot(commands.Bot):
 
         return
 
+
     async def on_member_update(self, before, after):
         """When there is an update to a users user data"""
 
@@ -639,6 +648,22 @@ class NuggetBot(commands.Bot):
         #===== Gets the names of the roles
         before_roles = [role.name for role in before.roles]
         after_roles = [role.name for role in after.roles]
+
+        #===== If a user gets the core role
+        if (self.config.roles['member'] not in before_roles) and (self.config.roles['member'] in after_roles):
+
+            if self.config.roles['gated'] in after_roles:
+                #= schedule role removeal
+                await self.schedule_rem_newuser_role(after, daysUntilRemove=7, days=7)
+
+                #= cancel the kick
+                await self.cancel_scheduled_kick(after)
+
+                #= Tell the users a new comer has joined
+                embed = await GenEmbed.getMemJoinUser(after)
+                await self.safe_send_msg_chid(self.config.channels['public_bot_log'], embed=embed)
+
+            await self.del_user_welcome(after)
 
         #===== If a user gets their NSFW role removed
         #elif ("NSFW" not in after_roles) and ("NSFW" in before_roles):
@@ -697,6 +722,19 @@ class NuggetBot(commands.Bot):
 
 
 #======================================== Custom Functions ========================================
+    #updated ##cut
+    async def del_user_welcome(self, user):
+        """Custom func to delete a users welcome message"""
+        
+        #===== get any and all user welcome messages from the database
+        welcomeMessages = await self.db.fetch(pgCmds.GET_MEM_WEL_MSG, user.id)
+        if welcomeMessages:
+            for MYDM in welcomeMessages:
+                #= create a fake message object to delete the welcome message
+                await self.safe_delete_message_id(MYDM["msg_id"], MYDM["ch_id"], reason="Welcome message cleanup.")
+
+            #=== Delete welcome messages for the user from the database
+            await self.db.execute(pgCmds.REM_MEM_WEL_MSG, user.id)
 
     #Reads all messages from a specified Channel #updated
     async def read_channel_messages(self, channel, num_of_msg=1000, before=None, after=None):
@@ -1224,6 +1262,200 @@ class NuggetBot(commands.Bot):
 
 
 #======================================== Schedule stuff ========================================
+  #-------------------- Auto Kick Members --------------------
+    async def check_new_members(self):
+        """
+        [Called on_ready]
+        
+        Adds members with the fresh role and not the core role to the scheduler via self.schedule_kick with the warning for member already in the scheduler turned off.
+        Really only useful if the scheduled data in the SQL file has been lost.
+        """
+
+        #===== If the bot is still setting up
+        await self.wait_until_ready()
+
+        #===== variable setup
+        guild = self.get_guild(self.config.target_guild_id)
+        now = datetime.datetime.utcnow()
+        fresh = discord.utils.get(guild.roles, name=self.config.roles['gated'])
+        core = discord.utils.get(guild.roles, name=self.config.roles['member'])
+
+        for member in guild.members:
+            #=== is member has the fresh role and not the core role
+            if (fresh in member.roles) and (core not in member.roles):
+
+                #= work out the time the user has left to register
+                diff = 14 - int((now - member.joined_at).days)
+
+                #= If member has been on the guild for greater then 14 days
+                if diff < 1:
+                    diff = 1
+
+                await self.schedule_kick(member, daysUntilKick=diff, quiet=True, days=diff)
+
+  #-------------------- Remove New User Role --------------------
+    async def schedule_rem_newuser_role(self, member, daysUntilRemove=7, **kwargs):
+        """
+        [Called on_member_update]
+
+        Adds the removal of a new member's fresh role to the scheduler.
+        Handles:
+            If member is already scheduled.
+
+        It passes on the time allotted for an automatic kick to self._rem_newuser_role via the scheduler in the form of **kwargs
+        """
+        
+        #===== Bot Log Channel
+        report_channel = discord.utils.get(member.guild.channels, id=self.config.channels['bot_log'])
+
+        #===== If member is already scheduled to have Fresh role removed, it'll ignore the command.
+        for job in self.jobstore.get_all_jobs():
+            if ["_rem_newuser_role", str(member.id)] == job.id.split(" "):
+                return
+        
+        #===== Report to the report channel
+        embed = await GenEmbed.getScheduleRemNewRole(member=member, daysUntilRemove=daysUntilRemove)
+        await self.safe_send_message(report_channel, embed=embed)
+
+        #===== add the kicking of member to the scheduler
+        self.scheduler.add_job(call_schedule,
+        'date',
+        id=self.get_id_args(self._rem_newuser_role, member.id),
+        run_date=get_next(**kwargs),
+        kwargs={"func": "_rem_newuser_role",
+                "arg": str(member.id)})
+
+    async def cancel_rem_newuser_role(self, member):
+        """
+        Cancels the scheduled kick of a member
+        """
+
+        for job in self.jobstore.get_all_jobs():
+            if ["_rem_newuser_role", str(member.id)] == job.id.split(" "):
+                self.scheduler.remove_job(job.id)
+
+    async def _rem_newuser_role(self, user_id):
+        """
+        [Assumed to be called by the scheduler]
+
+        Takes a user id and removes their fresh role.
+        Handles:
+            If member is not on the guild.
+            if bot lacks permission to edit roles
+        """
+
+        #===== If the bot is still setting up
+        await self.wait_until_ready()
+
+        guild = self.get_guild(self.config.target_guild_id)
+        member = guild.get_member(int(user_id))
+        report_channel = discord.utils.get(guild.channels, id=self.config.channels['bot_log'])
+
+        #===== if member is no-longer on the guild
+        if member == None:
+            return
+        
+        try:
+            await member.remove_roles(discord.utils.get(guild.roles, name=self.config.roles['gated']), reason="Auto remove Fresh role")
+        
+            embed = await GenEmbed.genRemNewRole(member=member)
+            await self.safe_send_message(report_channel, embed=embed)
+
+        except discord.Forbidden:
+            self.safe_print(f"I could not remove {member.mention}'s Fresh role due to Permission error.")
+
+        except discord.HTTPException:
+            self.safe_print(f"I could not remove {member.mention}'s Fresh role due to generic error.")
+
+  #-------------------- Kick new members --------------------
+    async def cancel_scheduled_kick(self, member):
+        """
+        Cancels the scheduled kick of a member
+        """
+
+        for job in self.jobstore.get_all_jobs():
+            if ["_kick_entrance", str(member.id)] == job.id.split(" "):
+                self.scheduler.remove_job(job.id)
+
+    async def schedule_kick(self, member, daysUntilKick=14, quiet=False, **kwargs):
+        """
+        [Called on_member_join and check_new_members]
+
+        Adds the automatic kick of a member from entrance gate after 14 days to the scheduler.
+        Handles:
+            If member is already scheduled to be kicked.
+
+        It passes on the time allotted for an automatic kick to self._kick_entrance via the scheduler in the form of **kwargs
+        """
+
+        report_channel = discord.utils.get(member.guild.channels, id=self.config.channels['bot_log'])
+        
+        for job in self.jobstore.get_all_jobs():
+            if ["_kick_entrance", str(member.id)] == job.id.split(" "):
+                if not quiet:
+                    await self.safe_send_message(report_channel, "{0.mention} already scheduled for a kick".format(member))
+                return
+
+        embed = await GenEmbed.getScheduleKick( member=member, 
+                                                daysUntilKick=daysUntilKick, 
+                                                kickDate=(datetime.datetime.now() + datetime.timedelta(seconds=((daysUntilKick*24*60*60) + 3600))))
+
+        await self.safe_send_message(report_channel, embed=embed)
+
+        #===== add the kicking of member to the scheduler
+        self.scheduler.add_job(call_schedule,
+                               'date',
+                               id=self.get_id_args(self._kick_entrance, member.id),
+                               run_date=get_next(**kwargs),
+                               kwargs={"func": "_kick_entrance",
+                                       "arg": str(member.id)})
+
+    #cut
+    async def _kick_entrance(self, user_id):
+        """
+        [Assumed to be called by the scheduler]
+
+        Takes a user id and kicks them from entrance gate.
+        Handles:
+            If member is not on the guild.
+            if bot lacks permission to kick members
+        """
+
+        #===== If the bot is still setting up
+        await self.wait_until_ready()
+
+        guild = self.get_guild(self.config.target_guild_id)
+        member = guild.get_member(int(user_id))
+        report_channel = discord.utils.get(guild.channels, id=self.config.channels['bot_log'])
+
+        #===== if member is no-longer on the guild
+        if member == None:
+            return
+        
+        freshRole = discord.utils.get(guild.roles, name=self.config.roles['gated'])
+        userRole = discord.utils.get(guild.roles, name=self.config.roles['member'])
+
+        try:
+            #=== if member has fresh role and not core role
+            if (freshRole in member.roles) and (userRole not in member.roles):
+                #= kick member
+                await member.kick(reason="Waited in entrance for too long.")
+
+                #= report event
+                embed = await GenEmbed.genKickEntrance(member, self.config.channels['entrance_gate'])
+                await self.safe_send_message(report_channel, embed=embed)
+        
+        #===== Error if bot lacks permission
+        except discord.errors.Forbidden:
+            self.safe_print("[Error] (Scheduled event) I do not have permissions to kick members")
+            await self.safe_send_message(report_channel, "I could not kick <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions".format(member))
+        
+        #===== Error for generic error, eg discord api gateway down
+        except discord.errors.HTTPException:
+            self.safe_print("[Error] (Scheduled event) I could not kick a member")
+            await self.safe_send_message(report_channel, "I could not kick <@{0.id}> | {0.name}#{0.discriminator}, due to an error".format(member))
+
+        return
 
   #-------------------- Hide guild --------------------
     #@has_core_role
@@ -1672,7 +1904,7 @@ class NuggetBot(commands.Bot):
         return Response(reply=False)
 
     ###ping
-    @in_reception
+    @in_channel([ChnlID.reception, ChnlID.giveaway])
     @is_core
     async def cmd_notifyme(self, msg):
         """
@@ -1710,6 +1942,50 @@ class NuggetBot(commands.Bot):
 
 
 #======================================== Staff Commands ========================================
+    ###Kick members who have sat in the entrance gate for 14 days or more.
+    @has_role(["Minister"])
+    async def cmd_clearentrancegate(self, msg):
+        """
+        Useage:
+            [prefix]clearentrancegate
+        [Minister] Kick members who have sat in the entrance gate for 14 days or more.
+        """
+
+        freshRole = discord.utils.get(msg.guild.roles, name=self.config.roles['gated'])
+        coreRole = discord.utils.get(msg.guild.roles, name=self.config.roles['member'])
+        currDateTime = datetime.datetime.utcnow()
+
+        oldFreshUsers = [member for member in msg.guild.members if (freshRole in member.roles) and (coreRole not in member.roles) and ((currDateTime - member.joined_at).days > 13)]
+
+        if len(oldFreshUsers) == 0:
+            return Response(content="No members need to be kicked at this time.", delete_after=10)
+
+        react = await self.ask_yn(msg,
+                             "{} fresh users will be kicked.\nAre you sure you want to continue?".format(len(oldFreshUsers)),
+                             timeout=120,
+                             expire_in=2)
+
+        #===== if user says yes
+        if react:
+            try:
+                for member in oldFreshUsers:
+                    await member.kick(reason=f"Manual clearing of the entrance gate by {msg.author.id}")
+
+                return Response(content="Done, {} members kicked".format(len(oldFreshUsers)), delete_after=10)
+
+            except discord.errors.Forbidden:
+                return Response(content="Can't kick members due to lack of permissions.", delete_after=10)
+
+            except discord.errors.HTTPException:
+                return Response(content="Some error occurred. Go blame discord and try again later.", delete_after=10)
+
+        #===== Time out handing
+        elif react == None:
+            return Response(content="You took too long respond. Cancelling action.", delete_after=10)
+
+        #===== if user says no
+        return Response(content="Alright then, no members kicked.", delete_after=10)
+
     @is_any_staff
     async def cmd_adminhelp(self, msg):
         """
@@ -1741,6 +2017,65 @@ class NuggetBot(commands.Bot):
             await self.safe_send_message(msg.author, commands)
 
         return Response(reply=False)
+
+    @has_role(["Minister"]) #updated
+    async def cmd_loginvites(self, msg, quiet=False):
+        """
+        Useage:
+            [prefix]loginvites
+        [Minister] When called the function will make the init invite log in a json file
+        """
+        #===== Log invites
+        inviteLog = await self._get_invite_info()
+
+        if inviteLog is not None:
+            await self.db.execute(pgCmds.ADD_INVITES, json.dumps(inviteLog))
+            return Response(content="Current invite information has been logged.")
+
+        else:
+            return Response(content="Invite information could not be found.")
+
+    @is_any_staff #updated
+    async def cmd_makeunqiueinvite(self, msg):
+        """
+        Usage:
+            [prefix]makeunqiueinvite <channelid/channelmention>
+        [Any Staff] Creates a unique invite for specified channel.
+        """
+        try:
+            chl_id = msg.content.split(" ")[1]
+
+            #=== REMOVE CHANNEL MENTION
+            if chl_id.startswith("<#"):
+                chl_id = chl_id.replace("<", "").replace("#", "").replace("!", "").replace(">", "")
+
+            #=== CONVERT STR TO INT
+            chl_id = int(chl_id)
+
+        except (IndexError, ValueError):
+            return Response(content="`Useage: [p]makeunqiueinvite <channelid/channelmention> Creates a unique invite for specified channel.`")
+
+        #===== FIND THE CHANNEL
+        chl = msg.guild.get_channel(chl_id)
+
+        #===== IF CHANNEL DOES NOT EXIST
+        if chl == None:
+            return Response(content='Channel "{}" not found'.format(chl_id))
+
+        #===== MAKE THE INVITE
+        try:
+            inv = await chl.create_invite(unique = True)
+
+            #=== RETURN INVITE
+            return Response(content=f"Invite {inv.url} for {inv.channel.name} has been successfully made")
+
+        except discord.errors.Forbidden:
+            #=== REPORT PERMISSION ERROR
+            return Response(content="`I do not have the permission needed to create an invite for selected channel`")
+
+        except discord.errors.HTTPException:
+            #=== REPORT GENERIC ERROR
+            return Response(content= "`I could not create an invite for the selected channel`")
 
     @is_any_staff
     async def cmd_roleperms(self, msg):
@@ -1949,5 +2284,8 @@ class NuggetBot(commands.Bot):
 async def call_schedule(func=None, arg=None, user_id=None, roles=None):
     if roles is not None:
         await NuggetBot.bot._show_server(user_id, roles)
+        return
+    if arg is None:
+        await NuggetBot.bot._kick_entrance(user_id)
         return
     await getattr(NuggetBot.bot, func)(arg)

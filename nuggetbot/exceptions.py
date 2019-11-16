@@ -68,3 +68,24 @@ class RestartSignal(Signal):
 # signal to end the bot "gracefully"
 class TerminateSignal(Signal):
     pass
+
+class PostAsWebhook(NuggetbotException):
+    def __init__(self, issue, *, preface="```diff\n- An error has occured\n```", expire_in=0):
+        self.issue = issue
+        self.preface = preface
+        self.expire_in = expire_in
+        self._message_fmt = "\n{preface}\n{problem}"
+
+    @property
+    def message(self):
+        return self._message_fmt.format(
+            preface  = self.preface,
+            problem  = self.issue
+        )
+
+    @property
+    def message_no_format(self):
+        return self._message_fmt.format(
+            preface  = self.preface,
+            problem  = self.issue
+        )

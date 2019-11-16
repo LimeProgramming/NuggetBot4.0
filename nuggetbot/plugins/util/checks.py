@@ -150,8 +150,18 @@ def CORE(*args):
 
     return commands.check(pred)
 
+def GATED(*args):
+    async def pred(ctx):
+        if not ctx or not ctx.guild:
+            return False 
 
-#-------------------- STAFF DECORS --------------------
+        return bool (   (any(role.id in config.roles['gated'] for role in ctx.author.roles)) 
+                    or  (__admin_or_bgowner(ctx))
+                    )
+
+    return commands.check(pred)
+
+# -------------------- STAFF DECORS --------------------
 ##Permissions decor | guild owner only
 def GUILD_OWNER(*args):
     async def pred(ctx):
@@ -226,6 +236,21 @@ def ANY_STAFF(*args):
 def DISABLED(*args):
     return commands.check(False)
 
+# -------------------- BOT OWNER DECORS --------------------
+def BOT_OWNER(*args):
+    async def pred(ctx):
+        if not ctx or not ctx.guild:
+            return False   
+
+        if await ctx.bot.is_owner(ctx.author):
+            return True
+
+        else:
+            await ctx.channel.send(embed=await __gen_botowner_embed(ctx), delete_after=30)
+            return False
+
+    return commands.check(pred)
+    
 ##########################################################################################################
 ###-------------------------- COMMANDS.COMMAND WRAPPERS, DM CHANNELS ALLOWED --------------------------###
 ##########################################################################################################
@@ -390,6 +415,29 @@ async def __gen_guildowner_embed(ctx):
         )
     
     return embed
+
+async def __gen_botowner_embed(ctx):
+    embed = discord.Embed(  
+        title=      ':warning: You do not own me.',
+        description="",
+        type=       'rich',
+        timestamp=  datetime.datetime.utcnow(),
+        color=      RANDOM_DISCORD_COLOR()
+        )
+
+    embed.set_footer(       
+        icon_url=   GUILD_URL_AS(ctx.guild),
+        text=       ctx.guild.name
+        )
+        
+    embed.add_field(    
+        name=       "Error:",
+        value=      f"```\nOnly the bot owner can run {ctx.invoked_with}\n```",
+        inline=     False
+        )
+    
+    return embed
+
 
 async def __gen_guildstaff_embed(ctx, roles):
     if isinstance(roles, list):

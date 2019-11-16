@@ -320,6 +320,30 @@ class Admin(commands.Cog):
         return
 
     @checks.ANY_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='makeunqiueinvite', aliases=['makeinvite'])
+    async def cmd_makeunqiueinvite(self, ctx, channel : discord.TextChannel):
+        """
+        [Any Staff] Creates a unique invite for specified channel. Provide channel mention or channel id.
+        """
+
+        # ===== MAKE THE INVITE
+        try:
+            inv = await channel.create_invite(unique = True)
+
+            # === RETURN INVITE
+            await ctx.send(content=f"Invite {inv.url} for {inv.channel.name} has been successfully made")
+
+        except discord.errors.Forbidden:
+            # === REPORT PERMISSION ERROR
+            await ctx.send(content="`I do not have the permission needed to create an invite for selected channel`")
+
+        except discord.errors.HTTPException:
+            # === REPORT GENERIC ERROR
+            await ctx.send(content= "`I could not create an invite for the selected channel`")
+        
+        return
+
+    @checks.ANY_STAFF()
     @commands.command(pass_context=True, hidden=False, name='userperms', aliases=['UserPerms', 'userPerms'])
     async def cmd_userperms(self, ctx):
         """
@@ -697,19 +721,18 @@ class Admin(commands.Cog):
         return
 
     @checks.GUILD_OWNER()
-    @commands.command(pass_context=True, hidden=True, name='postaswebhook', aliases=[])
-    async def cmd_postaswebhook(self, ctx):
+    @commands.command(pass_context=True, hidden=False, name='postaswebhook', aliases=[])
+    async def cmd_postaswebhook(self, ctx, content:str):
         """
-        Useage:
-            [prefix]postaswebhook <text> or <files>
-        [Primary bot owner] Reposts whatever you send as a webhook package.
+        [Guild Owner] Reposts whatever you send as a webhook package. This includes any attachments.
         """
 
-        msgContent = Admin.content(ctx)
+        msgContent = content
+
         if not msgContent and not ctx.message.attachments:
-            await ctx.channel.send(content="[p]postaswebhook <text> or <files> [Primary bot owner] Reposts whatever you send as a webhook package.", delete_after=15)
+            await ctx.send_help("postaswebhook", delete_after=30)
 
-        ###===== GET OR CREATE A WEBHOOK, REPORT ERROR IF EXISTS
+        # ===== GET OR CREATE A WEBHOOK, REPORT ERROR IF EXISTS
         webhooks = await ctx.channel.webhooks()
         RoostWebhook = discord.utils.get(webhooks, name='postaswebhook')
 
@@ -757,19 +780,16 @@ class Admin(commands.Cog):
 
         return
 
-    @checks.HIGH_STAFF() #new
+    @checks.HIGH_STAFF()
     @commands.command(pass_context=True, hidden=False, name='banbyid', aliases=[])
-    async def cmd_banbyid(self, ctx):
+    async def cmd_banbyid(self, ctx, user_id:int, reason:str = None):
         """
-        Useage:
-            [prefix]banbyid <userid/mention> <reason>
-        [Admin/Mod] Bans a user from guild using their ID alone.
+        [Admin/Mod] Bans a user from guild using their ID alone. Useful for banning whose mention cannot be resolved
         """
-        user_id, reason = await Admin.get_user_id_reason(ctx.message.content)
 
         try:
-            await self.bot.http.ban(user_id=user_id, guild_id=ctx.guild.id, delete_message_days=1, reason=reason)
-            await ctx.channel.send(content=f"<@{user_id}> has been banned from this Guild.", delete_after = 15)
+            await self.bot.http.ban(user_id=user_id, guild_id=ctx.guild.id, delete_message_days=0, reason=reason)
+            await ctx.channel.send(content=f"<@{user_id}> has been banned from this Guild.", delete_after = 30)
 
         #===== REPORT PERMISSION ERROR
         except discord.errors.Forbidden:
@@ -781,9 +801,13 @@ class Admin(commands.Cog):
         
         return
     
-    @checks.GUILD_OWNER()
-    @commands.command(pass_context=True, hidden=True, name='hoststats', aliases=[])
+    @checks.BOT_OWNER()
+    @commands.command(pass_context=True, hidden=False, name='hoststats', aliases=[])
     async def cmd_hoststats(self, ctx):
+        """
+        [Bot Owner] Returns current system utilzation of the bots host.
+        """
+
         valid = await self.oneline_valid(ctx.message.content)
         if not valid:
             return
@@ -832,7 +856,7 @@ class Admin(commands.Cog):
                         value=  f"**Total:** {MBorGB(mem[0])}\n"
                                 f"**Free:** {MBorGB(mem[1])}\n"
                                 f"**Used:** {mem[2]}%",
-                        inline= True
+                        inline= False
                         )
         
         embed.add_field(name=   "Storage:",
@@ -847,7 +871,7 @@ class Admin(commands.Cog):
                         value=  f"**Version:** {platform.python_version()}\n"
                                 f"**Discord.py** {discord.__version__}\n"
                                 f"**Bits:** {platform.architecture()[0]}",
-                        inline= True
+                        inline= False
                         )
 
         embed.set_author(name=   f"{self.bot.user.name}#{self.bot.user.discriminator}",

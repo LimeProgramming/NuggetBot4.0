@@ -1,3 +1,4 @@
+import re
 import sys
 import json
 import random
@@ -21,6 +22,35 @@ from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, A
 
 from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 from .util import checks
+
+
+description = """
+Handling of new members to the guild.
+
+**Newly Joined Members**
+    > When a member joins the guild they will recieve the auto roles and be scheduled for a kick 14 days after they join. 
+    > Every message from them posted or mentioning them in the entrance gate channel will be logged to the database.
+    > IF the new user Runs the agree command, it'll do the following 
+        - Cancel the kick
+        - Grant the member and newmember role
+        - Remove the gated role
+        - Schedule the removal of newmember role 14 days from the run time.
+        - Delete messages from the member or pinging the member from the gate channel.
+
+**Logging Entrance Gate MSG'S**
+    > Messages sent by a member with the gated role to the entrance gate channel get logged into the databases welcome_msg table.
+    > This also applies to member pings, when a gated member is pinged in a message that msg gets logged to the database as if it were from them. This is for the sake of deleteing these messages at a later time.
+    > When 'del_user_welcome' is called it will delete any *logged* messages from the guild and from the database which are applicable to the relivant user. This keeps the entrance channel clear from clutter for the sake of mobile users and anonimity.
+
+
+    
+
+"""
+
+
+class Days():
+    gated = 14
+    newmember = 14
 
 class NewMembers(commands.Cog):
     """Private feedback system."""
@@ -73,6 +103,11 @@ class NewMembers(commands.Cog):
         self.roles['newmember']=    discord.utils.get(self.tguild.roles, id=NewMembers.config.roles['newmember'])
         self.roles['gated']=        discord.utils.get(self.tguild.roles, id=NewMembers.config.roles['gated'])
 
+        ###===== SCHEDULER
+        self.scheduler.start()
+        self.scheduler.print_jobs()
+        await self.check_new_members()
+
     @commands.Cog.listener()
     async def on_member_join(self, m): 
         ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
@@ -109,7 +144,7 @@ class NewMembers(commands.Cog):
                 await m.add_roles(role, reason="Auto Roles")
 
         #------------------------- Schedule a kick -------------------------
-        await self.schedule_kick(m, daysUntilKick=14, days=14)
+        await self.schedule_kick(m, daysUntilKick=Days.gated, days=Days.gated)
     
     @commands.Cog.listener()
     async def on_member_remove(self, m):
@@ -165,7 +200,7 @@ class NewMembers(commands.Cog):
         #------------------------- Update Database -------------------------
         await self.db.execute(pgCmds.REMOVE_MEMBER_FUNC, m.id)
     
-    @commands.Cog.listener()
+    #@commands.Cog.listener()
     async def on_member_update(self, before, after):
         """When there is an update to a users user data"""
 
@@ -178,7 +213,7 @@ class NewMembers(commands.Cog):
 
         ###===== IF USER JUST GOT THE CORE ROLE AND HAS THE GATED ROLE
         if  (   (self.roles['member'] not in before.roles) 
-            and (self.roles['member'] in before.roles) 
+            and (self.roles['member'] in after.roles) 
             and (self.roles['gated'] in before.roles)
             ):
 
@@ -209,6 +244,21 @@ class NewMembers(commands.Cog):
         if msg.channel.id != NewMembers.config.channels['entrance_gate']:
             return
 
+        ###===== IF THE AUTHOR IS GATED, LOG THE MESSAGE. IGNORES STAFF SINCE THEY TEND TO MESS AROUND 
+        if self.roles['gated'] in msg.author.roles and not any(role.id in NewMembers.config.roles['any_staff'] for role in msg.author.roles):
+            await self.db.execute(pgCmds.ADD_WEL_MSG, msg.id, msg.channel.id, msg.guild.id, msg.author.id)
+            return
+
+        ###===== CYCLE THROUGH ALL THE MEMBER'S MENTIONED IN THE MESSAGE
+        for member in msg.mentions:
+            ###=== IF MENTIONED MEMBER HAS THE GATED ROLE AND IS NOT STAFF
+            if self.roles['gated'] in member.roles and not any(role.id in NewMembers.config.roles['any_staff'] for role in member.roles):
+                
+                await self.db.execute(pgCmds.ADD_WEL_MSG, msg.id, msg.channel.id, msg.guild.id, member.id)
+                break 
+
+        return
+
     @commands.Cog.listener()        
     async def on_guild_role_update(self, before, after):
         ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
@@ -225,28 +275,25 @@ class NewMembers(commands.Cog):
         
         return
 
+
   #-------------------- COMMANDS --------------------
-    ###Kick members who have sat in the entrance gate for 14 days or more.
     @checks.HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=False, name='clearEntranceGate', aliases=['clearentrancegate'])
-    async def cmd_clearentrancegate(self, msg):
+    async def cmd_clearentrancegate(self, ctx):
         """
-        Useage:
-            [prefix]clearentrancegate
         [Minister] Kick members who have sat in the entrance gate for 14 days or more.
         """
 
-        freshRole = discord.utils.get(msg.guild.roles, name=self.config.roles['gated'])
-        coreRole = discord.utils.get(msg.guild.roles, name=self.config.roles['member'])
         currDateTime = datetime.datetime.utcnow()
 
-        oldFreshUsers = [member for member in msg.guild.members if (freshRole in member.roles) and (coreRole not in member.roles) and ((currDateTime - member.joined_at).days > 13)]
+        oldFreshUsers = [member for member in ctx.guild.members if (self.roles['gated'] in member.roles) and (self.roles['member'] not in member.roles) and ((currDateTime - member.joined_at).days > Days.gated)]
 
         if len(oldFreshUsers) == 0:
-            return Response(content="No members need to be kicked at this time.", delete_after=10)
+            await ctx.send(content="No members need to be kicked at this time.", delete_after=10)
+            return
 
-        react = await self.ask_yn(msg,
-                             "{} fresh users will be kicked.\nAre you sure you want to continue?".format(len(oldFreshUsers)),
+        react = await self.ask_yn(ctx,
+                             "{} gated users will be kicked.\nAre you sure you want to continue?".format(len(oldFreshUsers)),
                              timeout=120,
                              expire_in=2)
 
@@ -254,24 +301,85 @@ class NewMembers(commands.Cog):
         if react:
             try:
                 for member in oldFreshUsers:
-                    await member.kick(reason=f"Manual clearing of the entrance gate by {msg.author.id}")
+                    await member.kick(reason=f"Manual clearing of the entrance gate by {ctx.author.id}")
+                    await asyncio.sleep(0.5)
 
-                return Response(content="Done, {} members kicked".format(len(oldFreshUsers)), delete_after=10)
+                await ctx.send(content=f"Done, {len(oldFreshUsers)} members kicked", delete_after=30)
 
             except discord.errors.Forbidden:
-                return Response(content="Can't kick members due to lack of permissions.", delete_after=10)
+                await ctx.send(content="Can't kick members due to lack of permissions.", delete_after=30)
 
             except discord.errors.HTTPException:
-                return Response(content="Some error occurred. Go blame discord and try again later.", delete_after=10)
+                await ctx.send(content="Some error occurred. Go blame discord and try again later.", delete_after=30)
+
+            return
 
         #===== Time out handing
         elif react == None:
-            return Response(content="You took too long respond. Cancelling action.", delete_after=10)
+            await ctx.send(content="You took too long respond. Cancelling action.", delete_after=30)
 
         #===== if user says no
-        return Response(content="Alright then, no members kicked.", delete_after=10)
+        else:
+            await ctx.send(content="Alright then, no members kicked.", delete_after=30)
 
+        return 
+
+
+    @checks.GATED()
+    @commands.command(pass_context=False, hidden=False, name='agree', aliases=['iagree', 'letmein'])
+    async def cmd_agree(self, ctx):
+        """
+        [Gated] Lets a new member sitting in the gate into the rest of the guild.
+        """
+
+        await ctx.author.add_roles(self.roles['member'])
+
+        ###===== ADD NEW MEMBER AND REMOVE GATED ROLES
+        await ctx.author.add_roles(self.roles['newmember'], reason="Added new member role")
+        await asyncio.sleep(0.2)
+        await ctx.author.remove_roles(self.roles['gated'], reason="Removed Gated Role")
+
+        ###===== SCHEDULE REMOVAL OF NEW MEMBER ROLE
+        await self.schedule_rem_newuser_role(ctx.author, daysUntilRemove=7, days=7)
+
+        ###===== CANCEL EXISTING MEMBER KICK
+        await self.cancel_scheduled_kick(ctx.author)
+
+        ###===== TELL THE USERS A NEW MEMBER HAS JOINED
+        embed = await GenEmbed.getMemJoinUser(ctx.author)
+        await self.safe_send_msg_chid(self.config.channels['public_bot_log'], embed=embed)
+
+        ###===== DELETE USER MESSAGES IN THE GATE
+        await self.del_user_welcome(ctx.author)
+
+        return
+
+        
   #-------------------- FUNCTIONS --------------------
+    @asyncio.coroutine
+    async def safe_send_message(self, dest:Union[discord.TextChannel, discord.Message, discord.ext.commands.Context], content=None, embed=None, tts=False, expire_in=None, also_delete:discord.Message =None, quiet=True):
+
+        ###===== IF DESTINATION IS A MESSAGE
+        if isinstance(dest, discord.Message):
+            dest = dest.channel 
+
+        msg = None
+        try:
+            msg = await dest.send(content=content, embed=embed, tts=tts, delete_after=expire_in)
+
+            if also_delete and isinstance(also_delete, discord.Message):
+                asyncio.ensure_future(self.__del_msg_later(also_delete, expire_in))
+
+        except discord.Forbidden:
+            if not quiet:
+                self.safe_print("[Warning] Cannot send message to {dest.name}, no permission")
+
+        except discord.NotFound:
+            if not quiet:
+                self.safe_print("[Warning] Cannot send message to {dest.name}, invalid channel?")
+
+        return msg
+
     @asyncio.coroutine
     async def safe_send_msg_chid(self, chid, content=None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:discord.Message = None, quiet=True):
         """Alt version of safe send message were message will send to a channel id"""
@@ -344,9 +452,49 @@ class NewMembers(commands.Cog):
 
         except discord.Forbidden:
             if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message}\", no permission")
+                self.safe_print(f"[Warning] Cannot delete message \"{message}\", no permission")
 
         except discord.NotFound:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message}\", message not found")
+
+        return
+
+    @asyncio.coroutine
+    async def safe_delete_msgs_id(self, messages:list, channel:int, reason:str = None, quiet=False):
+        """
+        Bulk message deletes are routed though here to handle the exceptions.
+        This deletes using bot.http functions to bypass having to find each message and channel before deleting.
+        Also safely handles message id lists greater than 100 messages 
+
+        Args:
+            (list) Message IDs of messages to be deleted.
+            (int) Channel ID of channel the messages was posted in.
+            (str) Reason for messages being deleted
+        """
+
+        # ===== DO NOTHING IF USER IS BEING SILLY
+        if len(messages) == 0:
+            return
+
+        # ===== IF LENTH MESSAGES IS 1, DELETE IT NORMALLY.
+        if len(messages) == 1:
+            await self.safe_delete_msg_id(messages[0], channel, reason, quiet)
+            return
+
+        # ===== SPLIT MESSAGES LIST TO ENSURE NUM IS 100 OR LESS, DISCORD API LIMITATION
+        messages = NewMembers.__split_list(messages, size=100)
+
+        try:
+            for m in messages:
+                await self.bot.http.delete_messages(channel_id=channel, message_ids=m, reason=reason)
+
+        except discord.errors.Forbidden:
+
+            if not quiet:
+                self.safe_print("[Warning] Cannot delete message \"{message}\", no permission")
+
+        except discord.errors.NotFound:
             if not quiet:
                 self.safe_print("[Warning] Cannot delete message \"{message}\", message not found")
 
@@ -356,19 +504,92 @@ class NewMembers(commands.Cog):
     async def del_user_welcome(self, user):
         """
         Custom func to delete a users welcome message
-        #re.findall(r"<@(.*?)>",t)
-        
         """
         
-        #===== get any and all user welcome messages from the database
+        # ===== GRAB ALL THE WELCOME MESSAGES FROM THE DATABASE RELATED TO THE USER IN QUESTION.
         welcomeMessages = await self.db.fetch(pgCmds.GET_MEM_WEL_MSG, user.id)
-        if welcomeMessages:
-            for MYDM in welcomeMessages:
-                #= create a fake message object to delete the welcome message
-                await self.safe_delete_msg_id(MYDM["msg_id"], MYDM["ch_id"], reason="Welcome message cleanup.")
+        bulkDelete = {}
+        now = datetime.datetime.utcnow()
 
-            #=== Delete welcome messages for the user from the database
-            await self.db.execute(pgCmds.REM_MEM_WEL_MSG, user.id)
+        # ===== DO NOTHING IF NOT DATA
+        if not welcomeMessages:
+            return 
+
+        # ===== CYCLE THROUGH OUR DATABASE DATA
+        for MYDM in welcomeMessages:
+
+            # === LOG MESSAGES INTO OUR DICT IF THEY CAN BE DELETED IN BULK
+            if (now - MYDM["timestamp"]).days < 13:
+
+                # = IF CHANNEL ID DOES NOT EXIST AS A KEY
+                if MYDM['ch_id'] not in bulkDelete.keys():
+                    bulkDelete[MYDM['ch_id']] = list()
+
+                bulkDelete[MYDM['ch_id']].append(MYDM["msg_id"])
+
+            else:
+                # = IF MESSAGE IS TOO OLD, DELETE ONE BY ONE.
+                await self.safe_delete_msg_id(MYDM["msg_id"], MYDM["ch_id"], reason="Welcome message cleanup.")
+                await asyncio.sleep(0.2)
+
+        # ===== IF THERE ARE MESSAGES TO BE BULK DELETED.
+        if bulkDelete:
+
+            # === EVEN THOUGH ALL MESSAGES WILL MOST LIKELY BE FROM THE SAME CHANNEL, THIS ENSURES COMPATIBILTY WITH WELCOME MESSAGES FROM MULTIPLE CHANNELS
+            for i in bulkDelete.keys():
+                await self.safe_delete_msgs_id(messages=bulkDelete[i], channel=i, reason="Welcome message cleanup.")
+
+        # ===== DELETE WELCOME MESSAGES FROM THE DATABASE
+        await self.db.execute(pgCmds.REM_MEM_WEL_MSG, user.id)
+    
+    @asyncio.coroutine
+    async def ask_yn(self, msg, question, timeout=60, expire_in=0):
+        """Custom function which ask a yes or no question using reactions, returns True for yes | false for no | none for timeout"""
+
+        message = await self.safe_send_message(msg.channel, question)
+        error = None
+        try:
+            await message.add_reaction("👍")
+            await message.add_reaction("👎")
+
+        except discord.errors.Forbidden:
+            error = '`I do not have permission to add reactions, defaulting to "No"`'
+
+        except discord.errors.NotFound:
+            error = '`Emoji not found, defaulting to "No"`'
+
+        except discord.errors.InvalidArgument:
+            error = '`Error in my programming, defaulting to "No"`'
+
+        except discord.errors.HTTPException:
+            error = '`Error with adding reaction, defaulting to "No"`'
+
+        if error is not None:
+            await self.safe_delete_msg(message)
+            await self.safe_send_message(msg.channel, error)
+            return False
+        
+        def check(reaction, user):
+            return user == msg.author and str(reaction.emoji) in ["👍", "👎"] and not user.bot
+        
+        try:
+            reaction = await self.bot.wait_for('reaction_add', timeout=timeout, check=check)
+
+            #=== If msg is set to auto delete
+            if expire_in:
+                asyncio.ensure_future(self.__del_msg_later(message, expire_in))
+            
+            #=== Thumb up
+            if str(reaction[0].emoji) == "👍":
+                return True
+
+            #=== Thumb down
+            else:
+                return False
+                    
+        #===== Time out error
+        except asyncio.TimeoutError:
+            return None
 
     def safe_print(self, content, *, end='\n', flush=True):
         """Custom function to allow printing to console with less issues from asyncio"""
@@ -516,12 +737,79 @@ class NewMembers(commands.Cog):
 
         return None
 
+    @staticmethod
+    async def __split_list(arr, size=100):
+        """Custom function to break a list or string into an array of a certain size"""
+
+        arrs = []
+
+        while len(arr) > size:
+            pice = arr[:size]
+            arrs.append(pice)
+            arr = arr[size:]
+
+        arrs.append(arr)
+        return arrs
 
   #-------------------- SCHEDULING STUFF --------------------
 
+   #-------------------- Auto Kick Members --------------------
+    async def check_new_members(self):
+        """
+        [Called on_ready]
+        
+        Adds members with the fresh role and not the core role to the scheduler via self.schedule_kick with the warning for member already in the scheduler turned off.
+        Really only useful if the scheduled data in the SQL file has been lost.
+        """
+
+        ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
+        await self.bot.wait_until_ready()
+
+        ###===== VARIABLE SETUP
+        guild = self.bot.get_guild(self.config.target_guild_id)
+        now = datetime.datetime.utcnow()
+
+        for member in guild.members:
+            
+            ###=== IF MEMBER HAS NO ROLES AND HASN'T BEEN ON THE GUILD LONG ENOUGH FOR THE BOT TO AUTOKICK THEM
+            if not member.roles and int((now - member.joined_at).days) <= (Days.gated + 1):
+                
+                ###= APPLY THE AUTO ROLES
+                if NewMembers.config.roles["autoroles"]:
+                    for r_id in NewMembers.config.roles['autoroles']:
+                        asyncio.wait(0.4)
+                        role = discord.utils.get(guild.roles, id=r_id)
+                        await member.add_roles(role, reason="Auto Roles")
+
+            ###=== IF MEMBER HAS THE GATED ROLE BUT NOT THE MEMBER ROLE
+            if (self.roles['gated'] in member.roles) and (self.roles['member'] not in member.roles):
+
+                ###= WORK OUT THE TIME THE USER HAS LEFT TO REGISTER
+                diff = Days.gated - int((now - member.joined_at).days)
+
+                ###= IF MEMBER HAS BEEN ON THE GUILD FOR GREATER THEN 14 DAYS
+                if diff < 1:
+                    diff = 1
+
+                await self.schedule_kick(member, daysUntilKick=diff, quiet=True, days=diff)
+
+            ###=== IF MEMBER HAS THE MEMBER ROLE BUT NOT THE NEW MEMBER ROLE
+            elif (self.roles['member'] in member.roles) and (self.roles['newmember'] not in member.roles):
+                days = (Days.newmember + 1)- int((now - member.joined_at).days)
+
+                ###= IF MEMBER HAS BEEN ON GUILD FOR LONGER THAN THE TIME REQUIRED FOR NEW MEMBER ROLE TO EXPIRE
+                if days < 1:
+                    continue
+                
+                ###= GIVE THE MEMBER THE NEWMEMBER ROLE
+                await member.add_roles(self.roles['newmember'], reason="Added new member role")
+
+                ###= SCHEDULE THE NEW MEMBER ROLE FOR REMOVAL
+                await self.schedule_rem_newuser_role(member, days)
+
    #-------------------- Remove New User Role --------------------
     @asyncio.coroutine
-    async def schedule_rem_newuser_role(self, member:Union[discord.User, discord.Member], daysUntilRemove=7, **kwargs):
+    async def schedule_rem_newuser_role(self, member:Union[discord.User, discord.Member], daysUntilRemove=Days.newmember, **kwargs):
         """
         [Called on_member_update]
 
@@ -613,7 +901,7 @@ class NewMembers(commands.Cog):
                 self.scheduler.remove_job(job.id)
 
     @asyncio.coroutine
-    async def schedule_kick(self, member, daysUntilKick=14, quiet=False, **kwargs):
+    async def schedule_kick(self, member, daysUntilKick=Days.gated, quiet=False, **kwargs):
         """
         [Called on_member_join and check_new_members]
 

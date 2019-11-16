@@ -242,7 +242,8 @@ class DatabaseCmds(object):
                 msg_id      BIGINT  PRIMARY KEY,
                 ch_id       BIGINT  NOT NULL,
                 guild_id    BIGINT  NOT NULL,
-                user_id     BIGINT  NOT NULL
+                user_id     BIGINT  NOT NULL,
+                timestamp   BIGINT  DEFAULT TIMEZONE('utc'::text, NOW())
                 );
             
             COMMENT ON TABLE welcome_msg IS            'Holds ID's of welcome messages which have been posted when new member joins. Used to delete messages with API calls.';

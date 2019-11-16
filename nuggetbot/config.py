@@ -42,15 +42,15 @@ class Config:
       #-------------------------------------------------- CHANNELS --------------------------------------------------
         self.channels = {}
 
-        self.channels['bot_log']=                       config.get( 'Guild', 'bot_log',                  fallback=default_value)
-        self.channels['public_bot_log']=                config.get( 'Guild', 'public_bot_log',           fallback=default_value)
-        self.channels['feedback_id']=                   config.get( 'Guild', 'feedback_id',              fallback=default_value)
-        self.channels['reception_id']=                  config.get( 'Guild', 'reception_id',             fallback=default_value)
+        self.channels['bot_log']=                       config.getint( 'Channel', 'Bot Log',         fallback=default_value)
+        self.channels['public_bot_log']=                config.getint( 'Channel', 'Public Bot Log',  fallback=default_value)
+        self.channels['feedback_id']=                   config.getint( 'Channel', 'Feedback',        fallback=default_value)
+        self.channels['reception_id']=                  config.getint( 'Channel', 'Reception',       fallback=default_value)
 
 
-        self.channels['nugget_welcome_id']=             config.getint(  'Guild', 'nugget_welcome_channel',    fallback=default_value)
-        self.channels['entrance_gate']=              config.getint(  'Guild', 'entrance_gate',      fallback=default_value)
-        self.channels['public_rules_id']=               config.getint(  'Guild', 'public_rules',          fallback=default_value)
+        self.channels['nugget_welcome_id']=             config.getint(  'Channel', 'Welcome MSG',    fallback=default_value)
+        self.channels['entrance_gate']=                 config.getint(  'Channel', 'Entrance Gate',  fallback=default_value)
+        self.channels['public_rules_id']=               config.getint(  'Channel', 'Public Rules',   fallback=default_value)
         
       #-------------------------------------------------- ROLES --------------------------------------------------
         self.roles = {}
@@ -77,10 +77,10 @@ class Config:
 
         self.roles['high_staff']= [self.roles['admin'], self.roles['mod']]
         self.roles['any_staff']=  [self.roles['admin'], self.roles['mod'], self.roles['tmod']]
-        self.roles['user_staff']= [self.roles['admin'], self.roles['mod'], self.roles['tmod'], self.roles['user']]
+        self.roles['user_staff']= [self.roles['admin'], self.roles['mod'], self.roles['tmod'], self.roles['member']]
 
       #-------------------------------------------------- GIVEAWAY --------------------------------------------------
-        self.gvwy_channel_id=       config.getint(     'Giveaway', 'channel_id',             fallback=None)
+        self.gvwy_channel_id=       config.getint(     'Giveaway', 'Channel',                fallback=None)
         self.gvwy_role_name=        config.get(        'Giveaway', 'role_name',              fallback=None)
         self.gvwy_role_id=          config.getint(     'Giveaway', 'role_id',                fallback=None)
         self.gvwy_enforce_blacklist=config.getboolean( 'Giveaway', 'enforce_blacklist',      fallback=None)
@@ -399,7 +399,6 @@ class Config:
         '''
         Removes invalid characters from a string, ie common mistakes made when entering data into an ini
         '''
-
         val = re.sub('[<>?*|\'",.]', '', val)
         
         return val
