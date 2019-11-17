@@ -44,8 +44,8 @@ Currently, the raw updating process from async to re-write library's is complete
 
 Why make the bot public?
 ======
-I took a lot of pride in NuggetBot and what it does. It does pale in comparision to other bots and my own skills are severily limited compared to others, however NuggetBot is a compilation of my best programming work. I vehemently reject the title of "Programmer" due to nothing but bad experiences with people who call themselves programmers. I'm just a nerd who programs.
-I kept the code of NuggetBot under lock and key for the entire time it was active on my old server. Only myself and two trusted people had access to all of the source code, some others saw bits which were relivant to them figureing out something for their own bots. This stemmed from my old server having a secrets and mistrust at it's core mentality. For my new server, I am determined to make everything as transperant as possible; this includes making the code for the guilds bot publically available for all to see.
+I took a lot of pride in NuggetBot and what it does. It does pale in comparison to other bots and my own skills are severely limited compared to others, however NuggetBot is a compilation of my best programming work. I vehemently reject the title of "Programmer" due to nothing but bad experiences with people who call themselves programmers. I'm just a nerd who programs.
+I kept the code of NuggetBot under lock and key for the entire time it was active on my old server. Only myself and two trusted people had access to all of the source code, some others saw bits which were relevant to them figuring out something for their own bots. This stemmed from my old server having a secrets and mistrust at it's core mentality. For my new server, I am determined to make everything as transparent as possible; this includes making the code for the servers bot publicly available for all to see.
 
 * Want to know what information we keep on our members?
 * Want to know if the giveaways are rigged?
