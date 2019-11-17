@@ -45,13 +45,18 @@ class Test(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        return
+        await asyncio.sleep(4)
+
+        #p#rint(self.bot.http.token)
+        #print(self.bot.http.bot_token)
+
+        #return
         #test = self.bot.get_guild(348609968292888577)
         #for e in test.emojis:
         #    if e.animated:
         #        print("{0.name}:{0.id}".format(e))
 
-        #raise exceptions.PostAsWebhook("This issue is a test, please ignore. <a:foxban:405724216197906455>")
+        raise exceptions.PostAsWebhook("This issue is a test, please ignore. <a:foxban:405724216197906455>")
 
     @commands.Cog.listener()
     async def on_message(self, msg):

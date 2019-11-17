@@ -1,4 +1,27 @@
-import re
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+About
+-----------
+Nugget bot began life as a simple script which deleted Dyno messages running on a Raspberry PI 2 crammed behind a modem.
+It crashed everyday so it ran in an infinate loop from an sh file, crude but functional. 
+
+
+Disclaimer
+-----------
+Source code for NuggetBot has been shared on GitHub for the purposes of transparency on the FurSail discord guild.
+This bot has been tailored for use on FurSail, running it on other guilds could cause unexpected results.
+
+
+Run your instance of this bot at your own risk.
+
+Invite URL: http://discord.gg/QMEgfcg
+
+Feel free to inspect the bot for educational purposes.
+"""
+
+#import re
 import sys
 import json
 import random
@@ -28,7 +51,7 @@ description = """
 Handling of new members to the guild.
 
 **Newly Joined Members**
-    > When a member joins the guild they will recieve the auto roles and be scheduled for a kick 14 days after they join. 
+    > When a member joins the guild they will receive the auto roles and be scheduled for a kick 14 days after they join. 
     > Every message from them posted or mentioning them in the entrance gate channel will be logged to the database.
     > IF the new user Runs the agree command, it'll do the following 
         - Cancel the kick
@@ -39,8 +62,8 @@ Handling of new members to the guild.
 
 **Logging Entrance Gate MSG'S**
     > Messages sent by a member with the gated role to the entrance gate channel get logged into the databases welcome_msg table.
-    > This also applies to member pings, when a gated member is pinged in a message that msg gets logged to the database as if it were from them. This is for the sake of deleteing these messages at a later time.
-    > When 'del_user_welcome' is called it will delete any *logged* messages from the guild and from the database which are applicable to the relivant user. This keeps the entrance channel clear from clutter for the sake of mobile users and anonimity.
+    > This also applies to member pings, when a gated member is pinged in a message that msg gets logged to the database as if it were from them. This is for the sake of deleting these messages at a later time.
+    > When 'del_user_welcome' is called it will delete any *logged* messages from the guild and from the database which are applicable to the reliant user. This keeps the entrance channel clear from clutter for the sake of mobile users and anonymity.
 
 
     
@@ -63,8 +86,8 @@ class NewMembers(commands.Cog):
         NewMembers.bot = self
         NewMembers.config = Config()
         self.cogset = dict()
+        self.roles = dict()
         self.db = None
-
         self.tguild = None
 
         self.jobstore = SQLAlchemyJobStore(url='sqlite:///jobs.sqlite')
@@ -72,7 +95,7 @@ class NewMembers(commands.Cog):
         self.scheduler = AsyncIOScheduler(jobstores=jobstores)
         self.scheduler.add_listener(self.job_missed, events.EVENT_JOB_MISSED)
 
-  #-------------------- LOCAL COG STUFF --------------------
+  # -------------------- LOCAL COG STUFF --------------------
     async def connect_db(self):
         """
         Connects to the database using variables set in the dblogin.py file.
@@ -92,12 +115,11 @@ class NewMembers(commands.Cog):
         return
 
 
-  #-------------------- LISTENERS --------------------
+  # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self): 
         self.tguild = self.bot.get_guild(NewMembers.config.target_guild_id)
 
-        self.roles = {}
         
         self.roles['member']=       discord.utils.get(self.tguild.roles, id=NewMembers.config.roles['member'])
         self.roles['newmember']=    discord.utils.get(self.tguild.roles, id=NewMembers.config.roles['newmember'])
@@ -113,14 +135,14 @@ class NewMembers(commands.Cog):
         ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.bot.wait_until_ready()
 
-        #------------------------- GET INVITE INFO -------------------------
+        # ------------------------- GET INVITE INFO -------------------------
         invite = await self.__get_invite_used()
 
-        #------------------------- LOG NEW MEMBER -------------------------
+        # ------------------------- LOG NEW MEMBER -------------------------
         embed = await GenEmbed.getMemJoinStaff(member=m, invite=invite)
         await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
 
-        #------------------------- SEND WELCOME MESSAGE -------------------------
+        # ------------------------- SEND WELCOME MESSAGE -------------------------
         fmt = random.choice([f'Oh {m.mention} steps up to my dinner plate, I mean to {m.guild.name}!',
                             f"I'm so excited to have {m.mention} join us, that I think I'll tear up the couch!",
                             f"Well dip me in batter and call me a nugget, {m.mention} has joined us at {m.guild.name}!",
@@ -130,36 +152,36 @@ class NewMembers(commands.Cog):
         #fmt += "\nPlease give the rules in <#" + NewMembers.config.channels['public_rules_id'] + "> a read and when you're ready make a post in <#" + NewMembers.config.channels['entrance_gate'] + "> saying that you agreed to the rules."
 
         await asyncio.sleep(0.5)
-        welMSG = await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], fmt)
+        welMSG = await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content=fmt)
 
-        #------------------------- Update Database -------------------------
+        # ------------------------- Update Database -------------------------
         await self.db.execute(pgCmds.ADD_WEL_MSG, welMSG.id, welMSG.channel.id, welMSG.guild.id, m.id)
         await self.db.execute(pgCmds.ADD_MEMBER_FUNC, m.id, m.joined_at, m.created_at)
 
-        #------------------------- AUTO ROLES -------------------------
+        # ------------------------- AUTO ROLES -------------------------
         if NewMembers.config.roles["autoroles"]:
             for r_id in NewMembers.config.roles['autoroles']:
                 asyncio.wait(0.4)
                 role = discord.utils.get(m.guild.roles, id=r_id)
                 await m.add_roles(role, reason="Auto Roles")
 
-        #------------------------- Schedule a kick -------------------------
+        # ------------------------- Schedule a kick -------------------------
         await self.schedule_kick(m, daysUntilKick=Days.gated, days=Days.gated)
     
     @commands.Cog.listener()
     async def on_member_remove(self, m):
-        ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
+        # ===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.bot.wait_until_ready()
 
-        #===== Ignore non target servers
+        # ===== IGNORE NON-TARGET GUILDS
         if m.guild.id != NewMembers.config.target_guild_id:
             return 
         
-        #-------------------------Cancel scheduled kick -------------------------
+        # ------------------------- CANCEL SCHEDULED KICK -------------------------
         await self.cancel_scheduled_kick(member=m)
 
-        #------------------------- IF MEMBER IS KICKED OR BANNED -------------------------
-        #===== WAIT A BIT TO MAKE SURE THE GUILD AUDIT LOGS ARE UPDATED BEFORE READING THEM
+        # ------------------------- IF MEMBER IS KICKED OR BANNED -------------------------
+        # ===== WAIT A BIT TO MAKE SURE THE GUILD AUDIT LOGS ARE UPDATED BEFORE READING THEM
         await asyncio.sleep(0.2)
 
         banOrKick = list() 
@@ -182,76 +204,57 @@ class NewMembers(commands.Cog):
             self.safe_print("[Info]  Missing view_audit_log permission.")
 
         except discord.errors.HTTPException:
-            self.safe_print("[Info]  HTTP error occured, likly being rate limited or blocked by cloudflare. Restart recommended.")
+            self.safe_print("[Info]  HTTP error occurred, likely being rate limited or blocked by CloudFlare. Restart recommended.")
 
-        #------------------------- Removed User Logging -------------------------
-        #=== STAFF ONLY LOGGING
+        # ------------------------- REMOVED MEMBER LOGGING -------------------------
+        # ===== STAFF ONLY LOGGING
         embed = await GenEmbed.getMemLeaveStaff(m, banOrKick)
         await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
 
-        #==== PUBLIC VISABLE LOGGING, ONLY APPLICABLE IF EXMEMBER WAS GIVEN THE CORE ROLE
+        # ===== PUBLIC VISABLE LOGGING, ONLY APPLICABLE IF EXMEMBER WAS GIVEN THE CORE ROLE
         if discord.utils.get(m.roles, id=NewMembers.config.roles['member']):
             embed = await GenEmbed.getMemLeaveUser(m, banOrKick)
             await self.safe_send_msg_chid(NewMembers.config.channels['public_bot_log'], embed=embed)
 
-        #------------------------- Remove User Welcome Messages -------------------------
+        # ------------------------- REMOVE WELCOME MESSAGES -------------------------
         await self.del_user_welcome(m)
         
-        #------------------------- Update Database -------------------------
+        # ------------------------- UPDATE THE DATABASE -------------------------
         await self.db.execute(pgCmds.REMOVE_MEMBER_FUNC, m.id)
+
+        # ===== END
+        return
     
     #@commands.Cog.listener()
     async def on_member_update(self, before, after):
         """When there is an update to a users user data"""
 
-        ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
+        # ===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.bot.wait_until_ready()
 
-        ###===== IGNORE NON-TARGET GUILDS
+        # ===== IGNORE NON-TARGET GUILDS
         if before.guild.id != self.config.target_guild_id:
             return
 
-        ###===== IF USER JUST GOT THE CORE ROLE AND HAS THE GATED ROLE
-        if  (   (self.roles['member'] not in before.roles) 
-            and (self.roles['member'] in after.roles) 
-            and (self.roles['gated'] in before.roles)
-            ):
-
-            ###=== ADD AND REMOVE NEW MEMBER AND GATED ROLES
-            await after.add_roles(self.roles['newmember'], reason="Added new member role")
-            await asyncio.sleep(0.2)
-            await after.remove_roles(self.roles['gated'], reason="Removed Gated Role")
-
-            ###=== SCHEDULE REMOVAL OF NEW MEMBER ROLE
-            await self.schedule_rem_newuser_role(after, daysUntilRemove=7, days=7)
-
-            ###=== CANCEL EXISTING MEMBER KICK
-            await self.cancel_scheduled_kick(after)
-
-            ###=== TELL THE USERS A NEW MEMBER HAS JOINED
-            embed = await GenEmbed.getMemJoinUser(after)
-            await self.safe_send_msg_chid(self.config.channels['public_bot_log'], embed=embed)
-
-            ###=== DELETE USER MESSAGES IN THE GATE
-            await self.del_user_welcome(after)
+        return
 
     @commands.Cog.listener()
     async def on_message(self, msg):
-        ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
+        # ===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.bot.wait_until_ready()
 
-        ###===== IF MESSAGE WAS NOT IN ENTRANCE GATE
+        # ===== IF MESSAGE WAS NOT IN ENTRANCE GATE
         if msg.channel.id != NewMembers.config.channels['entrance_gate']:
             return
 
-        ###===== IF THE AUTHOR IS GATED, LOG THE MESSAGE. IGNORES STAFF SINCE THEY TEND TO MESS AROUND 
+        # ===== IF THE AUTHOR IS GATED, LOG THE MESSAGE. IGNORES STAFF SINCE THEY TEND TO MESS AROUND 
         if self.roles['gated'] in msg.author.roles and not any(role.id in NewMembers.config.roles['any_staff'] for role in msg.author.roles):
             await self.db.execute(pgCmds.ADD_WEL_MSG, msg.id, msg.channel.id, msg.guild.id, msg.author.id)
             return
 
-        ###===== CYCLE THROUGH ALL THE MEMBER'S MENTIONED IN THE MESSAGE
+        # ===== CYCLE THROUGH ALL THE MEMBER'S MENTIONED IN THE MESSAGE
         for member in msg.mentions:
-            ###=== IF MENTIONED MEMBER HAS THE GATED ROLE AND IS NOT STAFF
+            # === IF MENTIONED MEMBER HAS THE GATED ROLE AND IS NOT STAFF
             if self.roles['gated'] in member.roles and not any(role.id in NewMembers.config.roles['any_staff'] for role in member.roles):
                 
                 await self.db.execute(pgCmds.ADD_WEL_MSG, msg.id, msg.channel.id, msg.guild.id, member.id)
@@ -261,22 +264,25 @@ class NewMembers(commands.Cog):
 
     @commands.Cog.listener()        
     async def on_guild_role_update(self, before, after):
-        ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
+        # ===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.bot.wait_until_ready()
 
+        # ===== IF STORED MEMBER ROLE WAS UPDATED
         if self.roles['member'] == before:
             self.roles['member'] = after
 
+        # ===== IF STORED NEWMEMBER ROLE WAS UPDATED
         elif self.roles['newmember'] == before:
             self.roles['newmember'] = after
 
+        # ===== IF STORED GATED ROLE WAS UPDATED
         elif self.roles['gated'] == before:
             self.roles['gated'] = after
         
         return
 
 
-  #-------------------- COMMANDS --------------------
+  # -------------------- COMMANDS --------------------
     @checks.HIGHEST_STAFF()
     @commands.command(pass_context=True, hidden=False, name='clearEntranceGate', aliases=['clearentrancegate'])
     async def cmd_clearentrancegate(self, ctx):
@@ -316,7 +322,7 @@ class NewMembers(commands.Cog):
 
         #===== Time out handing
         elif react == None:
-            await ctx.send(content="You took too long respond. Cancelling action.", delete_after=30)
+            await ctx.send(content="You took too long respond. Canceling action.", delete_after=30)
 
         #===== if user says no
         else:
@@ -334,32 +340,32 @@ class NewMembers(commands.Cog):
 
         await ctx.author.add_roles(self.roles['member'])
 
-        ###===== ADD NEW MEMBER AND REMOVE GATED ROLES
+        # ===== ADD NEW MEMBER AND REMOVE GATED ROLES
         await ctx.author.add_roles(self.roles['newmember'], reason="Added new member role")
         await asyncio.sleep(0.2)
         await ctx.author.remove_roles(self.roles['gated'], reason="Removed Gated Role")
 
-        ###===== SCHEDULE REMOVAL OF NEW MEMBER ROLE
+        # ===== SCHEDULE REMOVAL OF NEW MEMBER ROLE
         await self.schedule_rem_newuser_role(ctx.author, daysUntilRemove=7, days=7)
 
-        ###===== CANCEL EXISTING MEMBER KICK
+        # ===== CANCEL EXISTING MEMBER KICK
         await self.cancel_scheduled_kick(ctx.author)
 
-        ###===== TELL THE USERS A NEW MEMBER HAS JOINED
+        # ===== TELL THE USERS A NEW MEMBER HAS JOINED
         embed = await GenEmbed.getMemJoinUser(ctx.author)
         await self.safe_send_msg_chid(self.config.channels['public_bot_log'], embed=embed)
 
-        ###===== DELETE USER MESSAGES IN THE GATE
+        # ===== DELETE USER MESSAGES IN THE GATE
         await self.del_user_welcome(ctx.author)
 
         return
 
         
-  #-------------------- FUNCTIONS --------------------
+  # -------------------- FUNCTIONS --------------------
     @asyncio.coroutine
     async def safe_send_message(self, dest:Union[discord.TextChannel, discord.Message, discord.ext.commands.Context], content=None, embed=None, tts=False, expire_in=None, also_delete:discord.Message =None, quiet=True):
 
-        ###===== IF DESTINATION IS A MESSAGE
+        # ===== IF DESTINATION IS A MESSAGE
         if isinstance(dest, discord.Message):
             dest = dest.channel 
 
@@ -381,20 +387,45 @@ class NewMembers(commands.Cog):
         return msg
 
     @asyncio.coroutine
-    async def safe_send_msg_chid(self, chid, content=None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:discord.Message = None, quiet=True):
-        """Alt version of safe send message were message will send to a channel id"""
+    async def safe_send_msg_chid(self, ch_id:int, *, content:str = None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:Union[discord.Message, discord.ext.commands.Context] = None, quiet=True):
+        '''
+        Alt version of safe send message where messages can be send using channel id. Saves getting the channel from discord API.
+        Made for sending to channels entered into the config.py. Also handles the exceptions to the best of it's ability.
+        Must provide either embed or content.
+
+        Parameters
+        ------------
+        ch_id :class:`int`           
+            Channel id of the destination, can be a private channel.
+        content :class:`str`           
+            Text content which will be sent.
+        embed :class:`discord.Embed` 
+            Discord Embed object.
+        tts :class:`boolean`         
+            Enable text to speech or not.
+        expire_in :class:`int`        
+            Number of seconds before deleting the returned message
+        also_delete Union[:class:`discord.Message`, :class:`discord.Context`]
+            Another message to delete after time set with expire_in
         
-        ###===== ENTURE CONTENT IS A STRING OR NONE
+        Returns
+        --------
+        :class:`~discord.Message`
+            The message that was sent.
+
+        '''
+        
+        # ===== ENTURE CONTENT IS A STRING OR NONE
         content = str(content) if content is not None else None
         
-        ###===== SERIALIZE EMBEDS
+        # ===== SERIALIZE EMBEDS
         if embed is not None:
             embed = embed.to_dict()
 
         msg = None
 
         try:
-            msg = await self.bot.http.send_message(chid, content=content, embed=embed, tts=tts)
+            msg = await self.bot.http.send_message(ch_id, content=content, embed=embed, tts=tts)
 
             ###=== SCHEDULE SENT MESSAGE FOR DELETION
             if expire_in:
@@ -406,11 +437,11 @@ class NewMembers(commands.Cog):
 
         except discord.Forbidden:
             if not quiet:
-                self.safe_print(f"[Error] [new_members] Unable to send to channel {chid} due to lack of permissions.")
+                self.safe_print(f"[Error] [new_members] Unable to send to channel {ch_id} due to lack of permissions.")
 
         except discord.NotFound:
             if not quiet:
-                self.safe_print(f"[Error] [new_members] Cannot send message to channel {chid}, invalid channel?")
+                self.safe_print(f"[Error] [new_members] Cannot send message to channel {ch_id}, invalid channel?")
 
         return msg
     
@@ -647,13 +678,13 @@ class NewMembers(commands.Cog):
 
         except discord.Forbidden:
             if not quiet:
-                await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], "```css\nAn error has occurred```I do not have proper permissions to get the invite information.")
+                await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content="```css\nAn error has occurred```I do not have proper permissions to get the invite information.")
 
             return None
 
         except discord.HTTPException:
             if not quiet:
-                await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], "```css\nAn error has occurred```An error occurred when getting the invite information.")
+                await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content="```css\nAn error has occurred```An error occurred when getting the invite information.")
 
             return None
 
@@ -751,9 +782,9 @@ class NewMembers(commands.Cog):
         arrs.append(arr)
         return arrs
 
-  #-------------------- SCHEDULING STUFF --------------------
+  # -------------------- SCHEDULING STUFF --------------------
 
-   #-------------------- Auto Kick Members --------------------
+   # -------------------- Auto Kick Members --------------------
     async def check_new_members(self):
         """
         [Called on_ready]
@@ -762,49 +793,49 @@ class NewMembers(commands.Cog):
         Really only useful if the scheduled data in the SQL file has been lost.
         """
 
-        ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
+        # ===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.bot.wait_until_ready()
 
-        ###===== VARIABLE SETUP
+        # ===== VARIABLE SETUP
         guild = self.bot.get_guild(self.config.target_guild_id)
         now = datetime.datetime.utcnow()
 
         for member in guild.members:
             
-            ###=== IF MEMBER HAS NO ROLES AND HASN'T BEEN ON THE GUILD LONG ENOUGH FOR THE BOT TO AUTOKICK THEM
+            # === IF MEMBER HAS NO ROLES AND HASN'T BEEN ON THE GUILD LONG ENOUGH FOR THE BOT TO AUTOKICK THEM
             if not member.roles and int((now - member.joined_at).days) <= (Days.gated + 1):
                 
-                ###= APPLY THE AUTO ROLES
+                # = APPLY THE AUTO ROLES
                 if NewMembers.config.roles["autoroles"]:
                     for r_id in NewMembers.config.roles['autoroles']:
                         asyncio.wait(0.4)
                         role = discord.utils.get(guild.roles, id=r_id)
                         await member.add_roles(role, reason="Auto Roles")
 
-            ###=== IF MEMBER HAS THE GATED ROLE BUT NOT THE MEMBER ROLE
+            # === IF MEMBER HAS THE GATED ROLE BUT NOT THE MEMBER ROLE
             if (self.roles['gated'] in member.roles) and (self.roles['member'] not in member.roles):
 
-                ###= WORK OUT THE TIME THE USER HAS LEFT TO REGISTER
+                # = WORK OUT THE TIME THE USER HAS LEFT TO REGISTER
                 diff = Days.gated - int((now - member.joined_at).days)
 
-                ###= IF MEMBER HAS BEEN ON THE GUILD FOR GREATER THEN 14 DAYS
+                # = IF MEMBER HAS BEEN ON THE GUILD FOR GREATER THEN 14 DAYS
                 if diff < 1:
                     diff = 1
 
                 await self.schedule_kick(member, daysUntilKick=diff, quiet=True, days=diff)
 
-            ###=== IF MEMBER HAS THE MEMBER ROLE BUT NOT THE NEW MEMBER ROLE
+            # === IF MEMBER HAS THE MEMBER ROLE BUT NOT THE NEW MEMBER ROLE
             elif (self.roles['member'] in member.roles) and (self.roles['newmember'] not in member.roles):
                 days = (Days.newmember + 1)- int((now - member.joined_at).days)
 
-                ###= IF MEMBER HAS BEEN ON GUILD FOR LONGER THAN THE TIME REQUIRED FOR NEW MEMBER ROLE TO EXPIRE
+                # = IF MEMBER HAS BEEN ON GUILD FOR LONGER THAN THE TIME REQUIRED FOR NEW MEMBER ROLE TO EXPIRE
                 if days < 1:
                     continue
                 
-                ###= GIVE THE MEMBER THE NEWMEMBER ROLE
+                # = GIVE THE MEMBER THE NEWMEMBER ROLE
                 await member.add_roles(self.roles['newmember'], reason="Added new member role")
 
-                ###= SCHEDULE THE NEW MEMBER ROLE FOR REMOVAL
+                # = SCHEDULE THE NEW MEMBER ROLE FOR REMOVAL
                 await self.schedule_rem_newuser_role(member, days)
 
    #-------------------- Remove New User Role --------------------
@@ -915,7 +946,7 @@ class NewMembers(commands.Cog):
         for job in self.jobstore.get_all_jobs():
             if ["_kick_entrance", str(member.id)] == job.id.split(" "):
                 if not quiet:
-                    await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], "{0.mention} already scheduled for a kick".format(member))
+                    await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content="{0.mention} already scheduled for a kick".format(member))
                 return
 
         embed = await GenEmbed.getScheduleKick( member=member, 

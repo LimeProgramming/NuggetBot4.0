@@ -507,6 +507,8 @@ class NuggetBot(commands.Bot):
 
         NuggetBot.reactionmsgs = [609145721546866722] 
 
+        #self.
+
        #===== scheduler
         self.scheduler.start()
         self.scheduler.print_jobs()
