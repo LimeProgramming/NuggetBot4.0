@@ -1,3 +1,53 @@
+[![GitHub stars](https://img.shields.io/github/stars/LimeProgramming/NuggetBot4.0.svg)](https://github.com/LimeProgramming/NuggetBot4.0/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/LimeProgramming/NuggetBot4.0.svg)](https://github.com/LimeProgramming/NuggetBot4.0/network)
+[![Python version](https://img.shields.io/badge/python-3.6%2C%203.7-blue.svg)](https://python.org)
+[![Discord](https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield)](https://discord.gg/bots)
+
+
+
+<h1 align="center">
+  <br>
+  <a href="https://github.com/Cog-Creators/Red-DiscordBot/tree/V3/develop"><img src="https://imgur.com/pY1WUFX.png" alt="Red - Discord Bot"></a>
+  <br>
+  Red Discord Bot
+  <br>
+</h1>
+
+<h4 align="center">Music, Moderation, Trivia, Stream Alerts and Fully Modular.</h4>
+
+<p align="center">
+  <a href="https://discord.gg/QMEgfcg">
+    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield" alt="Discord Server">
+  </a>
+  <a href="https://www.patreon.com/Red_Devs">
+    <img src="https://img.shields.io/badge/Support-Red!-yellow.svg" alt="Support Red on Patreon!">
+  </a>
+  <a href="https://www.python.org/downloads/">
+    <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=for-the-badge" alt="Made with Python 3.7">
+  </a>
+  <a href="https://crowdin.com/project/red-discordbot">
+    <img src="https://d322cqt584bo4o.cloudfront.net/red-discordbot/localized.svg" alt="Localized with Crowdin">
+  </a>
+  <a href="https://github.com/Rapptz/discord.py/">
+      <img src="https://img.shields.io/badge/discord-py-blue.svg" alt="discord.py">
+  </a>
+</p>
+<p align="center">
+  <a href="https://travis-ci.com/Cog-Creators/Red-DiscordBot">
+    <img src="https://api.travis-ci.com/Cog-Creators/Red-DiscordBot.svg?branch=V3/develop" alt="Travis CI">
+  </a>
+  <a href="http://red-discordbot.readthedocs.io/en/stable/?badge=stable">
+    <img src="https://readthedocs.org/projects/red-discordbot/badge/?version=stable" alt="Red on readthedocs.org">
+  </a>
+  <a href="https://github.com/ambv/black">
+    <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code Style: Black">
+  </a>
+  <a href="http://makeapullrequest.com">
+    <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg">
+  </a>
+</p>
+
+
 # NuggetBot4.0
  Made again because GitHub is terrible
 
@@ -58,4 +108,17 @@ It's all right here!
 Setup
 ======
 
-debian, blah blah blah
+I run and test NuggetBot on Windows based machines and Debain based machines. To streamline the process for Debian, I made the preparelinux.sh file. If you're running a Debain 10 (Buster) based system then you can safely run this file which will take care of most of the setup for you. Requiring you to setup Python 3.6 minimum and the PostgreSQL database.
+
+
+### PostgreSQL
+If I've setup the bot correctly you will need PostgreSQL version 10 minimum (Version 9 may work but I don't think so) here are some resources you will need/find useful.
+
+* [PostgreSQL download](https://www.postgresql.org/)
+* [PGAdmin v4](https://www.pgadmin.org/download/)
+* [Video Introduction to SQL](https://www.youtube.com/playlist?list=PLi01XoE8jYojRqM4qGBF1U90Ee1Ecb5tt)
+ 
+
+ ##### Backup
+ It's always a good idea to preform semi regular backups of your database data. There are a few ways to do these backups. Personally; a few hours of downtime are no big deal. Using the backup command in PGAdmin is enough for me. 
+ Check out the BACKUPDB.md file for a more convient way to preform the same commands.
