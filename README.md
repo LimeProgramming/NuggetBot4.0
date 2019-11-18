@@ -1,10 +1,3 @@
-<!-- [![GitHub stars](https://img.shields.io/github/stars/LimeProgramming/NuggetBot4.0.svg)](https://github.com/LimeProgramming/NuggetBot4.0/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/LimeProgramming/NuggetBot4.0.svg)](https://github.com/LimeProgramming/NuggetBot4.0/network)
-[![Python version](https://img.shields.io/badge/python-3.6%2C%203.7-blue.svg)](https://python.org)
-[![Discord](https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield)](https://discord.gg/bots) -->
-
-
-
 <h1 align="center">
   <!-- <br>
   <a href="https://github.com/Cog-Creators/Red-DiscordBot/tree/V3/develop"><img src="https://imgur.com/pY1WUFX.png" alt="Red - Discord Bot"></a> -->
@@ -13,7 +6,7 @@
   <br>
 </h1>
 
-<h4 align="center">Music, Moderation, Trivia, Stream Alerts and Fully Modular.</h4>
+<!-- <h4 align="center">Music, Moderation, Trivia, Stream Alerts and Fully Modular.</h4> -->
 
 <p align="center">
   <a href="https://discord.gg/QMEgfcg">
@@ -25,11 +18,9 @@
   <a href="https://www.python.org/downloads/">
     <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=shield" alt="Made with Python 3.7">
   </a>
-
   <a href="https://www.postgresql.org/download/">
     <img src="https://img.shields.io/badge/PostgreSQL-11-orange.svg?style=shield" alt="PostgreSQL-v11">
   </a>
-
   <a href="https://github.com/Rapptz/discord.py/">
       <img src="https://img.shields.io/badge/discord-py-blue.svg?style=shield" alt="discord.py">
   </a>
@@ -41,19 +32,14 @@
   <a href="http://makeapullrequest.com">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg">
   </a>
-
   <a href="https://github.com/LimeProgramming/NuggetBot4.0/stargazers">
     <img src="https://img.shields.io/github/stars/LimeProgramming/NuggetBot4.0.svg" alt="GitHub stars">
   </a>
-
   <a href="https://github.com/LimeProgramming/NuggetBot4.0/network">
     <img src="https://img.shields.io/github/forks/LimeProgramming/NuggetBot4.0.svg" alt="GitHub forks">
   </a>
 </p>
 
-
-# NuggetBot4.0
- Made again because GitHub is terrible
 
 About
 ======
