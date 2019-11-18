@@ -1,15 +1,15 @@
-[![GitHub stars](https://img.shields.io/github/stars/LimeProgramming/NuggetBot4.0.svg)](https://github.com/LimeProgramming/NuggetBot4.0/stargazers)
+<!-- [![GitHub stars](https://img.shields.io/github/stars/LimeProgramming/NuggetBot4.0.svg)](https://github.com/LimeProgramming/NuggetBot4.0/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/LimeProgramming/NuggetBot4.0.svg)](https://github.com/LimeProgramming/NuggetBot4.0/network)
 [![Python version](https://img.shields.io/badge/python-3.6%2C%203.7-blue.svg)](https://python.org)
-[![Discord](https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield)](https://discord.gg/bots)
+[![Discord](https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield)](https://discord.gg/bots) -->
 
 
 
 <h1 align="center">
+  <!-- <br>
+  <a href="https://github.com/Cog-Creators/Red-DiscordBot/tree/V3/develop"><img src="https://imgur.com/pY1WUFX.png" alt="Red - Discord Bot"></a> -->
   <br>
-  <a href="https://github.com/Cog-Creators/Red-DiscordBot/tree/V3/develop"><img src="https://imgur.com/pY1WUFX.png" alt="Red - Discord Bot"></a>
-  <br>
-  Red Discord Bot
+  NuggetBot 4.0
   <br>
 </h1>
 
@@ -19,14 +19,11 @@
   <a href="https://discord.gg/QMEgfcg">
     <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield" alt="Discord Server">
   </a>
-  <a href="https://www.patreon.com/Red_Devs">
+  <!-- <a href="https://www.patreon.com/Red_Devs">
     <img src="https://img.shields.io/badge/Support-Red!-yellow.svg" alt="Support Red on Patreon!">
-  </a>
+  </a> -->
   <a href="https://www.python.org/downloads/">
     <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=for-the-badge" alt="Made with Python 3.7">
-  </a>
-  <a href="https://crowdin.com/project/red-discordbot">
-    <img src="https://d322cqt584bo4o.cloudfront.net/red-discordbot/localized.svg" alt="Localized with Crowdin">
   </a>
   <a href="https://github.com/Rapptz/discord.py/">
       <img src="https://img.shields.io/badge/discord-py-blue.svg" alt="discord.py">
@@ -35,12 +32,6 @@
 <p align="center">
   <a href="https://travis-ci.com/Cog-Creators/Red-DiscordBot">
     <img src="https://api.travis-ci.com/Cog-Creators/Red-DiscordBot.svg?branch=V3/develop" alt="Travis CI">
-  </a>
-  <a href="http://red-discordbot.readthedocs.io/en/stable/?badge=stable">
-    <img src="https://readthedocs.org/projects/red-discordbot/badge/?version=stable" alt="Red on readthedocs.org">
-  </a>
-  <a href="https://github.com/ambv/black">
-    <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code Style: Black">
   </a>
   <a href="http://makeapullrequest.com">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg">
