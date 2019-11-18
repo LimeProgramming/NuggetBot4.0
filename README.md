@@ -17,16 +17,21 @@
 
 <p align="center">
   <a href="https://discord.gg/QMEgfcg">
-    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png?style=for-the-badge" alt="Discord Server">
+    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield" alt="Discord Server">
   </a>
   <!-- <a href="https://www.patreon.com/Red_Devs">
     <img src="https://img.shields.io/badge/Support-Red!-yellow.svg" alt="Support Red on Patreon!">
   </a> -->
   <a href="https://www.python.org/downloads/">
-    <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=for-the-badge" alt="Made with Python 3.7">
+    <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=shield" alt="Made with Python 3.7">
   </a>
+
+  <a href="https://www.postgresql.org/download/">
+    <img src="https://img.shields.io/badge/PostgreSQL-11-orange.svg?style=shield" alt="PostgreSQL-v11">
+  </a>
+
   <a href="https://github.com/Rapptz/discord.py/">
-      <img src="https://img.shields.io/badge/discord-py-blue.svg?for-the-badge" alt="discord.py">
+      <img src="https://img.shields.io/badge/discord-py-blue.svg?style=shield" alt="discord.py">
   </a>
 </p>
 <p align="center">
