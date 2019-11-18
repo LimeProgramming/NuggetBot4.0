@@ -17,16 +17,16 @@
 
 <p align="center">
   <a href="https://discord.gg/QMEgfcg">
-    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield" alt="Discord Server">
+    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png?style=for-the-badge" alt="Discord Server">
   </a>
   <!-- <a href="https://www.patreon.com/Red_Devs">
     <img src="https://img.shields.io/badge/Support-Red!-yellow.svg" alt="Support Red on Patreon!">
   </a> -->
   <a href="https://www.python.org/downloads/">
-    <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=shield" alt="Made with Python 3.7">
+    <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=for-the-badge" alt="Made with Python 3.7">
   </a>
   <a href="https://github.com/Rapptz/discord.py/">
-      <img src="https://img.shields.io/badge/discord-py-blue.svg" alt="discord.py">
+      <img src="https://img.shields.io/badge/discord-py-blue.svg?for-the-badge" alt="discord.py">
   </a>
 </p>
 <p align="center">
@@ -35,6 +35,14 @@
   </a>
   <a href="http://makeapullrequest.com">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg">
+  </a>
+
+  <a href="https://github.com/LimeProgramming/NuggetBot4.0/stargazers">
+    <img src="https://img.shields.io/github/stars/LimeProgramming/NuggetBot4.0.svg" alt="GitHub stars">
+  </a>
+
+  <a href="https://github.com/LimeProgramming/NuggetBot4.0/network">
+    <img src="https://img.shields.io/github/forks/LimeProgramming/NuggetBot4.0.svg" alt="GitHub forks">
   </a>
 </p>
 
