@@ -23,7 +23,7 @@
     <img src="https://img.shields.io/badge/Support-Red!-yellow.svg" alt="Support Red on Patreon!">
   </a> -->
   <a href="https://www.python.org/downloads/">
-    <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=for-the-badge" alt="Made with Python 3.7">
+    <img src="https://img.shields.io/badge/Made%20With-Python%203.7-blue.svg?style=shield" alt="Made with Python 3.7">
   </a>
   <a href="https://github.com/Rapptz/discord.py/">
       <img src="https://img.shields.io/badge/discord-py-blue.svg" alt="discord.py">
