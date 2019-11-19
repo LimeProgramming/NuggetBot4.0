@@ -1,13 +1,28 @@
-from discord.ext import commands
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
 import discord
 import asyncio
 import asyncpg
 import datetime
+from discord.ext import commands
 
-from nuggetbot.util.chat_formatting import AVATAR_URL_AS, GUILD_URL_AS, RANDOM_DISCORD_COLOR
+from .util import checks
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseCmds as pgCmds
-from .cog_utils import in_channel, IS_CORE, in_channel_name, IN_RECEPTION, has_role, IS_HIGH_STAFF, IS_ANY_STAFF
+from nuggetbot.util.chat_formatting import AVATAR_URL_AS, GUILD_URL_AS, RANDOM_DISCORD_COLOR
 
 import dblogin 
 

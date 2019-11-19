@@ -1,10 +1,24 @@
-from discord.ext import commands
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
 import discord
 import asyncio
-import datetime
-from random import choice, randint
 import random
+import datetime
 from enum import Enum
+from discord.ext import commands
 
 from .util import checks
 from nuggetbot.config import Config
@@ -29,29 +43,26 @@ class Fun(commands.Cog):
         self.bot = bot
         Fun.config = Config()
 
-  #-------------------- LOCAL COG STUFF --------------------
+  # -------------------- LOCAL COG STUFF --------------------
     async def cog_after_invoke(self, ctx):
         if Fun.config.delete_invoking:
             await ctx.message.delete()
 
         return
 
-  #-------------------- COG COMMANDS --------------------
-
+  # -------------------- COG COMMANDS --------------------
     #@in_channel([ChnlID.reception, ChnlID.blessrng])
     @checks.CORE()
     @commands.command(pass_context=True, hidden=False, name='rps', aliases=[])
-    async def cmd_rps(self, ctx):
+    async def cmd_rps(self, ctx, choice:str):
         """
-        Useage:
-            [prefix]rps rock/paper/scissors
         [Core] Plays Rock Paper Scissors.
 
-        Play rock paper scissors.
+        Useage:
+            [prefix]rps rock/paper/scissors
         """
 
         try:
-            choice = (ctx.message.content.split(" ")[1]).lower()
             if choice not in ["rock", "paper", "scissors"]:
                 raise ValueError()
 
@@ -61,7 +72,7 @@ class Fun(commands.Cog):
                 raise ValueError()
 
         except (IndexError, ValueError):
-            await ctx.channel.send(content="`Useage: [p]rps rock/paper/scissors, [Core] Plays Rock Paper Scissors.`")
+            await ctx.send_help("rps")
             return
 
         bot_choice = random.choice((RPS.rock, RPS.paper, RPS.scissors))
@@ -94,21 +105,16 @@ class Fun(commands.Cog):
     #@in_channel([ChnlID.reception, ChnlID.blessrng])
     @checks.CORE()
     @commands.command(pass_context=True, hidden=False, name='8ball', aliases=[])
-    async def cmd_8ball(self, ctx):
+    async def cmd_8ball(self, ctx, question:str):
         """
+        [Core] Rolls an 8ball. Ask 8 ball a question, all questions must end with a question mark.
+
         Useage:
             [prefix]8ball <question>
-        [Core] Rolls an 8ball
-
-        Ask 8 ball a question
-        Question must end with a question mark.
         """
-        
-        question = ctx.message.content[(len(ctx.prefix) + len(ctx.invoked_with)):].strip()
 
         if len(question) == 0:
-
-            await ctx.channel.send(content="`Useage: [p]8ball <question> [Core] Rolls an 8ball.`")
+            await ctx.send_help('8ball')
             return
 
         if question.endswith("?") and question != "?":
@@ -120,7 +126,7 @@ class Fun(commands.Cog):
                             timestamp=      datetime.datetime.utcnow()
                             )
             e.add_field(    name=       "Answer",
-                            value=      choice(Fun.ball),
+                            value=      random.choice(Fun.ball),
                             inline=     False
                         )
             e.set_author(   name=       "8Ball | {0.name}#{0.discriminator}".format(ctx.author),
@@ -140,27 +146,29 @@ class Fun(commands.Cog):
     #@in_channel([ChnlID.reception, ChnlID.blessrng])
     @checks.CORE()
     @commands.command(pass_context=True, hidden=False, name='roll', aliases=[])
-    async def cmd_roll(self, ctx):
+    async def cmd_roll(self, ctx, number:int = 100):
         """
+        [Core] Rolls random number between 1 and user choice, defaults to 100.
+
         Useage:
-            [prefix]roll <number>
-        [Core] Rolls a dice
-
-        Rolls random number (between 1 and user choice)
-        Defaults to 100.
+            [prefix]roll <number higher than 1>
         """
-        try:
-            number = int(ctx.message.content.split(" ")[1])
 
-            if number <= 1:
-                raise ValueError()      
+        if number <= 1:  
+            await ctx.send_help('roll')
 
-        except (ValueError, IndexError):
-            await ctx.channel.send(content="`Useage: [p]roll <number higher than 1> [Core] Rolls a dice.`")
-            return
-
-        n = randint(1, number)
+        n = random.randint(1, number)
         await ctx.channel.send(content=f"{ctx.author.mention} :game_die: {n} :game_die:")
+        return
+    
+    @checks.CORE()
+    @commands.command(pass_context=True, hidden=True, name='awoo', aliases=[])  
+    async def cmd_awoo(self, ctx):
+        if ctx.author.id != 357048939503026177:
+            return
+        
+        await ctx.send("Fuck off <@357048939503026177>.")
+
         return
 
 

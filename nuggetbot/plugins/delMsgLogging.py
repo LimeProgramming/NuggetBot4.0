@@ -1,3 +1,18 @@
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
 import os 
 import discord
 import datetime
@@ -8,8 +23,8 @@ from discord.ext import commands
 from nuggetbot.config import Config
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS, escape
 
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
-from .util import checks
+#from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
+from .util import checks, cogset
 
 class DelMsgLogging(commands.Cog):
     """
@@ -29,7 +44,7 @@ class DelMsgLogging(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
 
-        self.cogset = await LOAD_COG_CONFIG(cogname="delmsglogging")
+        self.cogset = await cogset.LOAD(cogname="delmsglogging")
 
         if not self.cogset:
             self.cogset= dict(
@@ -40,7 +55,7 @@ class DelMsgLogging(commands.Cog):
                 report_ch_id=       DelMsgLogging.config.channels['bot_log'],
             )
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
+            await cogset.SAVE(self.cogset, cogname="delmsglogging")
 
     @commands.Cog.listener()
     async def on_message_delete(self, msg):
@@ -249,7 +264,7 @@ class DelMsgLogging(commands.Cog):
 
         self.cogset['enableDelMsgLog'] = not self.cogset['enableDelMsgLog']
 
-        await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname="delmsglogging")
 
         await ctx.channel.send(f"Deleted message logging has been set to {self.cogset['enableDelMsgLog']}")
         return
@@ -272,7 +287,7 @@ class DelMsgLogging(commands.Cog):
 
         self.cogset['save_attach'] = not self.cogset['save_attach']
 
-        await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname="delmsglogging")
 
         await ctx.channel.send(f"Deleted message logging download attachments has been set to {self.cogset['save_attach']}")
         return
@@ -306,7 +321,7 @@ class DelMsgLogging(commands.Cog):
             await ctx.channel.send(content=f"<#{ch_id}> is added to the list of monitored channels.", delete_after=15)
 
         ###===== SAVE THE SETTINGS
-        await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname="delmsglogging")
         return
 
     @checks.HIGHEST_STAFF()
@@ -335,7 +350,7 @@ class DelMsgLogging(commands.Cog):
             await ctx.channel.send(content=f"<@{user_id}> is no longer on the list of monitored members.", delete_after=15)
 
         ###===== SAVE THE SETTINGS
-        await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname="delmsglogging")
         return
 
     @checks.HIGHEST_STAFF()
@@ -364,7 +379,7 @@ class DelMsgLogging(commands.Cog):
         ###===== SAVE THE SETTINGS
         self.cogset['report_ch_id'] = ch_id
         self.report_ch = None
-        await SAVE_COG_CONFIG(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname="delmsglogging")
 
         ###===== REPORT TO INVOKER
         await ctx.channel.send(content=f"https://discordapp.com/channels/{channelReal.guild.id}/{channelReal.id} \nIs now the current channel I will report deleted messages to.", delete_after=60)

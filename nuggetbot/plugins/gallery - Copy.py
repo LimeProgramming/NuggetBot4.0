@@ -1,3 +1,17 @@
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
 from discord.ext import commands
 import discord
 import asyncio
@@ -11,11 +25,13 @@ from apscheduler import events
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from .util import cogset, checks
 from nuggetbot.utils import get_next
-from nuggetbot.plugins.cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
+#from nuggetbot.plugins.cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseCmds as pgCmds
-from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
+
+#from .ctx_decorators import in_channel, is_core, in_channel_name, in_reception, has_role, is_high_staff, is_any_staff
 #https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#bot
 import dblogin 
 
@@ -197,13 +213,13 @@ class Gallery(commands.Cog):
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
-        self.cogset = await LOAD_COG_CONFIG(cogname="gallery")
+        self.cogset = await cogset.LOAD(cogname="gallery")
         if not self.cogset:
             self.cogset= dict(
                 enablelogging=False
             )
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+            await cogset.SAVE(self.cogset, cogname="gallery")
 
     #@commands.Cog.listener()
     async def on_ready_old(self):

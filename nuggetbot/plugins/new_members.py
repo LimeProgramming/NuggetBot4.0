@@ -2,26 +2,17 @@
 ----~~~~~ NuggetBot ~~~~~----
 Written By Calamity Lime#8500
 
-About
------------
-Nugget bot began life as a simple script which deleted Dyno messages running on a Raspberry PI 2 crammed behind a modem.
-It crashed everyday so it ran in an infinate loop from an sh file, crude but functional. 
-
-
 Disclaimer
 -----------
-Source code for NuggetBot has been shared on GitHub for the purposes of transparency on the FurSail discord guild.
-This bot has been tailored for use on FurSail, running it on other guilds could cause unexpected results.
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
 
+FurSail Invite URL: http://discord.gg/QMEgfcg
 
-Run your instance of this bot at your own risk.
-
-Invite URL: http://discord.gg/QMEgfcg
-
-Feel free to inspect the bot for educational purposes.
+Kind Regards
+-Lime
 """
 
-#import re
 import sys
 import json
 import random

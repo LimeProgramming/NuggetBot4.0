@@ -1,3 +1,17 @@
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
 #from nuggetbot.plugin import Plugin
 #import discord
 #import asyncio
@@ -31,6 +45,7 @@
 from discord.ext import commands
 import asyncio
 from nuggetbot import exceptions
+from nuggetbot.config import Config
 
 def to_emoji(c):
     base = 0x1f1e6
@@ -47,6 +62,9 @@ class Test(commands.Cog):
     async def on_ready(self):
         await asyncio.sleep(4)
 
+        config = Config()
+        print(config.roles['user_staff'])
+        print(type(config.roles['user_staff']))
         #p#rint(self.bot.http.token)
         #print(self.bot.http.bot_token)
 
@@ -56,7 +74,7 @@ class Test(commands.Cog):
         #    if e.animated:
         #        print("{0.name}:{0.id}".format(e))
 
-        raise exceptions.PostAsWebhook("This issue is a test, please ignore. <a:foxban:405724216197906455>")
+        #raise exceptions.PostAsWebhook("This issue is a test, please ignore. <a:foxban:405724216197906455>")
 
     @commands.Cog.listener()
     async def on_message(self, msg):

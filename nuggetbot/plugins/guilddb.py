@@ -1,18 +1,31 @@
-from discord.ext import commands, tasks
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
+import random
+import logging
 import discord
 import asyncio
 import asyncpg
 import datetime
-import random
-import logging
-
 from typing import Union
+from discord.ext import commands, tasks
 
+from .util import checks, cogset
 from nuggetbot.config import Config
-from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 
 import dblogin 
 
@@ -32,7 +45,7 @@ class GuildDB(commands.Cog):
         GuildDB.config = Config()
 
 
-  #-------------------- STATIC METHOD --------------------  
+  # -------------------- STATIC METHOD --------------------  
     @staticmethod
     async def oneline_valid(content):
         try:
@@ -74,7 +87,7 @@ class GuildDB(commands.Cog):
             return False
 
 
-  #-------------------- LOCAL COG STUFF --------------------  
+  # -------------------- LOCAL COG STUFF --------------------  
     async def cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
             await ctx.guild.owner.send(content=f"{ctx.author.mention} tried to use the owner only command{ctx.invoked_with}")
@@ -110,7 +123,7 @@ class GuildDB(commands.Cog):
         return
 
 
-  #-------------------- COMMANDS --------------------
+  # -------------------- COMMANDS --------------------
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     @commands.command(pass_context=True, hidden=False, name='logstaff', aliases=[], brief='[Admin] Log history of staff change.')
@@ -126,18 +139,18 @@ class GuildDB(commands.Cog):
             reason : Reason for this changed, limited to 1000 chatactors.
         """
 
-        ###===== MAKE SURE A ROLE IS EITHER ADDED OR REMOVED.
+        # ===== MAKE SURE A ROLE IS EITHER ADDED OR REMOVED.
         if received_role == 0 and removed_role == 0:
             await ctx.send("`A role needs to be added or removed.`")
             await ctx.send_help('logstaff')
             return
 
-        ###===== ASSUME THE COMMAND INVOKER EDITED THE EX/STAFF
+        # ===== ASSUME THE COMMAND INVOKER EDITED THE EX/STAFF
         if maker_id == 0:
             maker_id = ctx.author.id
 
 
-        ###===== MAKE SURE ALL VARIABLES WHICH SHOULD BE INTS, ARE INT. 
+        # ===== MAKE SURE ALL VARIABLES WHICH SHOULD BE INTS, ARE INT. 
         try:
             maker_id = GuildDB.StripMention(maker_id)
             staff_id = GuildDB.StripMention(staff_id)
@@ -145,18 +158,18 @@ class GuildDB(commands.Cog):
             received_role = int(received_role)
             removed_role = int(received_role)
 
-        ###===== IF A VARIABLE IS NOT AN INT, THEN CALL THE USER A MORON.
+        # ===== IF A VARIABLE IS NOT AN INT, THEN CALL THE USER A MORON.
         except ValueError:
             await ctx.send("`All id's provided **must** be a number.`")
             await ctx.send_help('logstaff')
             return
 
-        ###===== COMMIT DATA TO DATABASE
+        # ===== COMMIT DATA TO DATABASE
         staff_data = staff_id, maker_id, received_role, removed_role, reason[:1000]
 
         await self.db.execute(pgCmds.APPEND_GUILD_STAFF, staff_data, ctx.guild.id)
 
-        ###===== GIVE A RETURN SO THE INVOKER DOESN'T THINK THAT NOTHING HAPPENED.
+        # ===== GIVE A RETURN SO THE INVOKER DOESN'T THINK THAT NOTHING HAPPENED.
         embed = discord.Embed(  
             description=f"Ex/Staff:         <@{staff_id}>"
                         f"Maker:            <@{maker_id}>"
@@ -173,36 +186,36 @@ class GuildDB(commands.Cog):
         return
  
  
-  #-------------------- READY LISTENER --------------------
+  # -------------------- READY LISTENER --------------------
     @commands.Cog.listener()
     async def on_ready(self):
-        ###===== CONNECT TO THE POSTGRE DATABASE    
+        # ===== CONNECT TO THE POSTGRE DATABASE    
         await self.connect_db()
 
-        ###===== LOAD THE COGSET
-        self.cogset = await LOAD_COG_CONFIG(cogname="guilddb")
+        # ===== LOAD THE COGSET
+        self.cogset = await cogset.LOAD(cogname="guilddb")
 
         if not self.cogset:
             self.cogset= dict(
                 lastAuditLog=    None
             )
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="guilddb")
+            await cogset.SAVE(self.cogset, cogname="guilddb")
 
-        ###===== DELAY THE COG BY 2 MINUTES TO LET THE MAIN BOT DO IT'S WORK
+        # ===== DELAY THE COG BY 2 MINUTES TO LET THE MAIN BOT DO IT'S WORK
         await asyncio.sleep(120)
 
-        ###===== GET THE GUILD INFO FROM DATABASE
+        # ===== GET THE GUILD INFO FROM DATABASE
         data = await self.db.fetchrow(pgCmds.GET_GUILD_DATA, GuildDB.config.target_guild_id)
 
-        ###===== IF THE THERE IS NO INFORMATION ABOUT THE GUILD IN THE DATABASE
+        # ===== IF THE THERE IS NO INFORMATION ABOUT THE GUILD IN THE DATABASE
         if not data:
-            ###=== GET THE GUILD
+            # === GET THE GUILD
             guild = self.bot.get_guild(GuildDB.config.target_guild_id)
 
             await self.db.execute(pgCmds.PRIME_GUILD_DATA, guild.id, guild.owner_id, guild.created_at, [channel.id for channel in guild.channels])
 
-            ###=== GETS THE GUILDS ICON
+            # === GETS THE GUILDS ICON
             icon_type = "gif" if guild.is_icon_animated() else "webp"
             i_bytes = guild.icon_url_as(format=icon_type).read()
 
@@ -211,7 +224,7 @@ class GuildDB(commands.Cog):
             #---------- Ship to the DB
             await self.db.execute(pgCmds.SET_GUILD_ICON, guild_icon, guild.id)
 
-            ###=== CYCLE THROUGH A GUILDS EMOJIS, ADDING THEM TO THE DATABASE
+            # === CYCLE THROUGH A GUILDS EMOJIS, ADDING THEM TO THE DATABASE
             for emoji in guild.emojis:
 
                 e_id, ext = (emoji.url.__str__().split("/").pop()).split(".")
@@ -222,23 +235,23 @@ class GuildDB(commands.Cog):
 
                 await self.db.execute(pgCmds.APPEND_GUILD_EMOJIS, emoji_byte, guild.id)
 
-            ###=== GUILD AUDIT LOGS
+            # === GUILD AUDIT LOGS
             async for entry in guild.audit_logs(limit=None, oldest_first=True):
-                ###= GUILD BANS
+                # = GUILD BANS
                 if entry.action == discord.AuditLogAction.ban:
                     ban = entry.target.id, entry.user.id, str(entry.reason)[:250] or "None", entry.id, entry.created_at
                     await self.db.execute(pgCmds.APPEND_GUILD_BANS, ban, guild.id)
 
-                ###= GUILD UNBANS
+                # = GUILD UNBANS
                 elif entry.action == discord.AuditLogAction.unban:
                     unban = entry.target.id, entry.user.id, str(entry.reason)[:250] or "None", entry.id, entry.created_at
                     await self.db.execute(pgCmds.APPEND_GUILD_UNBANS, unban, guild.id)
 
-                ###= TAKE NOTE OF THE LAST AUDIT LOG ID
+                # = TAKE NOTE OF THE LAST AUDIT LOG ID
                 if self.cogset['lastAuditLog'] < entry.id:
                     self.cogset['lastAuditLog'] = entry.id
 
-            ###=== ROLES
+            # === ROLES
             for role in sorted(guild.roles, key=lambda x: x.position):
                 role_info = role.id, role.name, role.permissions.value, role.hoisted, role.is_default(), role.colour.value, role.created_at, False
                 await self.db.execute(pgCmds.APPEND_GUILD_ROLES, role_info, guild.id)
@@ -246,14 +259,14 @@ class GuildDB(commands.Cog):
         self.cog_ready = True 
 
 
-  #-------------------- OTHER LISTENERS --------------------
+  # -------------------- OTHER LISTENERS --------------------
     @commands.Cog.listener()        
     async def on_guild_update(self, before, after):
-        ###===== OWNER CHECK
+        # ===== OWNER CHECK
         if before.owner_id != after.owner_id:
             await self.db.execute(pgCmds.SET_GUILD_OWNER, after.owner_id, after.id)
 
-        ###===== GUILD ICON CHECK
+        # ===== GUILD ICON CHECK
         elif before.icon != after.icon:
 
             icon_type = "gif" if after.is_icon_animated() else "webp"
@@ -267,7 +280,7 @@ class GuildDB(commands.Cog):
 
         return
 
-   #-------------------- ROLE MANAGEMENT --------------------
+   # -------------------- ROLE MANAGEMENT --------------------
     @commands.Cog.listener()        
     async def on_guild_role_create(self, role):
 
@@ -278,14 +291,14 @@ class GuildDB(commands.Cog):
 
     @commands.Cog.listener()        
     async def on_guild_role_delete(self, role): 
-        ###===== FETCH DATA FROM THE DATABASE
+        # ===== FETCH DATA FROM THE DATABASE
         dbroles = await self.db.fetch(pgCmds.GET_GUILD_ROLES, role.guild.id)
         oldentry = None 
         newentry = None 
 
         #id, name, perms, hoisted, default, colour, date, deleted
         for dbrole in dbroles:
-            ###=== IF THE DELETED ROLE ID MATCHES A ROLE ID FROM THE DATABASE
+            # === IF THE DELETED ROLE ID MATCHES A ROLE ID FROM THE DATABASE
             if dbrole[0] == role.id:
 
                 newentry = dbrole
@@ -294,12 +307,12 @@ class GuildDB(commands.Cog):
 
                 break
         
-        ###===== IF DELETED ROLE WAS NOT FOUND IN THE DATABASE, ADD IT AS A DELETED ROLE.
+        # ===== IF DELETED ROLE WAS NOT FOUND IN THE DATABASE, ADD IT AS A DELETED ROLE.
         if not oldentry:
             role_info = role.id, role.name, role.permissions.value, role.hoisted, role.is_default(), role.colour.value, role.created_at, True
             await self.db.execute(pgCmds.APPEND_GUILD_ROLES, role_info, role.guild.id)
 
-        ###===== ELSE IS THE ROLE WAS FOUND IN THE DATABASE, UPDATE THE ENTRY TO MARK THE ROLE AS DELETED
+        # ===== ELSE IS THE ROLE WAS FOUND IN THE DATABASE, UPDATE THE ENTRY TO MARK THE ROLE AS DELETED
         else:
             await self.db.execute(pgCmds.UPDATE_GUILD_ROLE, oldentry, newentry, role.guild.id) 
 
@@ -307,28 +320,28 @@ class GuildDB(commands.Cog):
 
     @commands.Cog.listener()        
     async def on_guild_role_update(self, before, after):
-        ###===== IF ROLE CHANGE IS NOT SOMETHING WHICH WE STORE IN THE DATABASE, IGNORE THE CHANGE
+        # ===== IF ROLE CHANGE IS NOT SOMETHING WHICH WE STORE IN THE DATABASE, IGNORE THE CHANGE
         if not ((after.name != before.name)         or (after.permissions.value != before.permissions.value)
             or (after.hoisted != before.hoisted)    or (after.colour.value != before.colour.value)):
             return
 
-        ###===== FETCH DATA FROM THE DATABASE
+        # ===== FETCH DATA FROM THE DATABASE
         dbroles = await self.db.fetch(pgCmds.GET_GUILD_ROLES, after.guild.id)
         role_found = False
 
-        ###===== LOOP THROUGH THE DATA STORED IN THE DB
+        # ===== LOOP THROUGH THE DATA STORED IN THE DB
         for dbrole in dbroles:
-            ###=== IF THE EDITED ROLE ID MATCHES A ROLE ID FROM THE DATABASE
+            # === IF THE EDITED ROLE ID MATCHES A ROLE ID FROM THE DATABASE
             if dbrole[0] == after.id:
                 role_found = dbrole
                 break
         
-        ###===== IF ROLE WAS FOUND IN THE DB STORE
+        # ===== IF ROLE WAS FOUND IN THE DB STORE
         if role_found:
             role_info = after.id, after.name, after.permissions.value, after.hoisted, after.is_default(), after.colour.value, after.created_at, False
             await self.db.execute(pgCmds.UPDATE_GUILD_ROLE, role_found, role_info, after.guild.id) 
 
-        ###===== IF TOLE WAS NOT FOUND IN THE DB STORE, ADD IT TO THE DB STORE
+        # ===== IF TOLE WAS NOT FOUND IN THE DB STORE, ADD IT TO THE DB STORE
         else:
             role_info = after.id, after.name, after.permissions.value, after.hoisted, after.is_default(), after.colour.value, after.created_at, False
             await self.db.execute(pgCmds.APPEND_GUILD_ROLES, role_info, after.guild.id)
@@ -336,19 +349,19 @@ class GuildDB(commands.Cog):
         return
 
 
-   #-------------------- EMOJI MANAGEMENT --------------------
+   # -------------------- EMOJI MANAGEMENT --------------------
     @commands.Cog.listener()        
     async def on_guild_emojis_update(self, guild, before, after):
-        ###===== Wait for the cog to be ready. This should help avoid data becoming corrupt or going out of order.
+        # ===== Wait for the cog to be ready. This should help avoid data becoming corrupt or going out of order.
         while not self.cog_ready:
             await asyncio.sleep(5)
 
-        ###===== If the list of new emojis is not greater than the list of old emojis
+        # ===== If the list of new emojis is not greater than the list of old emojis
         # if this check fails it means that an emoji has been removed and the point of this function is to log all emojis ever added to the guild.
         if not len(after) > len(before):
             return 
 
-        ###===== Cycle through the emojis, old ones are removed in the implied list.
+        # ===== Cycle through the emojis, old ones are removed in the implied list.
         for emoji in [emoji for emoji in after if emoji not in before]:
 
             e_id, ext = (emoji.url.__str__().split("/").pop()).split(".")
@@ -362,7 +375,7 @@ class GuildDB(commands.Cog):
         return
 
 
-   #-------------------- CHANNEL MANAGEMENT --------------------
+   # -------------------- CHANNEL MANAGEMENT --------------------
     @commands.Cog.listener()  
     async def on_guild_channel_delete(self, channel):
         r = [ch.id for ch in channel.guild.channels]
@@ -384,7 +397,7 @@ class GuildDB(commands.Cog):
         pass
     
 
-   #-------------------- MEMBER MANAGEMENT --------------------
+   # -------------------- MEMBER MANAGEMENT --------------------
     @commands.Cog.listener()
     async def on_member_join(self, member):
         pass
@@ -426,7 +439,7 @@ class GuildDB(commands.Cog):
         await self.db.execute(pgCmds.APPEND_GUILD_UNBANS, data)
 
 
-  #-------------------- FUNCTIONS --------------------
+  # -------------------- FUNCTIONS --------------------
 
     async def get_ban_unban_data(self, action, user: Union[discord.User, discord.Member], guild: discord.Guild):
         """
@@ -464,7 +477,7 @@ class GuildDB(commands.Cog):
         return data[:4]
 
 
-  #-------------------- TASKS --------------------
+  # -------------------- TASKS --------------------
     @tasks.loop(hours=24.0)
     async def auditlog_update(self):
         """
@@ -478,7 +491,7 @@ class GuildDB(commands.Cog):
 
         self.cogset['lastAuditLog'] = entry[0].id
 
-        await SAVE_COG_CONFIG(self.cogset, cogname="guilddb")
+        await cogset.SAVE(self.cogset, cogname="guilddb")
 
 def setup(bot):
     bot.add_cog(GuildDB(bot))

@@ -1,3 +1,18 @@
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
 import re
 import sys
 import json
@@ -9,18 +24,6 @@ import logging
 import datetime
 
 from discord.ext import commands
-
-
-# import os
-# import time
-# import random
-# import asyncio
-# import traceback
-
-# from enum import Enum
-# from random import randint
-# from functools import wraps
-# from discord.ext.commands.bot import _get_variable
 
 # test imports
 from PIL import Image

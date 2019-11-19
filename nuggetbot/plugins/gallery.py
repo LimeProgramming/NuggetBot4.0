@@ -1,21 +1,34 @@
-from discord.ext import commands
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+import re
 import discord
 import asyncio
 import asyncpg
 import datetime
-import random
-import re
 import collections
+from discord.ext import commands
 
 from apscheduler import events
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from .util import checks, cogset
 from nuggetbot.config import Config
 from nuggetbot.utils import get_next
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, AVATAR_URL_AS, GUILD_URL_AS
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 
 #https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#bot
 import dblogin 
@@ -40,7 +53,7 @@ class Gallery(commands.Cog):
         self.scheduler.add_listener(self.job_missed, events.EVENT_JOB_MISSED)
 
 
-  #-------------------- LOCAL COG EVENTS --------------------
+  # -------------------- LOCAL COG EVENTS --------------------
     async def cog_before_invoke(self, ctx):
         '''THIS IS CALLED BEFORE EVERY COG COMMAND, IT'S SOLE PURPOSE IS TO CONNECT TO THE DATABASE'''
 
@@ -69,7 +82,7 @@ class Gallery(commands.Cog):
             return 
 
 
-  #-------------------- STATIC METHODS --------------------
+  # -------------------- STATIC METHODS --------------------
     @staticmethod
     def time_pat_to_hrs(t):
         '''
@@ -132,11 +145,11 @@ class Gallery(commands.Cog):
         return arrs
 
 
-  #-------------------- LISTENERS --------------------
+  # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
 
-        self.cogset = await LOAD_COG_CONFIG(cogname="gallery")
+        self.cogset = await cogset.LOAD(cogname="gallery")
         if not self.cogset:
             self.cogset= dict(
                 guild_id=      0,
@@ -149,16 +162,16 @@ class Gallery(commands.Cog):
                 link_wl=       []
             )
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+            await cogset.SAVE(self.cogset, cogname="gallery")
 
         await asyncio.sleep(120)
         
-        ###===== SCHEDULER
+        # ===== SCHEDULER
         self.scheduler.start()
 
     @commands.Cog.listener()
     async def on_message(self, msg):
-        ###===== RETURN IF GALLERYS ARE DISABLED or MESSAGE IS NOT FROM A GUILD
+        # ===== RETURN IF GALLERYS ARE DISABLED or MESSAGE IS NOT FROM A GUILD
         if  (  not self.cogset['enable'] 
             or not msg.guild
             or not msg.type == discord.MessageType.default
@@ -213,7 +226,7 @@ class Gallery(commands.Cog):
                 await self.db.close()
 
 
-  #-------------------- COMMANDS --------------------
+  # -------------------- COMMANDS --------------------
     @commands.is_owner()
     @commands.command(pass_context=True, hidden=False, name='galenable', aliases=[])
     async def cmd_galenable(self, ctx):
@@ -224,10 +237,10 @@ class Gallery(commands.Cog):
             [prefix]galenable
         """
 
-        ###===== SET LOCAL COG VARIABLE
+        # ===== SET LOCAL COG VARIABLE
         self.cogset['enable']= True
 
-        ###===== ADD THE FUNCTION TO THE SCHEDULER
+        # ===== ADD THE FUNCTION TO THE SCHEDULER
         self.scheduler.add_job(call_schedule,
                                 'date',
                                 id="_delete_gallery_messages",
@@ -235,8 +248,8 @@ class Gallery(commands.Cog):
                                 kwargs={"func": "_delete_gallery_messages"}
                                 )
 
-        ###===== SAVE SETTINGS  
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        # ===== SAVE SETTINGS  
+        await cogset.SAVE(self.cogset, cogname="gallery")
 
         await ctx.channel.send(content="Galleries are **enabled**.")
 
@@ -251,13 +264,13 @@ class Gallery(commands.Cog):
         Useage:
             [prefix]galdisable
         """
-        ###===== SET LOCAL COG VARIABLE
+        # ===== SET LOCAL COG VARIABLE
         self.cogset['enable']= False
 
-        ###===== SAVE SETTINGS  
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        # ===== SAVE SETTINGS  
+        await cogset.SAVE(self.cogset, cogname="gallery")
 
-        ###===== DELETE THE JOB IF IT EXISTS
+        # ===== DELETE THE JOB IF IT EXISTS
         for job in self.jobstore.get_all_jobs():
             if ["_delete_gallery_messages"] == job.id.split(" "):
                 self.scheduler.remove_job(job.id)
@@ -276,7 +289,7 @@ class Gallery(commands.Cog):
             [prefix]galaddchannel <channelid/mention>
         """
 
-        ###===== GET CHANNEL ID
+        # ===== GET CHANNEL ID
         try:
             ch_id = int(channel.lower().replace('<').replace('>').replace('#').strip())
 
@@ -285,7 +298,7 @@ class Gallery(commands.Cog):
         
         ret_msg=""
 
-        ###===== REMOVE CHANNEL ID FROM LIST
+        # ===== REMOVE CHANNEL ID FROM LIST
         if ch_id in self.cogset['channel_ids']:
             self.cogset['channel_ids'].remove(ch_id)
 
@@ -294,15 +307,15 @@ class Gallery(commands.Cog):
             ###=== DELETE LOGGED MESSAGES FROM DATABASE
             await self.db.execute(pgCmds.DEL_GALL_MSGS_FROM_CH, ch_id, self.cogset['guild_id'])
 
-        ###===== ADD CHANNEL ID TO LIST
+        # ===== ADD CHANNEL ID TO LIST
         else:
             self.cogset['channel_ids'] = list(set(self.cogset['channel_ids']) + {ch_id})
             ret_msg = f"<#{ch_id}> has been made a gallery channel."
 
-        ###===== SAVE SETTINGS  
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        # ===== SAVE SETTINGS  
+        await cogset.SAVE(self.cogset, cogname="gallery")
 
-        ###===== END
+        # ===== END
         await ctx.channel.send(content=ret_msg, delete_after=Gallery.delete_after)
         return
 
@@ -316,27 +329,27 @@ class Gallery(commands.Cog):
         Useage:
             [prefix]galsetexpirehours <hours>
         """
-        ###===== CHECK IF VALID
+        # ===== CHECK IF VALID
         new_time = Gallery.time_pat_to_hrs(timepat)
         
         if not new_time:
             await ctx.send_help("galsetexpirehours", delete_after=15)
             return
 
-        ###===== SAVE COG SETTINGS
+        # ===== SAVE COG SETTINGS
         self.cogset['text_expirein'] = new_time
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname="gallery")
 
         resetJob = False
 
-        ###===== RESET THE JOB IF IT EXISTS
+        # ===== RESET THE JOB IF IT EXISTS
         for job in self.jobstore.get_all_jobs():
             if ["_delete_gallery_messages"] == job.id.split(" "):
                 self.scheduler.remove_job(job.id)
                 resetJob = True
 
         if resetJob:
-            ###===== ADD THE FUNCTION TO THE SCHEDULER
+            # ===== ADD THE FUNCTION TO THE SCHEDULER
             self.scheduler.add_job(call_schedule,
                                     'date',
                                     id="_delete_gallery_messages",
@@ -361,14 +374,14 @@ class Gallery(commands.Cog):
             [prefix]galtoguserwl <userid/mention>
         """ 
 
-        ###===== CHECK IF INPUT IS VALID
+        # ===== CHECK IF INPUT IS VALID
         try:
             user_id = int(user_id.replace("<", '').replace("@", '').replace("!", '').replace(">", ''))
         except (IndexError, ValueError):
             await ctx.send_help('galtoguserwl', delete_after=Gallery.delete_after)
             return    
 
-        ###===== REMOVE OR ADD USER TO THE WHITELIST
+        # ===== REMOVE OR ADD USER TO THE WHITELIST
         ret_msg = ""
 
         if user_id in self.cogset['user_wl']:
@@ -380,10 +393,10 @@ class Gallery(commands.Cog):
             ret_msg = f'<@{user_id} has been **added** to the gallery whitelist.'
 
 
-        ###===== WRITE TO THE DATABASE
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        # ===== WRITE TO THE DATABASE
+        await cogset.SAVE(self.cogset, cogname="gallery")
 
-        ###===== RETURN
+        # ===== RETURN
         await ctx.channel.send(content=ret_msg, delete_after=Gallery.delete_after)
         return
 
@@ -399,7 +412,7 @@ class Gallery(commands.Cog):
 
         update = not self.cogset['allow_links']
 
-        ###===== IF EXPLICITLY SETTING LINK STATUS
+        # ===== IF EXPLICITLY SETTING LINK STATUS
         if tog is not None:
             if tog.lower() in ['y', 'true', 'ture', 't']:
                 update = True 
@@ -415,10 +428,10 @@ class Gallery(commands.Cog):
         
         self.cogset['allow_links']=update
             
-        ###===== WRITE TO THE DATABASE
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        # ===== WRITE TO THE DATABASE
+        await cogset.SAVE(self.cogset, cogname="gallery")
 
-        ###===== RETURN
+        # ===== RETURN
         await ctx.channel.send(content=f"Links in the gallery channels is now set to{update}.", delete_after=Gallery.delete_after)
         return
 
@@ -438,7 +451,7 @@ class Gallery(commands.Cog):
         if not links:
             await ctx.channel.send('`Useage: [p]galaddlinkuwl <startoflink>, [Bot Owner] Adds a link from gallery link whitelist.`')
         
-        ###===== ADD THE NEW LINKS TO THE WHITELIST
+        # ===== ADD THE NEW LINKS TO THE WHITELIST
         new_gal_link_wl = list(set(self.cogset['link_wl']) + set(links))
 
         if Gallery.compare(new_gal_link_wl, self.cogset['link_wl']):
@@ -448,10 +461,10 @@ class Gallery(commands.Cog):
         else:
             self.cogset['link_wl'] = new_gal_link_wl
 
-        ###===== WRITE TO THE DATABASE
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        # ===== WRITE TO THE DATABASE
+        await cogset.SAVE(self.cogset, cogname="gallery")
 
-        ###===== RETURN
+        # ===== RETURN
         await ctx.channel.send(content="{}\n have been added to the gallery link whitelist.".format('\n'.join(links)), delete_after=Gallery.delete_after)
         return
  
@@ -470,7 +483,7 @@ class Gallery(commands.Cog):
         if not links:
             await ctx.channel.send('Useage: [p]galremlinkuwl <startoflink>, [Bot Owner] Removes a link from gallery link whitelist.')
 
-        ###===== REMOVE THE LINKS FROM THE LIST
+        # ===== REMOVE THE LINKS FROM THE LIST
         new_gal_link_wl = list(set(self.cogset['link_wl']) - set(links))
 
         if Gallery.compare(new_gal_link_wl, self.cogset['link_wl']):
@@ -480,10 +493,10 @@ class Gallery(commands.Cog):
         else:
             self.cogset['link_wl'] = new_gal_link_wl
 
-        ###===== WRITE TO THE DATABASE
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        # ===== WRITE TO THE DATABASE
+        await cogset.SAVE(self.cogset, cogname="gallery")
 
-        ###===== RETURN
+        # ===== RETURN
         await ctx.channel.send(content="{}\n have been removed from the gallery link whitelist.".format('\n'.join(links)), delete_after=Gallery.delete_after)
         return
 
@@ -499,7 +512,7 @@ class Gallery(commands.Cog):
         """
         config = Config()
 
-        ###===== UPDATE THE SETTINGS IN THE LOCAL COG
+        # ===== UPDATE THE SETTINGS IN THE LOCAL COG
         self.cogset['guild_id'] =       config.target_guild_id
         self.cogset['enable']=          config.galEnable
         self.cogset['channel_ids'] =    config.gallerys["chls"]
@@ -509,10 +522,10 @@ class Gallery(commands.Cog):
         self.cogset['allow_links']=     config.gallerys["links"]
         self.cogset['link_wl']=         config.gallerys['link_wl']
 
-        ###===== SAVE COG SETTING
-        await SAVE_COG_CONFIG(self.cogset, cogname="gallery")
+        # ===== SAVE COG SETTING
+        await cogset.SAVE(self.cogset, cogname="gallery")
         
-        ###===== RETURN
+        # ===== RETURN
         await ctx.channel.send(content="Gallery information has been updated from the setup.ini file", delete_after=15)
         return
 
@@ -574,7 +587,7 @@ class Gallery(commands.Cog):
         await ctx.channel.send(embed=embed)
         return
 
-  #-------------------- SCHEDULING --------------------
+  # -------------------- SCHEDULING --------------------
     def job_missed(self, event):
         """
         This exists too
@@ -593,12 +606,12 @@ class Gallery(commands.Cog):
     @commands.command(pass_context=True, hidden=False, name='galinitiateschedule', aliases=[])
     async def cmd_galinitiateschedule(self, ctx):
         
-        ###===== DELETE THE JOB IF IT ALREADY EXISTS
+        # ===== DELETE THE JOB IF IT ALREADY EXISTS
         for job in self.jobstore.get_all_jobs():
             if ["_delete_gallery_messages"] == job.id.split(" "):
                 self.scheduler.remove_job(job.id)
 
-        ###===== ADD THE FUNCTION TO THE SCHEDULER
+        # ===== ADD THE FUNCTION TO THE SCHEDULER
         self.scheduler.add_job(call_schedule,
                                'date',
                                id="_delete_gallery_messages",
@@ -606,18 +619,18 @@ class Gallery(commands.Cog):
                                kwargs={"func": "_delete_gallery_messages"}
                                )
 
-        ###===== RETURN
+        # ===== RETURN
         await ctx.channel.send(content=f"Gallery schedule has been set for {get_next(hours=self.cogset['text_expirein'])}")
 
         return
 
 
     async def _delete_gallery_messages(self, *args):
-        ###===== QUIT ID GALLERIES ARE DISABLED.
+        # ===== QUIT ID GALLERIES ARE DISABLED.
         if not self.cogset['enable']:
             return 
 
-        ###===== CONNECT TO THE DATABASE
+        # ===== CONNECT TO THE DATABASE
         credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
         self.db = await asyncpg.create_pool(**credentials)
 
@@ -629,7 +642,7 @@ class Gallery(commands.Cog):
 
         await self.db.close()
 
-        ###===== TURNING THE DATA INTO SOMETHING MORE USEFUL
+        # ===== TURNING THE DATA INTO SOMETHING MORE USEFUL
         ch_ids = [ch_id['ch_id'] for ch_id in ch_ids]
         fast_delete = dict()
         slow_delete = []
@@ -649,7 +662,7 @@ class Gallery(commands.Cog):
             else:
                 fast_delete[record['ch_id']].append(record['msg_id'])
 
-        ###===== IF THERE IS FAST DELETE DATA   
+        # ===== IF THERE IS FAST DELETE DATA   
         # WITH FAST DELETE MESSAGES WE CAN DELETE MESSAGES IN BULK OF 100
         if fast_delete:
             for ch_id in fast_delete.keys():
@@ -668,7 +681,7 @@ class Gallery(commands.Cog):
                             await self.bot.http.delete_message(ch_id, msg_id, reason="Deleting Gallery Messages")
                             await asyncio.sleep(0.5)
 
-        ###===== IF THERE IS SLOW DELETE DATA
+        # ===== IF THERE IS SLOW DELETE DATA
         # WE CANNOT DELETE THESE MESSAGES IN BULK, ONLY ONE BY ONE.
         if slow_delete:
             for record in slow_delete:
@@ -685,6 +698,8 @@ class Gallery(commands.Cog):
                                 kwargs={"func": "_delete_gallery_messages"}
                                 )
         return
+
+
 
 def setup(bot):
     bot.add_cog(Gallery(bot))

@@ -1,3 +1,18 @@
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
 import os
 import copy
 import json
@@ -18,9 +33,9 @@ from nuggetbot.config import Config
 from nuggetbot.util import gen_embed as GenEmbed
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
-from .util import checks
+from .util import checks, cogset
 import dblogin 
+
 
 class GlobalChannel(commands.Converter):
     async def convert(self, ctx, argument):

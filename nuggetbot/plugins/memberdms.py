@@ -1,3 +1,18 @@
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
 import os
 import json
 import dblogin 
@@ -13,7 +28,8 @@ from nuggetbot.util import gen_embed as GenEmbed
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
 
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
+#from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
+from .util import cogset
 
 class MemberDMS(commands.Cog):
     """Private feedback system."""
@@ -30,13 +46,13 @@ class MemberDMS(commands.Cog):
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
-        self.cogset = await LOAD_COG_CONFIG(cogname="feedback")
+        self.cogset = await cogset.LOAD(cogname="feedback")
         if not self.cogset:
             self.cogset= dict(
-                enablelogging=False
+                enablelogging=True
             )
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="feedback")
+            await cogset.SAVE(self.cogset, cogname="feedback")
 
 
   #-------------------- LOCAL COG STUFF --------------------
@@ -98,7 +114,7 @@ class MemberDMS(commands.Cog):
         guild = self.bot.get_guild(MemberDMS.config.target_guild_id)
         member = guild.get_member(ctx.message.author.id)
 
-        ###===== IF MEMBER IS IN THE SERVER
+        # ===== IF MEMBER IS IN THE SERVER
         if member:
             ###=== IF MEMBER HAS THE MEMBER ROLE
             if bool([role for role in member.roles if role.id == MemberDMS.config.roles["member"]]):

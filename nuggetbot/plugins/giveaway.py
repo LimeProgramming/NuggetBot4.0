@@ -1,17 +1,29 @@
-from discord.ext import commands
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
+import random
 import discord
 import asyncio
 import asyncpg
 import datetime
-import random
+from discord.ext import commands
 
 import dblogin 
 from nuggetbot.config import Config
-from nuggetbot.database import DatabaseLogin
 from nuggetbot.database import DatabaseCmds as pgCmds
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
-from .util import checks
-#https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#bot
+from .util import checks, cogset
 
 giveaway_channel_id = int()
 
@@ -24,20 +36,18 @@ class Giveaway(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.cogset = dict()
-        #self.config = Config()
         Giveaway.config = Config()
-        self.databaselg = DatabaseLogin()
         self.giveaway_role = None
 
     
-  #-------------------- LISTENERS --------------------
+  # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
         credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
         self.db = await asyncpg.create_pool(**credentials)
 
-        ###===== LOAD COG SETTINGS
-        self.cogset = await LOAD_COG_CONFIG(cogname="giveaway")
+        # ===== LOAD COG SETTINGS
+        self.cogset = await cogset.LOAD(cogname="giveaway")
 
         if not self.cogset:
             self.cogset= dict(
@@ -45,7 +55,7 @@ class Giveaway(commands.Cog):
                 RafDatetime=       ""
             )
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="giveaway")
+            await cogset.SAVE(self.cogset, cogname="giveaway")
 
         giveaway_channel_id = Giveaway.config.gvwy_channel_id
 
@@ -79,7 +89,7 @@ class Giveaway(commands.Cog):
         await self.db.execute(pgCmds.REM_MEM_GVWY_ENTRIES, m.id)
 
 
-  #-------------------- LOCAL COG STUFF --------------------
+  # -------------------- LOCAL COG STUFF --------------------
     async def cog_after_invoke(self, ctx):
         if not ctx.message.guild:
             return 
@@ -90,7 +100,7 @@ class Giveaway(commands.Cog):
         return
 
 
-  #-------------------- STATIC METHODS --------------------
+  # -------------------- STATIC METHODS --------------------
     @staticmethod
     async def Get_user_id(content):
         try:
@@ -158,7 +168,7 @@ class Giveaway(commands.Cog):
         return arrs
 
 
-  #-------------------- COMMANDS --------------------
+  # -------------------- COMMANDS --------------------
     ###Users assign themselves the giveaway role
     @checks.CORE()
     @checks.CHANNEL([giveaway_channel_id])
@@ -518,7 +528,7 @@ class Giveaway(commands.Cog):
         """
         #===== CLOSE RAFFLE ENTRY
         self.cogset['RafEntryActive']
-        await SAVE_COG_CONFIG(self.cogset, cogname="giveaway")
+        await cogset.SAVE(self.cogset, cogname="giveaway")
 
         #===== GET GIVEAWAY ROLE AND MEMBERS
         giveawayRole = discord.utils.get(ctx.guild.roles, id=Giveaway.config.gvwy_role_id)
@@ -551,7 +561,7 @@ class Giveaway(commands.Cog):
             self.cogset['RafEntryActive'] = True
             self.cogset['RafDatetime'] = {'open':datetime.datetime.utcnow(), 'past':datetime.datetime.utcnow() + datetime.timedelta(days = -15)}
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="giveaway")
+            await cogset.SAVE(self.cogset, cogname="giveaway")
 
             await ctx.channel.send(content="Entries now allowed :thumbsup:")
             return
@@ -573,7 +583,7 @@ class Giveaway(commands.Cog):
         if self.cogset['RafEntryActive']:
             self.cogset['RafEntryActive'] = False
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="giveaway")
+            await cogset.SAVE(self.cogset, cogname="giveaway")
 
             await ctx.channel.send(content="Entries now turned off :thumbsup:")
             return

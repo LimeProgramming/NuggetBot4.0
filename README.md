@@ -1,12 +1,9 @@
 <h1 align="center">
-  <!-- <br>
-  <a href="https://github.com/Cog-Creators/Red-DiscordBot/tree/V3/develop"><img src="https://imgur.com/pY1WUFX.png" alt="Red - Discord Bot"></a> -->
-  <br>
   NuggetBot 4.0
   <br>
 </h1>
 
-<!-- <h4 align="center">Music, Moderation, Trivia, Stream Alerts and Fully Modular.</h4> -->
+<h4 align="center">A several year old bot made and maintained by Calamity Lime#8500.</h4>
 
 <p align="center">
   <a href="https://discord.gg/QMEgfcg">
@@ -95,6 +92,14 @@ I kept the code of NuggetBot under lock and key for the entire time it was activ
 It's all right here!
 
 
+Disclaimer
+======
+Source code for NuggetBot has been shared on GitHub for the purposes of transparency on the FurSail discord guild.
+This bot has been tailored for use on FurSail, running it on other guilds could cause unexpected results.
+
+I do not recommend or endorse running an instance of this bot for your own discord guild.
+
+
 Setup
 ======
 
@@ -111,4 +116,4 @@ If I've setup the bot correctly you will need PostgreSQL version 10 minimum (Ver
 
  ##### Backup
  It's always a good idea to preform semi regular backups of your database data. There are a few ways to do these backups. Personally; a few hours of downtime are no big deal. Using the backup command in PGAdmin is enough for me. 
- Check out the BACKUPDB.md file for a more convient way to preform the same commands.
+ Check out the BACKUPDB.md file for a more convenient way to preform the same commands.

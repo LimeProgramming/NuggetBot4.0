@@ -1,3 +1,18 @@
+"""
+----~~~~~ NuggetBot ~~~~~----
+Written By Calamity Lime#8500
+
+Disclaimer
+-----------
+NuggetBots source code as been shared for the purposes of transparency on the FurSail discord server and educational purposes.
+Running your own instance of this bot is not recommended.
+
+FurSail Invite URL: http://discord.gg/QMEgfcg
+
+Kind Regards
+-Lime
+"""
+
 # basic dependencies
 import discord
 from discord.ext import commands
@@ -21,7 +36,7 @@ from io import BytesIO
 from typing import Union
 
 from nuggetbot.util.chat_formatting import AVATAR_URL_AS
-from nuggetbot.plugins.cog_utils import GET_AVATAR_BYTES
+#from nuggetbot.plugins.cog_utils import GET_AVATAR_BYTES
 
 from pathlib import Path
 import asyncpg
@@ -33,7 +48,7 @@ import datetime
 import qrcode
 import pyzbar.pyzbar
 
-from .util import checks
+from .util import checks, misc
 #import qrtools
 #from qrcode.image.pure import PymagingImage
 
@@ -70,7 +85,7 @@ class ImageCog(commands.Cog):
             guild = self.bot.get_guild(605100382569365573)
             lime = guild.get_member(282293589713616896)
 
-            r = await GET_AVATAR_BYTES(user = lime, size = 128)
+            r = await misc.GET_AVATAR_BYTES(user = lime, size = 128)
             print(r[:10])
             #await asyncio.sleep(10)
             #r = await self.GET_AVATAR_BYTES(user = lime, size = 128)
@@ -604,7 +619,7 @@ class ImageCog(commands.Cog):
         member = member or ctx.author
 
         async with ctx.typing():
-            avatar_bytes = await GET_AVATAR_BYTES(user = member, size = 64)
+            avatar_bytes = await misc.GET_AVATAR_BYTES(user = member, size = 64)
             fn = partial(self.circle_image_test, avatar_bytes)
 
             final_buffer = await self.bot.loop.run_in_executor(None, fn)
@@ -628,7 +643,7 @@ class ImageCog(commands.Cog):
 
 
             # grab the user's avatar as bytes
-            avatar_bytes = await GET_AVATAR_BYTES(user = member, size = 128)
+            avatar_bytes = await misc.GET_AVATAR_BYTES(user = member, size = 128)
             #avatar_bytes = await member.avatar_url_as(format='png', static_format='webp', size=128).read()
 
             try:
