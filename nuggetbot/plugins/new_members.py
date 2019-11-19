@@ -109,17 +109,46 @@ class NewMembers(commands.Cog):
   # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self): 
-        self.tguild = self.bot.get_guild(NewMembers.config.target_guild_id)
+        
+        # ===== LOG INVITES
+        inviteLog = await self.__get_invite_info()
 
+        if inviteLog is not None:
+            await self.db.execute(pgCmds.ADD_INVITES, json.dumps(inviteLog))
+            self.safe_print("[Log] Invite information has been logged.")
+        
+        else:
+            self.safe_print("[Log] No invite information to log.")
+
+        # ===== GET IMPORTANT ROLES READY
+        self.tguild = self.bot.get_guild(NewMembers.config.target_guild_id)
         
         self.roles['member']=       discord.utils.get(self.tguild.roles, id=NewMembers.config.roles['member'])
         self.roles['newmember']=    discord.utils.get(self.tguild.roles, id=NewMembers.config.roles['newmember'])
         self.roles['gated']=        discord.utils.get(self.tguild.roles, id=NewMembers.config.roles['gated'])
 
-        ###===== SCHEDULER
+        # ===== SCHEDULER
         self.scheduler.start()
         self.scheduler.print_jobs()
         await self.check_new_members()
+
+
+    
+    @commands.Cog.listener()
+    async def on_resume(self):
+
+        # ===== WAIT FOR BOT TO FINISH SETTING UP
+        await self.bot.wait_until_ready()
+
+        # ===== LOG INVITES
+        inviteLog = await self.__get_invite_info()
+
+        if inviteLog is not None:
+            await self.db.execute(pgCmds.ADD_INVITES, json.dumps(inviteLog))
+            self.safe_print("[Log] Invite information has been logged.")
+        
+        else:
+            self.safe_print("[Log] No invite information to log.")
 
     @commands.Cog.listener()
     async def on_member_join(self, m): 
@@ -556,10 +585,17 @@ class NewMembers(commands.Cog):
         This deletes using bot.http functions to bypass having to find each message and channel before deleting.
         Also safely handles message id lists greater than 100 messages 
 
-        Args:
-            (list) Message IDs of messages to be deleted.
-            (int) Channel ID of channel the messages was posted in.
-            (str) Reason for messages being deleted
+        Parameters
+        ------------
+        messages List[:class:`int`]
+            List of message ID's to be deleted.
+        channel :class:`int`
+            Channel ID of channel the messages are posted in.
+        reason Optional[:class:`str`]
+            Reason for messages being deleted
+        quiet Optional[:class:`bool`]
+            If True errors are not reported.
+
         """
 
         # ===== DO NOTHING IF USER IS BEING SILLY

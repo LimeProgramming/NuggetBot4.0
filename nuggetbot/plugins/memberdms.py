@@ -74,7 +74,7 @@ class MemberDMS(commands.Cog):
         return
 
 
-  #-------------------- STATIC METHOD --------------------
+  # -------------------- STATIC METHOD --------------------
     @staticmethod
     async def split_msg_ch_id(content):
         try:
@@ -106,7 +106,7 @@ class MemberDMS(commands.Cog):
             return [False, False]
 
 
-  #-------------------- COG COMMANDS --------------------
+  # -------------------- COG COMMANDS --------------------
     @commands.dm_only()    
     @commands.command(pass_context=True, hidden=True, name='feedback', aliases=[])
     async def cmd_feedback(self, ctx):
@@ -116,11 +116,11 @@ class MemberDMS(commands.Cog):
 
         # ===== IF MEMBER IS IN THE SERVER
         if member:
-            ###=== IF MEMBER HAS THE MEMBER ROLE
+            # === IF MEMBER HAS THE MEMBER ROLE
             if bool([role for role in member.roles if role.id == MemberDMS.config.roles["member"]]):
                 await self.handle_survey(ctx, ctx.message, guild)
 
-            ###=== IF MEMBER DOES NOT HAVE MEMBER ROLE (IE, IS IN ENTRANCE GATE)
+            # === IF MEMBER DOES NOT HAVE MEMBER ROLE (IE, IS IN ENTRANCE GATE)
             else:
                 await ctx.channel.send( "Not much point in messaging me. \n"
                                         f"I suggest pinging the staff in <#{self.config.channels['gate']}> to be let in to the rest of the server first."
@@ -148,7 +148,7 @@ class MemberDMS(commands.Cog):
             if len(args) > 2:
                 raise ValueError
 
-            #=== SPLIT, REMOVE MENTION WRAPPER AND CONVERT TO INT
+            # === SPLIT, REMOVE MENTION WRAPPER AND CONVERT TO INT
             msg_id = args[1]
             if len(msg_id) > 18:
                 msg_id, ch_id = msg_id.split('-')
@@ -189,7 +189,7 @@ class MemberDMS(commands.Cog):
         return
 
 
-  #-------------------- FUNCTIONS --------------------
+  # -------------------- FUNCTIONS --------------------
     async def handle_survey(self, ctx, msg, guild): #updated
         """Custom function to handle the private feedback system"""
 

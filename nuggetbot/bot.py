@@ -176,7 +176,7 @@ class NuggetBot(commands.Bot):
 # ======================================== BOT ON READY FUNCS ========================================
     async def pgdb_on_ready(self):
 
-        #===== Log into database
+        # ===== LOG INTO DATABASE
         credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
         try:
             self.db = await asyncpg.create_pool(**credentials)
@@ -187,7 +187,7 @@ class NuggetBot(commands.Bot):
             await self.logout()
             await self.close()
 
-        ###===== CREATE DATABASE COMPOSITE TYPES
+        # ===== CREATE DATABASE COMPOSITE TYPES
         database_types=[
             {"exists":"EXISTS_DISCORD_EMOJI",       "create":"CREATE_DISCORD_EMOJI",        "log":"Created discord emoji type."},
             {"exists":"EXISTS_DISCORD_BANS",        "create":"CREATE_DISCORD_BANS",         "log":"Created discord ban type."},
@@ -204,7 +204,7 @@ class NuggetBot(commands.Bot):
                 dblog.info(f" {dbTypes['log']}")
 
 
-        ###===== CREATE DATABASE TABLES AT STARTUP
+        # ===== CREATE DATABASE TABLES AT STARTUP
         database_tables = [
             {"exists":"EXISTS_MSGS_TABLE",          "create":"CREATE_MSGS_TABLE",           "log":"Created messages table."},
             {"exists":"EXISTS_GALL_MSGS_TABLE",     "create":"CREATE_GALL_MSGS_TABLE",      "log":"Created gallery messages table."},
@@ -228,7 +228,7 @@ class NuggetBot(commands.Bot):
                 dblog.info(f" {dbTables['log']}")
 
 
-        ###===== CREATE DATABASE TRIGGERS
+        # ===== CREATE DATABASE TRIGGERS
         database_triggers = [
             {"exists":"EXISTS_MSGINCREMENTER",      "create":"CREATE_MSGINCREMENTER",       "log":"Created msg incrementer trigger."},
             {"exists":"EXISTS_GUILDOWNERHIST",      "create":"CREATE_GUILDOWNERHIST",       "log":"Created guild owner history trigger."},
@@ -243,7 +243,7 @@ class NuggetBot(commands.Bot):
                 dblog.info(f" {dbTrig['log']}")
 
 
-        ###===== CREATE DATABASE FUNCTIONS
+        # ===== CREATE DATABASE FUNCTIONS
         database_funtion = [
             {"exists":"EXISTS_FUNC_UPDATE_INVITES",         "create":"CREATE_FUNC_UPDATE_INVITES",          "log":"Created UPDATE_INVITES function."},
             {"exists":"EXISTS_FUNC_ARTIST_INFO",            "create":"CREATE_FUNC_ARTIST_INFO",             "log":"Created ARTIST_INFO function."},
@@ -269,29 +269,29 @@ class NuggetBot(commands.Bot):
         ###Deal with members joining and leaving while bot is off.
         i = j = x = 0
 
-        ###=== IF MEMBERS TABLE IS EMPTY, POPULATE IT
+        # ===== IF MEMBERS TABLE IS EMPTY, POPULATE IT
         if len(await self.db.fetch(pgCmds.member_table_empty_test)) == 0:
             for m in guildMems:
                 j += 1 
                 await self.db.execute(pgCmds.add_a_member, m.id, m.joined_at, m.created_at, True)                
 
         else:
-            ###=== ADDING NEW MEMBERS
+            # === ADDING NEW MEMBERS
             for member in guildMems:
                 if member.id not in dbMemids and not member.bot:
                     j += 1 
                     await self.db.execute(pgCmds.add_a_member, member.id, member.joined_at, member.created_at, True)
                                         
-        ###===== UPDATE CURRENT MEMBERS LOGGED IN DATABASE
+        # ===== UPDATE CURRENT MEMBERS LOGGED IN DATABASE
         for memid in dbMems:
             member = guild.get_member(memid["user_id"])
 
-            #=== remove from db
+            # === REMOVE MISSING MEMBERS FROM DB
             if member is None and memid["ishere"] == True:
                 i += 1
                 await self.db.execute(pgCmds.REMOVE_MEMBER_FUNC, memid["user_id"])
 
-            #=== readd to db
+            # === READD A RETURNED MEMBER
             elif member and str(memid["user_id"]) in memids and not memid["ishere"]:
                 x += 1
                 await self.db.execute(  pgCmds.readd_a_member, int(member.id))
@@ -320,12 +320,12 @@ class NuggetBot(commands.Bot):
         guild = self.get_guild(self.config.target_guild_id)
         me = guild.get_member(self.user.id)
 
-        #===== ADMIN HAS ALL THE PERMS, NO NEED TO SCAN THE CHANNELS
+        # ===== ADMIN HAS ALL THE PERMS, NO NEED TO SCAN THE CHANNELS
         if me.guild_permissions.administrator:
             log.info(f" Bot has Admin permissions in target guild.")
             return
 
-        #===== SCAN THROUGH ALL THE CHANNELS LOOKING FOR THE REQUIRED PERMS
+        # ===== SCAN THROUGH ALL THE CHANNELS LOOKING FOR THE REQUIRED PERMS
         for channel in guild.channels:
             perm = channel.permissions_for(me)
 
@@ -341,7 +341,7 @@ class NuggetBot(commands.Bot):
                 if not bool((perm.value >> sel_perm) & 1):
                     missing_perms = missing_perms + f"Missing: {req} in {channel.name}\n"
         
-        #===== SCAN SERVER PERMS
+        # ===== SCAN SERVER PERMS
         for req in guild_reqs:
 
             try:
@@ -356,7 +356,7 @@ class NuggetBot(commands.Bot):
 
             #for req in guild_regs:
 
-        #===== IF ANYTHING HAS BEEN APPENED TO THIS STRING THEN THAT MEANS THE BOT IS MISSING CRITIAL PERMS
+        # ===== IF ANYTHING HAS BEEN APPENED TO THIS STRING THEN THAT MEANS THE BOT IS MISSING CRITIAL PERMS
         if missing_perms:
             log.critical(f"{missing_perms}")
 
@@ -389,10 +389,10 @@ class NuggetBot(commands.Bot):
         self.safe_print(r"--------------------------------------------------------------------------------")
         self.safe_print("\n")
 
-       #===== PREFORM BASIC REQUIREMENTS CHECKS
+       # ===== PREFORM BASIC REQUIREMENTS CHECKS
         await self.minimum_permissions_check()
 
-       #===== CONNECT TO AND PRIME THE POSTGRE DATABASE
+       # ===== CONNECT TO AND PRIME THE POSTGRE DATABASE
         try:
             await self.pgdb_on_ready()
         except Exception as e:
@@ -434,7 +434,6 @@ class NuggetBot(commands.Bot):
                 emoji_return = await self.db.fetchrow("SELECT * FROM test")
 
                 
-
                 for i in emoji_return['emojis']:
                     #print(type(i[2]))
                     #print(i)
@@ -451,21 +450,11 @@ class NuggetBot(commands.Bot):
         except Exception as e:
             print(e)
 
-       #===== LOG INVITES
-        inviteLog = await self._get_invite_info()
-
-        if inviteLog is not None:
-            await self.db.execute(pgCmds.ADD_INVITES, json.dumps(inviteLog))
-            self.safe_print("[Log] Invite information has been logged.")
-        
-        else:
-            self.safe_print("[Log] No invite information to log.")
-
-       #===== Set logging
+       # ===== Set logging
         #self.logging.read("logging.ini")
         #self.safe_print("[Log] Loaded logging ini file")
 
-       #===== presence
+       # ===== PRESENCE
         await self.change_presence( activity=discord.Game(name="{0.command_prefix}{0.playing_game}".format(self.config)),
                                     status=discord.Status.online)
 
@@ -526,15 +515,6 @@ class NuggetBot(commands.Bot):
 
         self.safe_print("Bot resumed")
 
-        #===== Log invites
-        inviteLog = await self._get_invite_info()
-
-        if inviteLog is not None:
-            await self.db.execute(pgCmds.ADD_INVITES, json.dumps(inviteLog))
-            self.safe_print("[Log] Invite information has been logged.")
-        
-        else:
-            self.safe_print("[Log] No invite information to log.")
 
     async def on_error(self, event, *args, **kwargs):
         ex_type, ex, stack = sys.exc_info()
@@ -587,7 +567,7 @@ class NuggetBot(commands.Bot):
         return
 
     async def on_raw_reaction_add(self, payload):
-        #===== Block reactions in DM's
+        # ===== BLOCK REACTIONS FROM DM'S
         if not payload.guild_id:
             return 
 
@@ -654,14 +634,14 @@ class NuggetBot(commands.Bot):
 
     async def on_message(self, message):
 
-        ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
+        # ===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.wait_until_ready()
 
-        ###===== IGNORE OWN MESSAGES, BOT SHOULD DO THIS AUTOMATICALLY ANYWAY.
+        # ===== IGNORE OWN MESSAGES, BOT SHOULD DO THIS AUTOMATICALLY ANYWAY.
         if message.author == self.user:
             return
 
-        #------------------------------ LEGACY BOT CLASS COMMANDS ------------------------------
+       # ------------------------------ LEGACY BOT CLASS COMMANDS ------------------------------
         if message.guild and message.guild.id == self.config.target_guild_id and message.clean_content.startswith(self.config.command_prefix):
         
             command = message.clean_content[len(self.config.command_prefix):].lower().split(" ")
@@ -681,15 +661,15 @@ class NuggetBot(commands.Bot):
                     if r.reply:
 
                         if r.content and r.embed:
-                            await self.safe_send_message(message.channel, content=r.content, embed=r.embed, expire_in=r.delete_after)
+                            await self.send_msg(message.channel, content=r.content, embed=r.embed, expire_in=r.delete_after)
 
                         elif r.content:
-                            await self.safe_send_message(message.channel, content=r.content, expire_in=r.delete_after)
+                            await self.send_msg(message.channel, content=r.content, expire_in=r.delete_after)
                         
                         elif r.embed:
-                            await self.safe_send_message(message.channel, embed=r.embed, expire_in=r.delete_after)
+                            await self.send_msg(message.channel, embed=r.embed, expire_in=r.delete_after)
 
-                    await self.safe_delete_message(message)
+                    await self.delete_msg(message)
 
             except exceptions.Signal:
                 raise
@@ -697,15 +677,39 @@ class NuggetBot(commands.Bot):
             except Exception as e:
                 print(e)   
 
-        #------------------------------ UPDATED commands.Bot COMMANDS ------------------------------
+       # ------------------------------ commands.Bot COMMANDS ------------------------------
         await NuggetBot.bot.process_commands(message)
 
 
 # ======================================== Custom Bot Class Functions ========================================
   # -------------------- Safe Send/Delete Messages --------------------
 
-    async def safe_send_message(self, dest, content=None, embed=None, tts=False, expire_in=None, also_delete=None, quiet=True):
-        #===== If destination is a message
+    @asyncio.coroutine
+    async def send_msg(self, dest:Union[discord.TextChannel, discord.Message, discord.ext.commands.Context], *, content=None, embed=None, tts=False, expire_in=None, also_delete:discord.Message =None, quiet=True):
+        '''
+        Parameters
+        ------------
+        dest Union[:class:`discord.TextChannel`, :class:`discord.Message`, :class:`discord.Context`]
+            Where to send the message to. If message or context is provided message will be sent to the same channel they are located.
+        content :class:`str`
+            The content of the message to send.
+        embed :class:`discord.Embed`
+            The rich embed for the content.
+        tts :class:`bool`
+            Indicates if the message should be sent using text-to-speech.
+        expire_in :class:`float`
+            If provided, dictates how long the message should exist before being deleted
+        also_delete :class:`discord.Message`
+            Another message to also delete (typically invoking message), also affected by expire_in
+        quiet :class:`bool`
+            If True errors are not reported.
+
+        Returns
+        --------
+        :class:`~discord.Message`
+            The message that was sent.
+        '''
+        # ===== IF DESTINATION IS A MESSAGE
         if isinstance(dest, discord.Message):
             dest = dest.channel 
 
@@ -727,7 +731,7 @@ class NuggetBot(commands.Bot):
         return msg
 
     @asyncio.coroutine
-    async def send_msg_chid(self, ch_id:int, *, content:str = None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:Union[discord.Message, discord.ext.commands.Context] = None, quiet=True):
+    async def send_msg_chid(self, ch_id:Union[int, discord.Object], *, content:str = None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:Union[discord.Message, discord.ext.commands.Context] = None, quiet=True):
         '''
         Alt version of safe send message where messages can be send using channel id. Saves getting the channel from discord API.
         Made for sending to channels entered into the config.py. Also handles the exceptions to the best of it's ability.
@@ -735,8 +739,9 @@ class NuggetBot(commands.Bot):
 
         Parameters
         ------------
-        ch_id :class:`int`           
-            Channel id of the destination, can be a private channel.
+        ch_id Union[:class:`int`, :class:`discord.Object`]        
+            Channel id of the destination, can be a private channel. 
+            Discord.Object is supported for compatability 
         content :class:`str`           
             Text content which will be sent.
         embed :class:`discord.Embed` 
@@ -755,6 +760,10 @@ class NuggetBot(commands.Bot):
 
         '''
         
+        # ===== COMPATABILITY REASONS
+        if isinstance(ch_id, discord.Object):
+            ch_id = ch_id.id 
+
         # ===== ENTURE CONTENT IS A STRING OR NONE
         content = str(content) if content is not None else None
         
@@ -785,49 +794,148 @@ class NuggetBot(commands.Bot):
 
         return msg
 
-    async def safe_delete_message(self, message, *, quiet=False):
+    @asyncio.coroutine
+    async def delete_msg(self, message:discord.Message, reason:str = None, *, delay:float = None, quiet=False):
+        """
+        Messages to be deleted are routed though here to handle the exceptions. 
+        Unlike message.delete() this function supports an audit log reason.
+
+        Parameters
+        ------------
+        message :class:`discord.Message`
+            Message to be deleted.
+        reason :class:`str`
+            Audit Log reason for deleteing the message
+        delay: Optional[:class:`float`]
+            If provided, the number of seconds to wait in the background before deleting the message.
+        quiet :class:`bool`
+            If True errors are not reported.
+        """
+
+        try:
+            if delay is not None:
+
+                async def delete():
+                    await asyncio.sleep(delay, loop=message._state.loop)
+                    await self.bot.http.delete_message(message.channel.id, message.id, reason=reason)
+
+                asyncio.ensure_future(delete(), loop=message._state.loop)
+
+            else:
+                await self.bot.http.delete_message(message.channel.id, message.id, reason=reason)
+            
+        except discord.errors.Forbidden:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", no permission")
+
+        except discord.errors.NotFound:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", message not found")
+
+        except discord.errors.HTTPException:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", generic error.")
+            
+        return
+    
+    @asyncio.coroutine
+    async def delete_msg_id(self, message:int, channel:int, reason:str = None, *, delay:float = None, quiet=False):
         """
         Messages to be deleted are routed though here to handle the exceptions.
+        This deletes using bot.http functions to bypass having to find each message before deleting it.
+
+        Parameters
+        ------------
+        message :class:`int`
+            Message ID of message to be deleted.
+        channel :class:`int`
+            Channel ID of channel the message was posted in.
+        reason Optional[:class:`str`]
+            Reason for message being deleted
+        delay Optional[:class:`float`]
+            If provided, the number of seconds to wait in the background before deleting the message.
+        quiet Optional[:class:`bool`]
+            If True errors are not reported.
         """
+        
+        try:
+            if delay is not None:
+
+                async def delete():
+                    await asyncio.sleep(delay, loop=self.loop)
+                    await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
+
+                asyncio.ensure_future(delete(), loop=self.loop)
+
+            else:
+                await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
+
+        except discord.errors.Forbidden:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message}\", no permission")
+
+        except discord.errors.NotFound:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message}\", message not found")
+
+        except discord.errors.HTTPException:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message}\", generic error.")
+        return
+
+    @asyncio.coroutine
+    async def delete_msgs_id(self, messages:list, channel:int, reason:str = None, quiet=False):
+        """
+        Bulk message deletes are routed though here to handle the exceptions.
+        This deletes using bot.http functions to bypass having to find each message and channel before deleting.
+        Also safely handles message id lists greater than 100 messages 
+        
+        Parameters
+        ------------
+        messages List[:class:`int`]
+            List of message ID's to be deleted.
+        channel :class:`int`
+            Channel ID of channel the messages are posted in.
+        reason Optional[:class:`str`]
+            Reason for messages being deleted
+        quiet Optional[:class:`bool`]
+            If True errors are not reported.
+
+        """
+
+        # ===== DO NOTHING IF USER IS BEING SILLY
+        if len(messages) == 0:
+            return
+
+        # ===== IF LENTH MESSAGES IS 1, DELETE IT NORMALLY.
+        if len(messages) == 1:
+            await self.delete_msg_id(messages[0], channel, reason, quiet=quiet)
+            return
+
+        # ===== SPLIT MESSAGES LIST TO ENSURE NUM IS 100 OR LESS, DISCORD API LIMITATION
+        messages = self.__split_list(messages, size=100)
 
         try:
-            return await message.delete()
+            for m in messages:
+                await self.bot.http.delete_messages(channel_id=channel, message_ids=m, reason=reason)
 
-        except discord.Forbidden:
-            if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", no permission")
+        except discord.errors.Forbidden:
 
-        except discord.NotFound:
-            if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", message not found")
-    
-    async def safe_delete_message_id(self, message, channel, reason=None, quiet=False):
-        """
-        Message ID's are to be routed though here
-        """
-        #===== Included for backwards compatibility
-        if isinstance(message, fake_objects.MessageSC):
-            channel = message.channel.id
-            message = message.id 
-
-        try:
-            await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
-
-        except discord.Forbidden:
             if not quiet:
                 self.safe_print("[Warning] Cannot delete message \"{message}\", no permission")
 
-        except discord.NotFound:
+        except discord.errors.NotFound:
             if not quiet:
                 self.safe_print("[Warning] Cannot delete message \"{message}\", message not found")
+
+        return
 
     async def __del_msg_later(self, message, after):
         """Custom function to delete messages after a period of time"""
 
         await asyncio.sleep(after)
-        await self.safe_delete_message(message)
+        await self.delete_msg(message)
         return
-
 
   # -------------------- Custom Webhook Handling --------------------
     @asyncio.coroutine
@@ -912,63 +1020,12 @@ class NuggetBot(commands.Bot):
                done = True
 
         return message_list
-    
-    #updated
-    async def handle_survey(self, msg):
-        """Custom function to handle the private feedback system"""
-
-        react = await self.ask_yn(msg,
-                             "Are you sure you want to submit this feedback anonymously?\n"
-                             "You must add a reaction for feedback to be submitted!",
-                             timeout=120)
-
-        #===== if user says yes
-        if react:
-            header = "```css\nAnonymous User Feedback\n```"
-
-        #===== Time out handing
-        elif react == None:
-            await self.safe_send_message(msg.channel, "You took too long respond. Cancelling action, feedback **not** sent.")
-            return
-
-        #===== if user says no
-        else:
-            await self.safe_send_message(msg.channel, "Feedback **not** sent, repost it if you change your mind.\nThanks.")
-            return
-
-        msg_content = msg.content.strip()[10:]
-        msg_attach = ""
-        feedback_channel = discord.utils.get(self.get_guild(self.config.target_guild_id).channels, id=self.config.channels['feedback_id'])
-
-        #===== if msg has an attachment
-        if msg.attachments:
-            for attach in msg.attachments:
-                msg_attach += attach["url"] + "\n"
-
-        #===== if feedback cannot be sent as one message
-        if len(msg_content) > ((2000 - len(header)) - len(msg_attach)):
-            m = await self.safe_send_message(feedback_channel, header)
-            await self.safe_send_message(feedback_channel, msg_content)
-
-            if not msg_attach == "":
-                await self.safe_send_message(feedback_channel, msg_content)
-
-        else:
-            m = await self.safe_send_message(feedback_channel, "{}{}\n{}".format(header, msg_content, msg_attach))
-        
-        #===== Log info to database
-        await self.db.execute(pgCmds.ADD_DM_FEEDBACK, msg.author.id, msg.channel.id, m.id, m.channel.id, m.guild.id, m.created_at)
-
-        #===== Tell the user their feedback is sent
-        await self.safe_send_message(msg.channel, "Your feedback has been submitted.\nThank You!")
-
-        return
 
     #updated
     async def ask_yn(self, msg, question, timeout=60, expire_in=0):
         """Custom function which ask a yes or no question using reactions, returns True for yes | false for no | none for timeout"""
 
-        message = await self.safe_send_message(msg.channel, question)
+        message = await self.send_msg(msg.channel, content=question)
         error = None
         try:
             await message.add_reaction("👍")
@@ -987,8 +1044,8 @@ class NuggetBot(commands.Bot):
             error = '`Error with adding reaction, defaulting to "No"`'
 
         if error is not None:
-            await self.safe_delete_message(message)
-            await self.safe_send_message(msg.channel, error)
+            await self.delete_msg(message)
+            await self.send_msg(msg.channel, content=error)
             return False
         
         def check(reaction, user):
@@ -1017,7 +1074,7 @@ class NuggetBot(commands.Bot):
     async def ask_yn_msg(self, msg, question, timeout=60, expire_in=0):
         """Custom function which ask a yes or no question using messages, returns True for yes | false for no | none for timeout"""
 
-        message = await self.safe_send_message(msg.channel, question)
+        message = await self.send_msg(msg.channel, content=question)
 
         if message is None:
             return None
@@ -1068,7 +1125,7 @@ class NuggetBot(commands.Bot):
             sys.stdout.flush()
 
     #updated
-    async def split_list(self, arr, size=100):
+    async def __split_list(self, arr, size=100):
         """Custom function to break a list or string into an array of a certain size"""
 
         arrs = []
@@ -1117,133 +1174,7 @@ class NuggetBot(commands.Bot):
 
         return False
 
-    ###===== Invite stuff ===== #updated #cut
-    async def _get_invite_info(self, quiet=False):
-        """Returns a dict with the information on the invites of selected guild"""
-
-        try:
-            invites = await self.get_guild(self.config.target_guild_id).invites()
-
-        except discord.Forbidden:
-            if not quiet:
-                await self.send_msg_chid(self.config.channels['bot_log'], content="```css\nAn error has occurred```I do not have proper permissions to get the invite information.")
-
-            return None
-
-        except discord.HTTPException:
-            if not quiet:
-                await self.send_msg_chid(self.config.channels['bot_log'], content="```css\nAn error has occurred```An error occurred when getting the invite information.")
-
-            return None
-
-        inviteLog = list()
-        for invite in invites:
-            inviteLog.append(dict(max_age = invite.max_age,
-                        created_at = invite.created_at.__str__(),
-                        uses = invite.uses,
-                        max_uses = invite.max_uses,
-                        code = invite.id,
-                        inviter = dict(name = invite.inviter.name,
-                                        id = invite.inviter.id,
-                                        discriminator = invite.inviter.discriminator,
-                                        avatar_url= invite.inviter.avatar_url.__str__(),
-                                        mention = invite.inviter.mention
-                                        )
-
-                                    if invite.inviter != None else
-
-                                    dict(name = "N/A",
-                                        id = "N/A",
-                                        discriminator = "N/A",
-                                        avatar_url= "https://discordapp.com/assets/6debd47ed13483642cf09e832ed0bc1b.png?size=128",
-                                        mention = "N/A"
-                                        ),
-                        channel = dict(name = invite.channel.name,
-                                        id = invite.channel.id,
-                                        mention = invite.channel.mention
-                                        )
-                        ))
-
-
-        if len(inviteLog) == 0:
-            return None
-
-        else:
-            return inviteLog
-
-    #updated ###cut
-    async def _get_invite_used(self):
-        """
-        When called it tries to find the invite used by calling the equivalent handler.
-        Will return none
-            if
-                previous history file is not found
-                if history file could not be read
-                if new invite info cannot be found
-
-        It will try to update the the invite info file as long as the current info can be found.
-        """
-
-        #===== Get current invite info
-        inviteLog = await self._get_invite_info()
-
-        #=== if info cannot be gotten
-        if inviteLog == None:
-            invite = None
-
-        #=== if info received
-        else:
-            invite = await self._get_invite_used_handler(inviteLog)
-            await self.db.execute(pgCmds.ADD_INVITES, json.dumps(inviteLog))
-
-        return invite
-
-    #updated untested ###cut
-    async def _get_invite_used_handler(self, current_invite_info):
-        """
-        Tries to find which invite was used by a user joining.
-        """
-
-        #===== Read old invite info
-        past_invite_info = json.loads(await self.db.fetchval(pgCmds.GET_INVITE_DATA))
-
-        #===== Testing the existing invites.
-        for past_invite in past_invite_info:
-            for curr_invite in current_invite_info:
-                if past_invite["code"] == curr_invite["code"]:
-                    if past_invite["uses"] < curr_invite["uses"]:
-                        return curr_invite
-
-        #===== testing the new invites. should work if new invite is made and a user joins with that invite.
-        for curr_invite in [curr_invite for curr_invite in current_invite_info if curr_invite not in past_invite_info]:
-            if curr_invite["uses"] == 1:
-                return curr_invite
-
-        #===== CHECKING THE AUDIT LOG FOR INVITE CREATIONS
-        guild = self.get_guild(self.config.target_guild_id)
-
-        try:
-            logs = await guild.audit_logs(action=discord.AuditLogAction.invite_create, before=(datetime.datetime.utcnow() - datetime.timedelta(days=1))).flatten()
-
-            if len(logs) == 1:
-                log = logs[0]
-                
-                invite = {  "inviter":{ 'mention':"<@{}>".format(log.user.id),
-                                        'name':log.user.name,
-                                        'discriminator':log.user.discriminator
-                            },
-                            'code':"N/A",
-                            'uses':"N/A",
-                            'max_uses':"N/A"
-                }
-                
-                return invite 
-
-        except discord.Forbidden:
-            return None
-
-        return None
-
+    # ===== Last of the database stuff =====
     @asyncio.coroutine
     def _db_add_new_messages(self, guild):
         """
@@ -1311,9 +1242,9 @@ class NuggetBot(commands.Bot):
         return (await self.application_info()).owner
 
 
-#======================================== Schedule stuff ========================================
+# ======================================== Schedule stuff ========================================
 
-  #-------------------- Hide guild --------------------
+  # -------------------- Hide guild --------------------
     #@has_core_role
     #@in_reception
     async def cmd_hideserver(self, msg):
@@ -1403,7 +1334,7 @@ class NuggetBot(commands.Bot):
         if not job_found:
             #=== if msg from DM, send message to user as a bot can't send directly to a DM channel
             if msg.channel.is_private:
-                await self.safe_send_message(msg.author, "You are not scheduled to have your roles re-added.")
+                await self.send_msg(msg.author, content="You are not scheduled to have your roles re-added.")
                 return None 
             else:
                 return Response(content="You are not scheduled to have your roles re-added.")
@@ -1413,7 +1344,7 @@ class NuggetBot(commands.Bot):
         #===== Return error message if bot lacks permissions to manage roles.
         if not await self._has_guild_perms(guild.get_member(self.user.id), "manage_roles"):
             if msg.channel.is_private:
-                await self.safe_send_message(msg.author, "```cs\n# Permission Error```\nI do not have permission to manage roles, so I can't un-hide the server for you.")
+                await self.send_msg(msg.author, content="```cs\n# Permission Error```\nI do not have permission to manage roles, so I can't un-hide the server for you.")
                 return None 
             else:
                 return Response(content="```cs\n# Permission Error```\nI do not have permission to manage roles, so I can't un-hide the server for you.")
@@ -1428,7 +1359,7 @@ class NuggetBot(commands.Bot):
         if not member:
             return
 
-        #===== Try to edit roles for member
+        # ===== Try to edit roles for member
         try:
             for role in user_roles:
                 await member.add_roles(role, reason="Cancel Hide Server")
@@ -1436,24 +1367,24 @@ class NuggetBot(commands.Bot):
 
             await member.remove_roles(hidden_role, reason="Cancel Hide Server")
 
-        #===== Error if bot lacks permission
+        # ===== Error if bot lacks permission
         except discord.errors.Forbidden:
             self.safe_print("[Error] (Scheduled event) could not complete show server for a user.")
-            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
-            await self.safe_send_message(msg.author, "```cs\n# Permission Error```\nI do not have permission to manage roles, so I can't un-hide the server for you.")
+            await self.send_msg_chid(discord.Object(id=self.config.channels['bot_log']), content='I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
+            await self.send_msg(msg.author, content="```cs\n# Permission Error```\nI do not have permission to manage roles, so I can't un-hide the server for you.")
             return None
         
-        #===== Error for generic error, eg discord api gateway down
+        # ===== Error for generic error, eg discord api gateway down
         except discord.errors.HTTPException:
             self.safe_print("[Error] (Scheduled event) could not complete show server for a user.")
-            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
-            await self.safe_send_message(msg.author, "```cs\n# Generic Error```\nDue to an error I can't un-hide the server for you.")
+            await self.send_msg_chid(discord.Object(id=self.config.channels['bot_log']), content='I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
+            await self.send_msg(msg.author, content="```cs\n# Generic Error```\nDue to an error I can't un-hide the server for you.")
             return None
 
-        #===== Dm the user
-        #===== build an embed for the user
+        # ===== Dm the user
+        # ===== build an embed for the user
         embed = await GenEmbed.getCancelHideServer(member)
-        await self.safe_send_message(member, embed=embed)
+        await self.send_msg(member, embed=embed)
 
         self.scheduler.remove_job(user_job.id)
 
@@ -1471,7 +1402,7 @@ class NuggetBot(commands.Bot):
         for job in self.jobstore.get_all_jobs():
             if ["_show_server", member.id] == job.id.split(" "):
                 if not quiet:
-                    await self.safe_send_message(member, "The server is already hidden from you.")
+                    await self.send_msg(member, content="The server is already hidden from you.")
                 return 
 
         #===== Dm the user
@@ -1502,15 +1433,15 @@ class NuggetBot(commands.Bot):
 
         except discord.errors.Forbidden:
             self.safe_print('[Error] (Scheduled event) could not complete "hide server" for a user.')
-            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "hide server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
+            await self.send_msg_chid(discord.Object(id=self.config.channels['bot_log']), content='I could not complete "hide server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
             return None
 
         except discord.errors.HTTPException:
             self.safe_print('[Error] (Scheduled event) could not complete "hide server" for a user.')
-            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "hide server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
+            await self.send_msg_chid(discord.Object(id=self.config.channels['bot_log']), content='I could not complete "hide server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
             return None
 
-        await self.safe_send_message(member, embed=embed)
+        await self.send_msg(member, embed=embed)
 
         #===== add the kicking of member to the scheduler
         self.scheduler.add_job(call_schedule,
@@ -1542,12 +1473,12 @@ class NuggetBot(commands.Bot):
         #===== Error if bot lacks permission
         except discord.errors.Forbidden:
             self.safe_print("[Error] (Scheduled event) could not complete show server for a user.")
-            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
+            await self.send_msg_chid(discord.Object(id=self.config.channels['bot_log']), content='I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions'.format(member))
         
         #===== Error for generic error, eg discord api gateway down
         except discord.errors.HTTPException:
             self.safe_print("[Error] (Scheduled event) could not complete show server for a user.")
-            await self.safe_send_message(discord.Object(id=self.config.channels['bot_log']), 'I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
+            await self.send_msg_chid(discord.Object(id=self.config.channels['bot_log']), content='I could not complete "show server" for <@{0.id}> | {0.name}#{0.discriminator}, due to an error'.format(member))
 
         #===== Dm the user
         embed = discord.Embed(  description="{} has been made available to you again.\n"
@@ -1569,7 +1500,7 @@ class NuggetBot(commands.Bot):
 
         return
 
-  #-------------------- General --------------------
+  # -------------------- General --------------------
     def job_missed(self, event):
         """
         This exists too
@@ -1586,7 +1517,7 @@ class NuggetBot(commands.Bot):
         return "{} {}".format(func.__name__, arg)
 
 
-#======================================== SELF ASSIGN ROLES ========================================
+# ======================================== SELF ASSIGN ROLES ========================================
     #build role edit report
     async def _report_edited_roles(self, msg, nsfwRole, isRoleAdded, changedRoles, expire_in=15, Archive=True):
         embed = discord.Embed(  description=f"Mention: {msg.author.mention}\n"
@@ -1616,10 +1547,10 @@ class NuggetBot(commands.Bot):
                                 text=       msg.guild.name
                         )
 
-        await self.safe_send_message(msg.channel, content=None, embed=embed, expire_in=expire_in)
+        await self.send_msg(msg.channel, content=None, embed=embed, expire_in=expire_in)
 
         if Archive:
-            await self.safe_send_message(discord.utils.get(msg.guild.channels, id=self.config.channels['bot_log']), content=None, embed=embed)
+            await self.send_msg(discord.utils.get(msg.guild.channels, id=self.config.channels['bot_log']), content=None, embed=embed)
 
         return
 
@@ -1662,7 +1593,7 @@ class NuggetBot(commands.Bot):
             #=== Time out handing
             elif react == None:
                 #= Tell the user they took too long
-                await self.safe_send_message(msg.channel, "You took too long to respond. Cancelling action.", expire_in=expire_in)
+                await self.send_msg(msg.channel, content="You took too long to respond. Cancelling action.", expire_in=expire_in)
                 return
 
         #===== ADD BASE ROLE IF TOGGLE IS TRUE
@@ -1690,7 +1621,7 @@ class NuggetBot(commands.Bot):
 
         #if user doesn't have nsfw role and wants the lewd role
         if not nsfwRole and toggleAdd:
-            await self.safe_send_message(msg.channel, "NSFW role required.", expire_in=expire_in)
+            await self.send_msg(msg.channel, content="NSFW role required.", expire_in=expire_in)
             return
 
         #user has nsfw role and is requesting the lewd role
@@ -1816,17 +1747,17 @@ class NuggetBot(commands.Bot):
 
         if len(commands) > 1980:
 
-            commandList = await self.split_list(commands, 1980)
+            commandList = await self.__split_list(commands, 1980)
 
             for command in commandList:
                 command = "```\n" + command + "\n```\n"
-                await self.safe_send_message(msg.author, command)
+                await self.send_msg(msg.author, content=command)
 
             return Response(reply=False)
 
         else:
             commands = "```\n" + commands + "\n```\n"
-            await self.safe_send_message(msg.author, commands)
+            await self.send_msg(msg.author, content=commands)
 
         return Response(reply=False)
 
@@ -1891,7 +1822,7 @@ class NuggetBot(commands.Bot):
         
         #===== send each generated embed as it's own message
         for embed in embeds:
-            await self.safe_send_message(msg.channel, embed=embed)
+            await self.send_msg(msg.channel, embed=embed)
 
         return Response(reply=False)
 
@@ -1945,7 +1876,7 @@ class NuggetBot(commands.Bot):
         
         #===== send each generated embed as it's own message
         for embed in embeds:
-            await self.safe_send_message(msg.channel, embed=embed)
+            await self.send_msg(msg.channel, embed=embed)
 
         return Response(reply=False)
 
@@ -1960,8 +1891,8 @@ class NuggetBot(commands.Bot):
         """
         embed= await GenEmbed.ownerRestart(msg=msg)
 
-        await self.safe_send_message(msg.channel, embed=embed)
-        await self.safe_delete_message(msg)
+        await self.send_msg(msg.channel, embed=embed)
+        await self.delete_msg(msg)
         #self.exit_signal = exceptions.RestartSignal()
 
         raise exceptions.RestartSignal
@@ -1976,10 +1907,10 @@ class NuggetBot(commands.Bot):
 
         embed = await GenEmbed.ownerShutdown(msg)
 
-        await self.safe_send_message(msg.channel, embed=embed)
+        await self.send_msg(msg.channel, embed=embed)
 
         #self.exit_signal = exceptions.TerminateSignal()
-        await self.safe_delete_message(msg)
+        await self.delete_msg(msg)
         raise exceptions.TerminateSignal
 
     @owner_only
