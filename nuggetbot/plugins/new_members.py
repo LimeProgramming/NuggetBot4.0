@@ -437,49 +437,92 @@ class NewMembers(commands.Cog):
         return msg
     
     @asyncio.coroutine
-    async def safe_delete_msg(self, message:discord.Message, *, quiet=False):
+    async def safe_delete_msg(self, message:discord.Message, reason:str = None, *, delay:float = None, quiet=False):
         """
-        Messages to be deleted are routed though here to handle the exceptions.
-        Args:
-            (discord.Message) Message to be deleted
+        Messages to be deleted are routed though here to handle the exceptions. 
+        Unlike message.delete() this function supports an audit log reason.
+
+        Parameters
+        ------------
+        message :class:`discord.Message`
+            Message to be deleted.
+        reason :class:`str`
+            Audit Log reason for deleteing the message
+        delay: Optional[:class:`float`]
+            If provided, the number of seconds to wait in the background before deleting the message.
+        quiet :class:`bool`
+            If True errors are not reported.
         """
 
         try:
-            await message.delete()
+            if delay is not None:
 
-        except discord.Forbidden:
+                async def delete():
+                    await asyncio.sleep(delay, loop=message._state.loop)
+                    await self.bot.http.delete_message(message.channel.id, message.id, reason=reason)
+
+                asyncio.ensure_future(delete(), loop=message._state.loop)
+
+            else:
+                await self.bot.http.delete_message(message.channel.id, message.id, reason=reason)
+            
+        except discord.errors.Forbidden:
             if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", no permission")
+                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", no permission")
 
-        except discord.NotFound:
+        except discord.errors.NotFound:
             if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", message not found")
+                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", message not found")
 
+        except discord.errors.HTTPException:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", generic error.")
+            
         return
     
     @asyncio.coroutine
-    async def safe_delete_msg_id(self, message:int, channel:int, reason:str = None, quiet=False):
+    async def safe_delete_msg_id(self, message:int, channel:int, reason:str = None, *, delay:float = None, quiet=False):
         """
         Messages to be deleted are routed though here to handle the exceptions.
         This deletes using bot.http functions to bypass having to find each message before deleting it.
 
-        Args:
-            (int) Message ID of message to be deleted.
-            (int) Channel ID of channel the message was posted in.
-            (str) Reason for message being deleted
+        Parameters
+        ------------
+        message :class:`int`
+            Message ID of message to be deleted.
+        channel :class:`int`
+            Channel ID of channel the message was posted in.
+        reason Optional[:class:`str`]
+            Reason for message being deleted
+        delay Optional[:class:`float`]
+            If provided, the number of seconds to wait in the background before deleting the message.
+        quiet Optional[:class:`bool`]
+            If True errors are not reported.
         """
         
         try:
-            await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
+            if delay is not None:
 
-        except discord.Forbidden:
+                async def delete():
+                    await asyncio.sleep(delay)
+                    await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
+
+                asyncio.ensure_future(delete())
+
+            else:
+                await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
+
+        except discord.errors.Forbidden:
             if not quiet:
                 self.safe_print(f"[Warning] Cannot delete message \"{message}\", no permission")
 
-        except discord.NotFound:
+        except discord.errors.NotFound:
             if not quiet:
                 self.safe_print(f"[Warning] Cannot delete message \"{message}\", message not found")
 
+        except discord.errors.HTTPException:
+            if not quiet:
+                self.safe_print(f"[Warning] Cannot delete message \"{message}\", generic error.")
         return
 
     @asyncio.coroutine
@@ -501,7 +544,7 @@ class NewMembers(commands.Cog):
 
         # ===== IF LENTH MESSAGES IS 1, DELETE IT NORMALLY.
         if len(messages) == 1:
-            await self.safe_delete_msg_id(messages[0], channel, reason, quiet)
+            await self.safe_delete_msg_id(messages[0], channel, reason, quiet=quiet)
             return
 
         # ===== SPLIT MESSAGES LIST TO ENSURE NUM IS 100 OR LESS, DISCORD API LIMITATION
