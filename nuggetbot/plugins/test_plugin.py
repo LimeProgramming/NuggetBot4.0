@@ -41,11 +41,15 @@ Kind Regards
 #    async def on_message(self, message):
 #        print("test plugin is alive")
 
-
+import discord
 from discord.ext import commands
 import asyncio
 from nuggetbot import exceptions
 from nuggetbot.config import Config
+from typing import Union
+import os
+from PIL import Image
+from io import BytesIO
 
 def to_emoji(c):
     base = 0x1f1e6
@@ -60,11 +64,24 @@ class Test(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        return
         await asyncio.sleep(4)
 
-        config = Config()
-        print(config.roles['user_staff'])
-        print(type(config.roles['user_staff']))
+
+        channel = self.bot.get_channel(614956834771566594)
+        Webhook = discord.utils.get(await channel.webhooks(), name='NugBotErrors')
+
+
+        await self.execute_webhook(
+            Webhook, 
+            content=    'This is a text message <a:foxban:405724216197906455>', 
+            username=   'NuggetBotErrors', 
+            avatar_url= self.bot.user.avatar_url
+            )
+
+        #config = Config()
+        #print(config.roles['user_staff'])
+        #print(type(config.roles['user_staff']))
         #p#rint(self.bot.http.token)
         #print(self.bot.http.bot_token)
 
@@ -75,6 +92,61 @@ class Test(commands.Cog):
         #        print("{0.name}:{0.id}".format(e))
 
         #raise exceptions.PostAsWebhook("This issue is a test, please ignore. <a:foxban:405724216197906455>")
+
+#webhook testing
+
+    async def execute_webhook(self, webhook:discord.Webhook, content:str, username:str = None, avatar_url:Union[discord.Asset, str] = None, embed:discord.Embed = None, embeds = None, tts:bool = False):
+        '''
+        Custom discord.Webhook executer. 
+        Using this webhook executer forces the discord.py libaray to POST a webhook using the http.request function rather than the request function built into WebhookAdapter.
+        The big difference between the two functions is that http.request preforms the POST with an "Authorization" header which allows for the use of emojis and other bot level privilages.
+        
+        Parameters
+        ------------
+        webhook :class:`discord.Webhook`
+            The webhook you want to POST to.
+        content :class:`str`
+            Content of the POST message
+        username Optional[:class:`str`]
+            Username to post the webhook under. Overwrites the default name of the webhook.
+        avatar_url Optional[:class:`discord.Asset`]
+            Avatar for the webhook poster. Overwrites the default avatar of the webhook.
+        embed Optional[:class:`discord.Embed`]
+            discord Embed opject to post.
+        embeds List[:class:`discord.Embed`]
+            List of discord Embed object to post, maximum of 10 allowable.
+        tts :class:`bool`
+            Indicates if the message should be sent using text-to-speech.
+        '''
+
+        if embeds is not None and embed is not None:
+            raise discord.errors.InvalidArgument('Cannot mix embed and embeds keyword arguments.')
+
+        payload = {
+            'tts':tts
+        }
+
+        if content is not None:
+            payload['content'] = str(content).replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
+
+        if username:
+            payload['username'] = username
+
+        if avatar_url:
+            payload['avatar_url'] = str(avatar_url)
+
+        if embeds is not None:
+            if len(embeds) > 10:
+                raise discord.errors.InvalidArgument('embeds has a maximum of 10 elements.')
+            payload['embeds'] = [e.to_dict() for e in embeds]
+
+        if embed is not None:
+            payload['embeds'] = [embed.to_dict()]
+
+        await self.bot.http.request(route=discord.http.Route('POST', f'/webhooks/{webhook.id}/{webhook.token}'), json=payload)
+
+        return
+
 
     @commands.Cog.listener()
     async def on_message(self, msg):

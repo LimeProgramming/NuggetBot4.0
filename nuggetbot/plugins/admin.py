@@ -72,7 +72,7 @@ class Admin(commands.Cog):
                     '', 'connect', 'speak', 'mute_members', 'deafen_members', 'move_members', 'use_voice_activation', 
                     'change_nickname', 'manage_nicknames', 'manage_roles', 'manage_webhooks', 'manage_emojis']
 
-  #-------------------- STATIC METHODS --------------------
+  # -------------------- STATIC METHODS --------------------
     @staticmethod
     async def oneline_valid(content):
         try:
@@ -219,7 +219,7 @@ class Admin(commands.Cog):
         return avatar_bytes
 
 
-  #-------------------- LOCAL COG STUFF --------------------
+  # -------------------- LOCAL COG STUFF --------------------
     async def cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
             try:

@@ -16,13 +16,14 @@ Kind Regards
 import re
 import sys
 import json
+import dblogin
 import asyncio
 import aiohttp
 import discord
 import asyncpg
 import logging
 import datetime
-
+from typing import Union
 from discord.ext import commands
 
 # test imports
@@ -35,7 +36,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from configparser import ConfigParser
 from .config import Config
-from .database import DatabaseLogin, DatabaseCmds
 from .database import DatabaseCmds as pgCmds
 from . import exceptions
 from .utils import get_next, Response
@@ -82,11 +82,11 @@ class NuggetBot(commands.Bot):
     RafDatetime = {}
     reactionmsgs = ""
 
-#======================================== Bot init Setup ========================================
+# ======================================== Bot init Setup ========================================
     def __init__(self):
         NuggetBot.bot = self
         self.config = Config()
-        self.databaselg = DatabaseLogin()
+        #self.databaselg = DatabaseLogin()
         self.init_ok = True
         self.exit_signal = None
         self.logging = ConfigParser()
@@ -132,7 +132,7 @@ class NuggetBot(commands.Bot):
                 print(f'Failed to load extension {plugin}.', file=sys.stderr) 
 
 
-#======================================== Bot Object Setup ========================================
+# ======================================== Bot Object Setup ========================================
     def _cleanup(self):
         try:
             self.loop.run_until_complete(self.logout())
@@ -173,11 +173,11 @@ class NuggetBot(commands.Bot):
                 raise self.exit_signal
 
 
-#======================================== BOT ON READY FUNCS ========================================
+# ======================================== BOT ON READY FUNCS ========================================
     async def pgdb_on_ready(self):
 
         #===== Log into database
-        credentials = {"user": self.databaselg.user, "password": self.databaselg.pwrd, "database": self.databaselg.name, "host": self.databaselg.host}
+        credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
         try:
             self.db = await asyncpg.create_pool(**credentials)
         except Exception as e:
@@ -302,7 +302,7 @@ class NuggetBot(commands.Bot):
 
         #===== messages
         #===== I'm using async code here because this can take a long ass time.
-        asyncio.ensure_future(self._db_add_new_messages(guild=guild))
+        #asyncio.ensure_future(self._db_add_new_messages(guild=guild))
 
         return
 
@@ -367,7 +367,7 @@ class NuggetBot(commands.Bot):
         return
 
 
-#======================================== Bot Events ========================================
+# ======================================== Bot Events ========================================
     async def on_ready(self):
         print('\rConnected!  NuggetBot v3.2\n')
 
@@ -701,7 +701,190 @@ class NuggetBot(commands.Bot):
         await NuggetBot.bot.process_commands(message)
 
 
-#======================================== Custom Functions ========================================
+# ======================================== Custom Bot Class Functions ========================================
+  # -------------------- Safe Send/Delete Messages --------------------
+
+    async def safe_send_message(self, dest, content=None, embed=None, tts=False, expire_in=None, also_delete=None, quiet=True):
+        #===== If destination is a message
+        if isinstance(dest, discord.Message):
+            dest = dest.channel 
+
+        msg = None
+        try:
+            msg = await dest.send(content=content, embed=embed, tts=tts, delete_after=expire_in)
+
+            if also_delete and isinstance(also_delete, discord.Message):
+                asyncio.ensure_future(self.__del_msg_later(also_delete, expire_in))
+
+        except discord.Forbidden:
+            if not quiet:
+                self.safe_print("[Warning] Cannot send message to {dest.name}, no permission")
+
+        except discord.NotFound:
+            if not quiet:
+                self.safe_print("[Warning] Cannot send message to {dest.name}, invalid channel?")
+
+        return msg
+
+    @asyncio.coroutine
+    async def send_msg_chid(self, ch_id:int, *, content:str = None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:Union[discord.Message, discord.ext.commands.Context] = None, quiet=True):
+        '''
+        Alt version of safe send message where messages can be send using channel id. Saves getting the channel from discord API.
+        Made for sending to channels entered into the config.py. Also handles the exceptions to the best of it's ability.
+        Must provide either embed or content.
+
+        Parameters
+        ------------
+        ch_id :class:`int`           
+            Channel id of the destination, can be a private channel.
+        content :class:`str`           
+            Text content which will be sent.
+        embed :class:`discord.Embed` 
+            Discord Embed object.
+        tts :class:`boolean`         
+            Enable text to speech or not.
+        expire_in :class:`int`        
+            Number of seconds before deleting the returned message
+        also_delete Union[:class:`discord.Message`, :class:`discord.Context`]
+            Another message to delete after time set with expire_in
+        
+        Returns
+        --------
+        :class:`~discord.Message`
+            The message that was sent.
+
+        '''
+        
+        # ===== ENTURE CONTENT IS A STRING OR NONE
+        content = str(content) if content is not None else None
+        
+        # ===== SERIALIZE EMBEDS
+        if embed is not None:
+            embed = embed.to_dict()
+
+        msg = None
+
+        try:
+            msg = await self.bot.http.send_message(ch_id, content=content, embed=embed, tts=tts)
+
+            # === SCHEDULE SENT MESSAGE FOR DELETION
+            if expire_in:
+                asyncio.ensure_future(self.__del_msg_later(msg, expire_in))
+
+            # === DELETE ADDITIONAL MESSAGE IF APPLICABLE
+            if also_delete:
+                asyncio.ensure_future(self.__del_msg_later(also_delete, expire_in))
+
+        except discord.Forbidden:
+            if not quiet:
+                self.safe_print(f"[Error] [new_members] Unable to send to channel {ch_id} due to lack of permissions.")
+
+        except discord.NotFound:
+            if not quiet:
+                self.safe_print(f"[Error] [new_members] Cannot send message to channel {ch_id}, invalid channel?")
+
+        return msg
+
+    async def safe_delete_message(self, message, *, quiet=False):
+        """
+        Messages to be deleted are routed though here to handle the exceptions.
+        """
+
+        try:
+            return await message.delete()
+
+        except discord.Forbidden:
+            if not quiet:
+                self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", no permission")
+
+        except discord.NotFound:
+            if not quiet:
+                self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", message not found")
+    
+    async def safe_delete_message_id(self, message, channel, reason=None, quiet=False):
+        """
+        Message ID's are to be routed though here
+        """
+        #===== Included for backwards compatibility
+        if isinstance(message, fake_objects.MessageSC):
+            channel = message.channel.id
+            message = message.id 
+
+        try:
+            await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
+
+        except discord.Forbidden:
+            if not quiet:
+                self.safe_print("[Warning] Cannot delete message \"{message}\", no permission")
+
+        except discord.NotFound:
+            if not quiet:
+                self.safe_print("[Warning] Cannot delete message \"{message}\", message not found")
+
+    async def __del_msg_later(self, message, after):
+        """Custom function to delete messages after a period of time"""
+
+        await asyncio.sleep(after)
+        await self.safe_delete_message(message)
+        return
+
+
+  # -------------------- Custom Webhook Handling --------------------
+    @asyncio.coroutine
+    async def execute_webhook(self, webhook:discord.Webhook, content:str, username:str = None, avatar_url:Union[discord.Asset, str] = None, embed:discord.Embed = None, embeds = None, tts:bool = False):
+        '''
+        Custom discord.Webhook executer. 
+        Using this webhook executer forces the discord.py libaray to POST a webhook using the http.request function rather than the request function built into WebhookAdapter.
+        The big difference between the two functions is that http.request preforms the POST with an "Authorization" header which allows for the use of emojis and other bot level privilages.
+        
+        Parameters
+        ------------
+        webhook :class:`discord.Webhook`
+            The webhook you want to POST to.
+        content :class:`str`
+            Content of the POST message
+        username Optional[:class:`str`]
+            Username to post the webhook under. Overwrites the default name of the webhook.
+        avatar_url Optional[:class:`discord.Asset`]
+            Avatar for the webhook poster. Overwrites the default avatar of the webhook.
+        embed Optional[:class:`discord.Embed`]
+            discord Embed opject to post.
+        embeds List[:class:`discord.Embed`]
+            List of discord Embed object to post, maximum of 10 allowable.
+        tts :class:`bool`
+            Indicates if the message should be sent using text-to-speech.
+        '''
+
+        if embeds is not None and embed is not None:
+            raise discord.errors.InvalidArgument('Cannot mix embed and embeds keyword arguments.')
+
+        payload = {
+            'tts':tts
+        }
+
+        if content is not None:
+            payload['content'] = str(content).replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
+
+        if username:
+            payload['username'] = username
+
+        if avatar_url:
+            payload['avatar_url'] = str(avatar_url)
+
+        if embeds is not None:
+            if len(embeds) > 10:
+                raise discord.errors.InvalidArgument('embeds has a maximum of 10 elements.')
+            payload['embeds'] = [e.to_dict() for e in embeds]
+
+        if embed is not None:
+            payload['embeds'] = [embed.to_dict()]
+
+        await self.bot.http.request(route=discord.http.Route('POST', f'/webhooks/{webhook.id}/{webhook.token}'), json=payload)
+
+        return
+
+
+
 
     #Reads all messages from a specified Channel #updated
     async def read_channel_messages(self, channel, num_of_msg=1000, before=None, after=None):
@@ -816,7 +999,7 @@ class NuggetBot(commands.Bot):
 
             #=== If msg is set to auto delete
             if expire_in:
-                asyncio.ensure_future(self._del_msg_later(message, expire_in))
+                asyncio.ensure_future(self.__del_msg_later(message, expire_in))
             
             #=== Thumb up
             if str(reaction[0].emoji) == "👍":
@@ -849,9 +1032,9 @@ class NuggetBot(commands.Bot):
 
             #=== If msg is set to auto delete
             if expire_in:
-                asyncio.ensure_future(self._del_msg_later(message, expire_in))
+                asyncio.ensure_future(self.__del_msg_later(message, expire_in))
                 if responce is not None:
-                    asyncio.ensure_future(self._del_msg_later(responce, expire_in))
+                    asyncio.ensure_future(self.__del_msg_later(responce, expire_in))
 
             #=== yes
             if responce.clean_content.lower().strip().startswith("y"):
@@ -863,98 +1046,6 @@ class NuggetBot(commands.Bot):
         #===== Time out error
         except asyncio.TimeoutError:
             return None
-
-    #updated
-    async def safe_send_message(self, dest, content=None, embed=None, tts=False, expire_in=None, also_delete=None, quiet=True):
-        #===== If destination is a message
-        if isinstance(dest, discord.Message):
-            dest = dest.channel 
-
-        msg = None
-        try:
-            msg = await dest.send(content=content, embed=embed, tts=tts, delete_after=expire_in)
-
-            if also_delete and isinstance(also_delete, discord.Message):
-                asyncio.ensure_future(self._del_msg_later(also_delete, expire_in))
-
-        except discord.Forbidden:
-            if not quiet:
-                self.safe_print("[Warning] Cannot send message to {dest.name}, no permission")
-
-        except discord.NotFound:
-            if not quiet:
-                self.safe_print("[Warning] Cannot send message to {dest.name}, invalid channel?")
-
-        return msg
-
-    async def safe_send_msg_chid(self, chid, content=None, *, embed=None, tts=False, expire_in=None, also_delete=None, quiet=True):
-        """Alt version of safe send message were message will send to a channel id"""
-        
-        #===== Backwards compatibility 
-        if isinstance(chid, discord.Object):
-            chid = int(chid.id)
-        
-        content = str(content) if content is not None else None
-        
-        #===== Serialize any embeds
-        if embed is not None:
-            embed = embed.to_dict()
-
-        msg = None
-
-        try:
-            msg = await self.bot.http.send_message(chid, content=content, embed=embed, tts=tts)
-
-            if also_delete and isinstance(also_delete, discord.Message):
-                asyncio.ensure_future(self._del_msg_later(also_delete, expire_in))
-
-        except discord.Forbidden:
-            if not quiet:
-                self.safe_print("[Warning] Cannot send message to channel {chid}, no permission")
-
-        except discord.NotFound:
-            if not quiet:
-                self.safe_print("[Warning] Cannot send message to channel {chid}, invalid channel?")
-
-        return msg
-
-    #updated
-    async def safe_delete_message(self, message, *, quiet=False):
-        """
-        Messages to be deleted are routed though here to handle the exceptions.
-        """
-
-        try:
-            return await message.delete()
-
-        except discord.Forbidden:
-            if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", no permission")
-
-        except discord.NotFound:
-            if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message.clean_content}\", message not found")
-    
-    #updated 
-    async def safe_delete_message_id(self, message, channel, reason=None, quiet=False):
-        """
-        Message ID's are to be routed though here
-        """
-        #===== Included for backwards compatibility
-        if isinstance(message, fake_objects.MessageSC):
-            channel = message.channel.id
-            message = message.id 
-
-        try:
-            await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
-
-        except discord.Forbidden:
-            if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message}\", no permission")
-
-        except discord.NotFound:
-            if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message}\", message not found")
 
     #updated
     async def _get_private_channel(self, user):
@@ -975,14 +1066,6 @@ class NuggetBot(commands.Bot):
         sys.stdout.buffer.write((content + end).encode('utf-8', 'replace'))
         if flush:
             sys.stdout.flush()
-
-    #updated
-    async def _del_msg_later(self, message, after):
-        """Custom function to delete messages after a period of time"""
-
-        await asyncio.sleep(after)
-        await self.safe_delete_message(message)
-        return
 
     #updated
     async def split_list(self, arr, size=100):
@@ -1043,13 +1126,13 @@ class NuggetBot(commands.Bot):
 
         except discord.Forbidden:
             if not quiet:
-                await self.safe_send_msg_chid(self.config.channels['bot_log'], "```css\nAn error has occurred```I do not have proper permissions to get the invite information.")
+                await self.send_msg_chid(self.config.channels['bot_log'], content="```css\nAn error has occurred```I do not have proper permissions to get the invite information.")
 
             return None
 
         except discord.HTTPException:
             if not quiet:
-                await self.safe_send_msg_chid(self.config.channels['bot_log'], "```css\nAn error has occurred```An error occurred when getting the invite information.")
+                await self.send_msg_chid(self.config.channels['bot_log'], content="```css\nAn error has occurred```An error occurred when getting the invite information.")
 
             return None
 

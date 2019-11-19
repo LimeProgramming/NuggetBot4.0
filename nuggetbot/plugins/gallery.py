@@ -12,6 +12,7 @@ FurSail Invite URL: http://discord.gg/QMEgfcg
 Kind Regards
 -Lime
 """
+
 import re
 import discord
 import asyncio
