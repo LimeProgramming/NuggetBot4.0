@@ -355,7 +355,29 @@ class NewMembers(commands.Cog):
   # -------------------- FUNCTIONS --------------------
     @asyncio.coroutine
     async def safe_send_message(self, dest:Union[discord.TextChannel, discord.Message, discord.ext.commands.Context], content=None, embed=None, tts=False, expire_in=None, also_delete:discord.Message =None, quiet=True):
+        '''
+        Parameters
+        ------------
+        dest Union[:class:`discord.TextChannel`, :class:`discord.Message`, :class:`discord.Context`]
+            Where to send the message to. If message or context is provided message will be sent to the same channel they are located.
+        content :class:`str`
+            The content of the message to send.
+        embed :class:`discord.Embed`
+            The rich embed for the content.
+        tts :class:`bool`
+            Indicates if the message should be sent using text-to-speech.
+        expire_in :class:`float`
+            If provided, dictates how long the message should exist before being deleted
+        also_delete :class:`discord.Message`
+            Another message to also delete (typically invoking message), also affected by expire_in
+        quiet :class:`bool`
+            If True errors are not reported.
 
+        Returns
+        --------
+        :class:`~discord.Message`
+            The message that was sent.
+        '''
         # ===== IF DESTINATION IS A MESSAGE
         if isinstance(dest, discord.Message):
             dest = dest.channel 
@@ -398,7 +420,9 @@ class NewMembers(commands.Cog):
             Number of seconds before deleting the returned message
         also_delete Union[:class:`discord.Message`, :class:`discord.Context`]
             Another message to delete after time set with expire_in
-        
+        quiet :class:`bool`
+            If True errors are not reported.
+
         Returns
         --------
         :class:`~discord.Message`
