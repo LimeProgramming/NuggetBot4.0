@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://discord.gg/QMEgfcg">
-    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield" alt="Discord Server">
+    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png" alt="Discord Server">
   </a>
   <!-- <a href="https://www.patreon.com/Red_Devs">
     <img src="https://img.shields.io/badge/Support-Red!-yellow.svg" alt="Support Red on Patreon!">
@@ -65,7 +65,7 @@ Admittedly, quite a lot of code was lifted directly from that music bot and my o
 
 At this point the days of the discord.py async were coming to an end, Rapptz had decided to rewrite discord.py (again). Massive amount of work would have been required to use the re-write and I decided not to do it at that time. The new library was too new for comfort and seemed prone to semi-frequent incompatibility updates.
 
-NuggetBot had been outgrowing his clothes once again and it was time for another major change for the bot. This came with the introduction of the asyncpg library and it's own dedicated PostgreSQL database. The amount of things the bot did with it's database increased rather quickly, it was a fun challenge to make and use the SQL commands. This change brought about member leveling and some commands to help our artists out with commissions.
+NuggetBot had been outgrowing his clothes once again and it was time for another major change for the bot. This came with the introduction of the asyncpg library and it's own dedicated PostgreSQL database. The amount of things the bot did with it's database increased rather quickly, it was a fun challenge to make and use the SQL commands. This change brought about member levelling and some commands to help our artists out with commissions.
 
 
 ### The Bad Days

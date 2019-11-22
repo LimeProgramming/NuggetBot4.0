@@ -993,7 +993,7 @@ class NuggetBot(commands.Bot):
 
 
 
-
+  # -------------------- Misc --------------------
     #Reads all messages from a specified Channel #updated
     async def read_channel_messages(self, channel, num_of_msg=1000, before=None, after=None):
         """Custom function that reads all of the messages in a specified channel"""
