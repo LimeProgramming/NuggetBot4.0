@@ -8,18 +8,20 @@ import colorsys
 ### to be posted in archive
 async def getMemJoinStaff(member, invite):
 
-    embed = discord.Embed(  description="Mention: <@{0.id}> | Username: {0.name}#{0.discriminator}\n"
-                                        "Created (UTC): {1}".format(member,
-                                                                    member.created_at.strftime('%b %d, %Y %H:%M:%S')
-                                                                    ),
-                            colour=     0x51B5CC,
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow()
-                        )
+    embed = discord.Embed(  
+        description="Mention: <@{0.id}> | Username: {0.name}#{0.discriminator}\n"
+                    "Created (UTC): {1}".format(member,
+                                                member.created_at.strftime('%b %d, %Y %H:%M:%S')
+                                                ),
+        colour=     0x51B5CC,
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow()
+    )
 
-    embed.set_author(       name=       "Member Joined",
-                            icon_url=   AVATAR_URL_AS(member)
-                    )
+    embed.set_author(       
+        name=       "Member Joined",
+        icon_url=   AVATAR_URL_AS(member)
+        )
 
     #===== If user is a bot account
     if member.bot:

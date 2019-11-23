@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://discord.gg/QMEgfcg">
-    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png" alt="Discord Server">
+    <img src="https://discordapp.com/api/guilds/605100382569365573/widget.png?style=shield" alt="Discord Server">
   </a>
   <!-- <a href="https://www.patreon.com/Red_Devs">
     <img src="https://img.shields.io/badge/Support-Red!-yellow.svg" alt="Support Red on Patreon!">

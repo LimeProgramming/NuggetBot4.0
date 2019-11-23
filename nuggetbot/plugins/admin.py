@@ -837,19 +837,32 @@ class Admin(commands.Cog):
             ret = "{0:.1f} GB".format(ret)
             return ret
 
-        #CPU information
+        # ===== CPU INFORMATION
         cpu_freq = psutil.cpu_freq()
 
-        #Physical ram
+        # ===== PHYSICAL RAM
         mem = psutil.virtual_memory()
 
-        #disk drive space
+        # ===== DISK DRIVE SPACE    
         if (platform.platform()).lower().startswith("linux"):
             d = psutil.disk_usage(r"/")
 
         elif platform.platform().lower().startswith("win"):
             d = psutil.disk_usage(os.path.splitdrive(os.path.abspath(__file__))[0])
 
+        # ===== UPTIME
+        updelta = datetime.datetime.utcnow() - self.bot.start_timestamp
+
+        seconds = updelta.seconds
+
+        hours = int(seconds / 3600)
+        if hours > 1:
+            seconds = hours * 3600
+
+        minutes = int(seconds / 60)
+        if minutes > 1:
+            seconds = minutes * 60
+        
 
         embed = discord.Embed(  title=      "Host System Stats",
                                 description="",
@@ -871,7 +884,7 @@ class Admin(commands.Cog):
                         value=  f"**Total:** {MBorGB(mem[0])}\n"
                                 f"**Free:** {MBorGB(mem[1])}\n"
                                 f"**Used:** {mem[2]}%",
-                        inline= False
+                        inline= True
                         )
         
         embed.add_field(name=   "Storage:",
@@ -881,12 +894,17 @@ class Admin(commands.Cog):
                         inline= True
                         )
 
-
         embed.add_field(name=   "Python:",
                         value=  f"**Version:** {platform.python_version()}\n"
                                 f"**Discord.py** {discord.__version__}\n"
                                 f"**Bits:** {platform.architecture()[0]}",
-                        inline= False
+                        inline= True
+                        )
+
+        embed.add_field(name=   "Uptime:",
+                        value=  f"**Launched:** {self.bot.start_timestamp.strftime('%b %d, %Y')}\n"
+                                f"**Time:** days:{updelta.days}, hours:{hours}, minutes:{minutes}, seconds:{seconds}\n",
+                        inline= True
                         )
 
         embed.set_author(name=   f"{self.bot.user.name}#{self.bot.user.discriminator}",

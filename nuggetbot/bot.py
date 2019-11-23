@@ -23,6 +23,7 @@ import discord
 import asyncpg
 import logging
 import datetime
+import traceback
 from typing import Union
 from discord.ext import commands
 
@@ -55,7 +56,9 @@ dblog = logging.getLogger("pgDB")
 log = logging.getLogger("bot")
 
 description = """
-NuggetBot
+NuggetBot4.0
+A bot made for FurSail
+Made by Calamity Lime#8500
 """
 
 log = logging.getLogger(__name__)
@@ -71,7 +74,8 @@ plugins = (
     ('nuggetbot.plugins.memberdms',     'Feedback'),
     ('nuggetbot.plugins.gallery',       'Gallery'),
     ('nuggetbot.plugins.help',          'Help'),
-    ('nuggetbot.plugins.member_leveling', 'Member Leveling')
+    ('nuggetbot.plugins.member_leveling', 'Member Leveling'),
+    ('nuggetbot.plugins.self_roles',    'Self Roles')
 )
 #    ('nuggetbot.plugins.new_members',   'New Members')
 #)
@@ -86,9 +90,9 @@ class NuggetBot(commands.Bot):
     def __init__(self):
         NuggetBot.bot = self
         self.config = Config()
-        #self.databaselg = DatabaseLogin()
         self.init_ok = True
         self.exit_signal = None
+        self.start_timestamp = datetime.datetime.utcnow()
         self.logging = ConfigParser()
         self.bot_commands = [att.replace('cmd_', '').lower() for att in dir(self) if att.startswith('cmd_')]
         self.bot_oneline_commands = ["rp", "rp_lewd",
@@ -302,7 +306,7 @@ class NuggetBot(commands.Bot):
 
         #===== messages
         #===== I'm using async code here because this can take a long ass time.
-        #asyncio.ensure_future(self._db_add_new_messages(guild=guild))
+        asyncio.ensure_future(self._db_add_new_messages(guild=guild))
 
         return
 
@@ -549,8 +553,10 @@ class NuggetBot(commands.Bot):
             )
 
         else:
+            print('Ignoring exception in {}'.format(event), file=sys.stderr)
+            traceback.print_exc()
             #pass
-            print(stack)
+           # print(stack)
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.PrivateMessageOnly):
@@ -578,11 +584,11 @@ class NuggetBot(commands.Bot):
             guild = self.get_guild(info['guild_id'])
             member = guild.get_member(payload.user_id)
 
-            #=== Quit if the reaction was added by a bot
+            # === Quit if the reaction was added by a bot
             if member.bot:
                 return
 
-            #=== decode the stored json entry
+            # === decode the stored json entry
             emojiIndex = json.loads(info['emojikey'])
 
             if payload.emoji.name in emojiIndex.keys() or payload.emoji.id in emojiIndex.keys():

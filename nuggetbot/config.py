@@ -42,11 +42,11 @@ class Config:
         self._confpreface2 = 'An error has occured validating the config:\n'
         self.auth = ()
 
-      #-------------------------------------------------- CREDENTIALS --------------------------------------------------
+      # -------------------------------------------------- CREDENTIALS --------------------------------------------------
         self._login_token = config.get('Credentials', 'Token', fallback=ConfigDefaults.token)
         self.owner_id=      config.get('Credentials', 'Owner', fallback=ConfigDefaults.owner_id)
 
-      #-------------------------------------------------- BOT --------------------------------------------------
+      # -------------------------------------------------- BOT --------------------------------------------------
         self.delete_invoking=   config.getboolean(  'Bot', 'DeleteInvoking',    fallback=ConfigDefaults.delete_invoking)
         self.command_prefix=    config.get(         'Bot', 'command_prefix',    fallback=ConfigDefaults.command_prefix)
         self.playing_game=      config.get(         'Bot', 'game',              fallback=ConfigDefaults.playing_game)
@@ -54,7 +54,7 @@ class Config:
         #guild targetting
         self.target_guild_id = config.getint('Guild', 'guild_id', fallback=ConfigDefaults.target_guild_id)
         
-      #-------------------------------------------------- CHANNELS --------------------------------------------------
+      # -------------------------------------------------- CHANNELS --------------------------------------------------
         self.channels = {}
 
         self.channels['bot_log']=                       config.getint( 'Channel', 'Bot Log',         fallback=default_value)
@@ -67,10 +67,10 @@ class Config:
         self.channels['entrance_gate']=                 config.getint(  'Channel', 'Entrance Gate',  fallback=default_value)
         self.channels['public_rules_id']=               config.getint(  'Channel', 'Public Rules',   fallback=default_value)
         
-      #-------------------------------------------------- ROLES --------------------------------------------------
+      # -------------------------------------------------- ROLES --------------------------------------------------
         self.roles = {}
     
-       #===== MEMBER ROLES
+       # ===== MEMBER ROLES
         self.roles['member']=                           config.getint(  'Roles', 'Member',          fallback=None)
         self.roles['newmember']=                        config.getint(  'Roles', 'New-Member',      fallback=None)
         self.roles['gated']=                            config.getint(  'Roles', 'Gated',           fallback=None)
@@ -94,7 +94,7 @@ class Config:
         self.roles['any_staff']=  [self.roles['admin'], self.roles['mod'], self.roles['tmod']]
         self.roles['user_staff']= [self.roles['admin'], self.roles['mod'], self.roles['tmod'], self.roles['member']]
 
-      #-------------------------------------------------- GIVEAWAY --------------------------------------------------
+      # -------------------------------------------------- GIVEAWAY --------------------------------------------------
         self.gvwy_channel_id=       config.getint(     'Giveaway', 'Channel',                fallback=None)
         self.gvwy_role_name=        config.get(        'Giveaway', 'role_name',              fallback=None)
         self.gvwy_role_id=          config.getint(     'Giveaway', 'role_id',                fallback=None)
@@ -106,7 +106,7 @@ class Config:
         self.gvwy_role_name=        self.none_if_empty(     self.gvwy_role_name)
         self.gvwy_min_time_on_srv=  self.time_pat_to_hrs(   self.gvwy_min_time_on_srv)
 
-      #-------------------------------------------------- ARTISTS --------------------------------------------------
+      # -------------------------------------------------- ARTISTS --------------------------------------------------
 
         self.art_reasons = dict()
 
@@ -120,10 +120,7 @@ class Config:
         self.art_roles['commer']=   config.getint(  'Artist', 'Commissioner-Role',      fallback=None)
         self.art_roles['opencoms']= config.getint(  'Artist', 'Open-Commissions-Role',  fallback=None)
 
-
-
-
-        #-------------------------------------------------- GALLERY CHANNELS --------------------------------------------------
+      # -------------------------------------------------- GALLERY CHANNELS --------------------------------------------------
         self.gallerys = {}
 
         self.galEnable=             config.getboolean(  'Gallery', 'Enable',            fallback=False)
@@ -140,20 +137,30 @@ class Config:
         self.gallerys["user_wl"]=   self.split_id_list(     self.gallerys["user_wl"])
         self.gallerys['link_wl']=   self.clean_glry_links(  self.gallerys['link_wl'])
 
-        #-------------------------------------------------- TESTING STUFFS --------------------------------------------------
-        self.name_colors = [None]
+      # -------------------------------------------------- SELF ASSIGN ROLES --------------------------------------------------
+        self.roles_channel_id =     config.getint(      'Channel',  'Self Assign Roles',    fallback=None)
 
-        self.name_colors.append(config.get('name_colors', '1', fallback=None))
-        self.name_colors.append(config.get('name_colors', '2', fallback=None))
-        self.name_colors.append(config.get('name_colors', '3', fallback=None))
-        self.name_colors.append(config.get('name_colors', '4', fallback=None))
-        self.name_colors.append(config.get('name_colors', '5', fallback=None))
-        self.name_colors.append(config.get('name_colors', '6', fallback=None))
+        # ===== NAME COLORS
+        self.name_colors = list()
 
+        for i in config.items("Name Color Roles"):
+            try:
+                j = int(i[1])
+
+            except ValueError:
+                raise HelpfulError(
+                    f'Under section "Name Color Roles" {i[1]} is not a digit.',
+                    'All role ID\'s provided must be a digit.',
+                    preface=self._confpreface2
+                )
+
+            self.name_colors.append(j)
+
+      # -------------------------------------------------- CHECKS --------------------------------------------------
         self.__int_chl_ids()
         self.run_checks()
 
-        #-------------------------------------------------- END INIT --------------------------------------------------
+      # -------------------------------------------------- END INIT --------------------------------------------------
 
     def run_checks(self):
 

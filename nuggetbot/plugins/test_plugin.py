@@ -68,16 +68,19 @@ class Test(commands.Cog):
         await asyncio.sleep(4)
 
 
-        channel = self.bot.get_channel(614956834771566594)
-        Webhook = discord.utils.get(await channel.webhooks(), name='NugBotErrors')
+        # webhook test
+        #channel = self.bot.get_channel(614956834771566594)
+        #Webhook = discord.utils.get(await channel.webhooks(), name='NugBotErrors')
 
 
-        await self.execute_webhook(
-            Webhook, 
-            content=    'This is a text message <a:foxban:405724216197906455>', 
-            username=   'NuggetBotErrors', 
-            avatar_url= self.bot.user.avatar_url
-            )
+        #await self.execute_webhook(
+        #    Webhook, 
+        #    content=    'This is a text message <a:foxban:405724216197906455>', 
+        #    username=   'NuggetBotErrors', 
+        #    avatar_url= self.bot.user.avatar_url
+        #    )
+
+
 
         #config = Config()
         #print(config.roles['user_staff'])
@@ -92,6 +95,21 @@ class Test(commands.Cog):
         #        print("{0.name}:{0.id}".format(e))
 
         #raise exceptions.PostAsWebhook("This issue is a test, please ignore. <a:foxban:405724216197906455>")
+
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        if not payload.guild_id:
+            return 
+
+        if payload.message_id in [647568320991592473]:
+            print(dir(payload.emoji))
+
+            print(payload.emoji.id)
+            print(payload.emoji.url)
+            print(payload.emoji.is_unicode_emoji())
+            print(payload.emoji.name)
+
 
 #webhook testing
 

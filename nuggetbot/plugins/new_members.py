@@ -34,7 +34,6 @@ from nuggetbot.utils import get_next
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
 
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG
 from .util import checks
 
 
@@ -131,8 +130,6 @@ class NewMembers(commands.Cog):
         self.scheduler.start()
         self.scheduler.print_jobs()
         await self.check_new_members()
-
-
     
     @commands.Cog.listener()
     async def on_resume(self):

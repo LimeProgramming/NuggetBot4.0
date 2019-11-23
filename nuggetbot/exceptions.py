@@ -97,10 +97,3 @@ class PostAsWebhook(NuggetbotException):
             preface  = self.preface,
             problem  = self.issue
         )
-
-    @property
-    def message_no_format(self):
-        return self._message_fmt.format(
-            preface  = self.preface,
-            problem  = self.issue
-        )
