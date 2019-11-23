@@ -31,3 +31,4 @@ nuggetbot/util/__pycache__/gen_embed.cpython-37.pyc
 data/
 nuggetbot/util/__pycache__/
 *.sqlite
+.vscode
