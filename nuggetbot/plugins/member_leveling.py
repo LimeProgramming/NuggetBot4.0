@@ -252,7 +252,7 @@ class MemberLeveling(commands.Cog):
 
         printout = ""
 
-        for i, result in enumerate(await self.db.fetch(pgCmds.get_member_leaderboard)):
+        for i, result in enumerate(await self.db.fetch(pgCmds.GET_MEMBER_LEADERBOARD)):
             printout += f"{(i+1)}:\t<@{result['user_id']}>\tLvl: {result['level']}\n"
 
         embed = discord.Embed(  description=printout,

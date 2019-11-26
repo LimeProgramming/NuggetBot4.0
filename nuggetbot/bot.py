@@ -268,23 +268,23 @@ class NuggetBot(commands.Bot):
         guild = self.get_guild(self.config.target_guild_id)
         guildMems = sorted(guild.members, key=lambda x: x.joined_at)
         memids = [member.id for member in guildMems]
-        dbMems = await self.db.fetch(pgCmds.get_all_members_joinleave)
+        dbMems = await self.db.fetch(pgCmds.GET_ALL_MEMBERS)
         dbMemids = [mem["user_id"] for mem in dbMems]
         ###Deal with members joining and leaving while bot is off.
         i = j = x = 0
 
         # ===== IF MEMBERS TABLE IS EMPTY, POPULATE IT
-        if len(await self.db.fetch(pgCmds.member_table_empty_test)) == 0:
+        if len(await self.db.fetch(pgCmds.MEMBER_TABLE_EMPTY)) == 0:
             for m in guildMems:
                 j += 1 
-                await self.db.execute(pgCmds.add_a_member, m.id, m.joined_at, m.created_at, True)                
+                await self.db.execute(pgCmds.ADD_MEMBER_FUNC, m.id, m.joined_at, m.created_at, True)                
 
         else:
             # === ADDING NEW MEMBERS
             for member in guildMems:
                 if member.id not in dbMemids and not member.bot:
                     j += 1 
-                    await self.db.execute(pgCmds.add_a_member, member.id, member.joined_at, member.created_at, True)
+                    await self.db.execute(pgCmds.ADD_MEMBER_FUNC, member.id, member.joined_at, member.created_at, True)
                                         
         # ===== UPDATE CURRENT MEMBERS LOGGED IN DATABASE
         for memid in dbMems:
@@ -298,7 +298,7 @@ class NuggetBot(commands.Bot):
             # === READD A RETURNED MEMBER
             elif member and str(memid["user_id"]) in memids and not memid["ishere"]:
                 x += 1
-                await self.db.execute(  pgCmds.readd_a_member, int(member.id))
+                await self.db.execute(  pgCmds.READD_MEMBER, int(member.id))
 
         dblog.info(f" {i} old members removed from the database.")
         dblog.info(f" {j} new members added to the database.")
