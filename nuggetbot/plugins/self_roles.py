@@ -135,21 +135,132 @@ class SelfRoles(commands.Cog):
                     f'Could not fetch a required message for self assaignable roles https://discordapp.com/channels/{roles_channel.guild.id}/{roles_channel.id}/{i} – Retrieving the message failed.', 
                     preface=f"```diff\n- An error has occured in {self.qualified_name}\n```")
 
-            pass
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+            
+
+      # ---------- CHECK FOR CHANGES IN MESSAGES ----------
+        # === GET NUGGETBOT AS A MEMBER
+        #selfmember =  guild.get_member(self.bot.user.id)
+        #if not selfmember:
+        #    raise exceptions.Note(f'Could not find myself in {guild.name}')
+
+        # === CHECK IF BOT CAN ACTUALLY GRANT THE ROLE
+        #if selfmember.top_role.position <= role.position:
+        #    raise exceptions.Note(f'Role {role.name} is higher or equal to my top_role so I cannot apply it anyone.')
 
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        # ===== IGNORE REACTIONS FROM DM'S
-        if not payload.guild_id:
+        """
+        This function will take care of self assign roles via reactions.
+        We are using the "raw" variant of the reaction add event because the self assign roles message may not be cached in the bots memory.
+
+
+        Since this is one of the critical functions of the bot I'm reporting all the possible errors so that they can be addressed.
+        """
+
+      # ---------- IGNORE ----------
+        # ===== REACTIONS FROM DM'S
+        if not payload.guild_id: return 
+
+        # ===== IRRELIVANT MESSAGES
+        if payload.message_id not in self.cogset['retmsgs'].keys(): return
+
+        # ===== REACTIONS FROM BOT
+        if payload.user_id == self.bot.user.id: return
+
+      # ---------- GET NEEDED VARIABLES ----------
+        # ===== THE GUILD
+        guild = self.bot.get_guild(payload.guild_id)
+
+        # ===== THE CHANNEL
+        rolesCHL = guild.get_channel(payload.channel_id)
+
+        # ===== THE MESSAGE
+        rolesMSG = await rolesCHL.fetch_message(payload.message_id)
+
+        # ===== THE REACTOR AS A MEMBER
+        member = guild.get_member(payload.user_id)
+        if not member:
+            # === IF MEMBER SOMEHOW LEFT IMMIDATELY AFTER REACTING
+            await self.remove_user_reactions(msg = rolesMSG)
+            return
+
+        # ===== GET THE ROLE
+        try:
+            role = discord.utils.get(guild.roles, id=self.cogset['keys'][payload.message_id][payload.emoji.name])
+        except KeyError:
+            await self.remove_user_reactions(msg = rolesMSG, member = member)
             return 
 
-        # ===== IGNORE REACTIONS FROM BOT
-        if payload.user_id == self.bot.user.id:
-            return
+      # ---------- APPLY THE ROLE ----------    
+        await getattr(self, self.cogset['retmsgs'][payload.message_id])(member, role, guild, payload)
+
+      # ---------- HANDLE RELATED ROLES ----------
+        await self.remove_user_reactions(msg = rolesMSG, member = member)
+
+
+        
 
 
   # -------------------- FUNCTIONS --------------------
+
+    async def name_color(self, member, role, guild, payload):
+
+        try:
+            await member.add_roles(role, reason="Apply new name color.")
+
+        except discord.errors.Forbidden:
+            raise exceptions.PostAsWebhook(                
+                f'Exception in on_raw_reaction_add\nAdding role {role.name} failed, I do not have permissions to add these roles.', 
+                preface=f"```diff\n- An error has occured in {self.qualified_name}\n```") 
+
+        # ===== REMOVE OTHER NAME COLOR ROLES
+        for rrole in guild.roles:
+            if rrole.id in [i[1] for i in self.cogset['keys'][payload.message_id].items()] and rrole != role:
+
+                try:
+                    await member.remove_roles(rrole, reason='Removing old name color.')
+                    await asyncio.sleep(0.2)
+
+                except discord.errors.NotFound:
+                    pass
+        return
+
+
+    async def remove_user_reactions(self, msg, member = None):
+        '''
+        Removes member's reaction from msg
+
+        Parameters
+        ------------
+        msg :class:`discord.Message`
+            The message you want to remove reactions from.
+        member :class:`discord.Member`
+            Members whose reactions you are removing.
+        '''
+        
+        for reaction in msg.reactions:
+
+            if member is None:
+                for user in await reaction.users().flatten():
+                    if user == self.bot.user: continue
+
+                    await reaction.remove(user)
+                    await asyncio.sleep(0.2)  
+
+            else:
+                if reaction.count == 1 and reaction.me: continue
+
+                try:
+                    await reaction.remove(member)
+                    await asyncio.sleep(0.2)
+
+                except discord.errors.NotFound:
+                    pass
+        return 
+
+
     async def post_name_colours_msg(self):
         # ===== VARIABLE SETUP
         guild =         self.bot.get_guild(SelfRoles.config.target_guild_id)

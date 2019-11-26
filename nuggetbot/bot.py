@@ -993,6 +993,14 @@ class NuggetBot(commands.Bot):
         if embed is not None:
             payload['embeds'] = [embed.to_dict()]
 
+
+        #if files is None: files = []
+
+        #form = aiohttp.FormData()
+        #form.add_field('payload_json', discord.utils.to_json(payload))
+        #for file, filename in files:
+        #    form.add_field('file', file, filename=filename, content_type='application/octet-stream')
+
         await self.bot.http.request(route=discord.http.Route('POST', f'/webhooks/{webhook.id}/{webhook.token}'), json=payload)
 
         return
