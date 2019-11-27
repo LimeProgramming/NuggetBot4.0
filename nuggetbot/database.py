@@ -25,7 +25,7 @@ class DatabaseCmds(object):
             num         BIGSERIAL
             ); 
 
-        COMMENT ON TABLE messages is             'This table stores some basic information about messages sent on the server. It keeps a log of messages which have been deleted from the guild.'
+        COMMENT ON TABLE messages is             'This table stores some basic information about messages sent on the server. It keeps a log of messages which have been deleted from the guild.';
         COMMENT ON COLUMN messages.msg_id is     'Discord id of the sent message.'; 
         COMMENT ON COLUMN messages.ch_id is      'Channel id of the message was posted in.';
         COMMENT ON COLUMN messages.guild_id is   'Note of the guild the message was posted in. Useful for API calls.';
@@ -255,7 +255,7 @@ class DatabaseCmds(object):
     EXISTS_RECT_MSG_TABLE=      "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'REACTION_MESSAGES');"
 
 
-# ============================== GIVEAWAY WINNERS TABLE ==============================
+  # ============================== GIVEAWAY WINNERS TABLE ==============================
     CREATE_GVWY_PRE_WINS_TABLE= """
         CREATE TABLE IF NOT EXISTS gvwy_previous_wins(
             user_id     BIGINT      PRIMARY KEY,
@@ -270,9 +270,10 @@ class DatabaseCmds(object):
         COMMENT ON COLUMN gvwy_previous_wins.last_win IS    'Last time a member has won a giveaway';
         COMMENT ON COLUMN gvwy_previous_wins.num_wins IS    'The number of times a member has one, this number is used to calulate how many entries a member has when they join a giveaway.';
         """
+    EXISTS_GVWY_PRE_WINS_TABLE= "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GVWY_PREVIOUS_WINS');"
 
     ADD_GVWY_PRE_WINS= """
-        INSERT INTO gvwy_previous_wins(
+        INSERT INTO public.gvwy_previous_wins(
             user_id, first_win, last_win, num_wins
             ) 
         VALUES( 
@@ -287,16 +288,15 @@ class DatabaseCmds(object):
             WHERE gvwy_previous_wins.user_id = CAST($1 AS BIGINT);
         """
 
-    GET_ALL_GVWY_PRE_WINS=      "SELECT * FROM gvwy_previous_wins"
-    GET_GVWY_NUM_WINS=          "SELECT num_wins FROM gvwy_previous_wins WHERE user_id = CAST($1 AS BIGINT)"
-    GET_MEM_EXISTS_GVWY_PRE_WINS="SELECT EXISTS(SELECT * FROM gvwy_previous_wins WHERE user_id = CAST($1 AS BIGINT))"
-    GET_MEM_GVWY_PRE_WIN=       "SELECT * FROM gvwy_previous_wins WHERE user_id = CAST($1 AS BIGINT);"
-    SET_GVWY_NUM_WINS=          "UPDATE gvwy_previous_wins SET num_wins = CAST($1 AS INTEGER) WHERE gvwy_previous_wins.user_id = CAST($2 AS BIGINT);"
-    REM_MEM_GVWY_PRE_WINS=      "DELETE FROM gvwy_previous_wins WHERE user_id = CAST($1 AS BIGINT)"
-    EXISTS_GVWY_PRE_WINS_TABLE= "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GVWY_PREVIOUS_WINS');"
+    GET_ALL_GVWY_PRE_WINS=      "SELECT * FROM public.gvwy_previous_wins"
+    GET_GVWY_NUM_WINS=          "SELECT num_wins FROM public.gvwy_previous_wins WHERE user_id = CAST($1 AS BIGINT)"
+    GET_MEM_EXISTS_GVWY_PRE_WINS="SELECT EXISTS(SELECT * FROM public.gvwy_previous_wins WHERE user_id = CAST($1 AS BIGINT))"
+    GET_MEM_GVWY_PRE_WIN=       "SELECT * FROM public.gvwy_previous_wins WHERE user_id = CAST($1 AS BIGINT);"
+    SET_GVWY_NUM_WINS=          "UPDATE public.gvwy_previous_wins SET num_wins = CAST($1 AS INTEGER) WHERE user_id = CAST($2 AS BIGINT);"
+    REM_MEM_GVWY_PRE_WINS=      "DELETE FROM public.gvwy_previous_wins WHERE user_id = CAST($1 AS BIGINT)"
 
 
-# ============================== GIVEAWAY BLOCKS TABLE ==============================    
+  # ============================== GIVEAWAY BLOCKS TABLE ==============================    
     CREATE_GVWY_BLOCKS_TABLE=   """
         CREATE TABLE IF NOT EXISTS gvwy_blocks(
             user_id             BIGINT PRIMARY KEY,
@@ -315,6 +315,7 @@ class DatabaseCmds(object):
         COMMENT ON COLUMN gvwy_blocks.timed IS              'Bool for is the block is a timed block or not.';     
         COMMENT ON COLUMN gvwy_blocks.unblock_timestamp IS  'Timestamp for when the member should be unblocked from the giveaway.';
         """
+    EXISTS_GVWY_BLOCKS_TABLE=   "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GVWY_BLOCKS');"
 
     ADD_GVWY_BLOCKS_NONTIMED=   """
         INSERT INTO gvwy_blocks(
@@ -338,15 +339,13 @@ class DatabaseCmds(object):
             DO NOTHING;
         """
     
-    GET_ALL_GVWY_BLOCKS=        "SELECT * FROM gvwy_blocks"
-    GET_MEM_GVWY_BLOCKS=        "SELECT * FROM gvwy_blocks WHERE user_id = CAST($1 AS BIGINT)"
-    GET_MEM_EXISTS_GVWY_BLOCKS= "SELECT EXISTS(SELECT * FROM gvwy_blocks WHERE user_id = CAST($1 AS BIGINT))"
-    REM_MEM_GVWY_BLOCK=         "DELETE FROM gvwy_blocks WHERE user_id = CAST($1 AS BIGINT)"
+    GET_ALL_GVWY_BLOCKS=        "SELECT * FROM public.gvwy_blocks;"
+    GET_MEM_GVWY_BLOCKS=        "SELECT * FROM public.gvwy_blocks WHERE user_id = CAST($1 AS BIGINT) LIMIT 1;"
+    GET_MEM_EXISTS_GVWY_BLOCKS= "SELECT EXISTS(SELECT * FROM public.gvwy_blocks WHERE user_id = CAST($1 AS BIGINT) LIMIT 1);"
+    REM_MEM_GVWY_BLOCK=         "DELETE FROM public.gvwy_blocks WHERE user_id = CAST($1 AS BIGINT);"
     
-    EXISTS_GVWY_BLOCKS_TABLE=   "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GVWY_BLOCKS');"
 
-
-# ============================== GIVEAWAY ENTRIES TABLE ==============================
+  # ============================== GIVEAWAY ENTRIES TABLE ==============================
     CREATE_GVWY_ENTRIES_TABLE=  """
         CREATE TABLE IF NOT EXISTS gvwy_entries(
             user_id     BIGINT      PRIMARY KEY,
@@ -354,14 +353,15 @@ class DatabaseCmds(object):
             timestamp   TIMESTAMP
             ); 
 
-        COMMENT ON TABLE gvwy_entries IS                'Holds the entry data for giveaways preformed by nuggetbot. It holds member id's and how many entries the member has.';
+        COMMENT ON TABLE gvwy_entries IS                'Holds the entry data for giveaways preformed by nuggetbot. It holds member id''s and how many entries the member has.';
         COMMENT ON COLUMN gvwy_entries.user_id IS       'Discord ID of the member.';
         COMMENT ON COLUMN gvwy_entries.entries IS       'The number of entries the member has in the giveaway.';
         COMMENT ON COLUMN gvwy_entries.timestamp IS     'Timestamp of when the member joined in the giveaway.';
         """
+    EXISTS_GVWY_ENTRIES_TABLE=  "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GVWY_ENTRIES');"
 
     ADD_GVWY_ENTRY= """
-        INSERT INTO gvwy_entries(
+        INSERT INTO public.gvwy_entries(
             user_id, entries,  timestamp
             )
         VALUES(
@@ -371,18 +371,17 @@ class DatabaseCmds(object):
             DO NOTHING;
         """
 
-    GET_ALL_GVWY_ENTRIES=       "SELECT * FROM gvwy_entries ORDER BY timestamp ASC"
-    GET_MEM_GVWY_ENTRIES=       "SELECT * FROM gvwy_entries WHERE user_id=CAST($1 AS BIGINT)"
-    GET_MEM_EXISTS_GVWY_ENTRIES="SELECT EXISTS(SELECT * FROM gvwy_entries WHERE user_id=CAST($1 AS BIGINT))"
-    REM_MEM_GVWY_ENTRIES=       "DELETE FROM gvwy_entries WHERE user_id = CAST($1 AS BIGINT)"
+    GET_ALL_GVWY_ENTRIES=       "SELECT * FROM public.gvwy_entries ORDER BY timestamp ASC"
+    GET_MEM_GVWY_ENTRIES=       "SELECT * FROM public.gvwy_entries WHERE user_id=CAST($1 AS BIGINT) LIMIT 1"
+    GET_MEM_EXISTS_GVWY_ENTRIES="SELECT EXISTS(SELECT * FROM public.gvwy_entries WHERE user_id=CAST($1 AS BIGINT) LIMIT 1)"
+    REM_MEM_GVWY_ENTRIES=       "DELETE FROM public.gvwy_entries WHERE user_id = CAST($1 AS BIGINT)"
     REM_ALL_GVWY_ENTRIES=       """ 
-                                TRUNCATE gvwy_entries; 
-                                DELETE FROM gvwy_entries;
+                                TRUNCATE public.gvwy_entries; 
+                                DELETE FROM public.gvwy_entries;
                                 """
-    EXISTS_GVWY_ENTRIES_TABLE=  "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'GVWY_ENTRIES');"
 
 
-# ============================== DM FEEDBACK TABLE ==============================
+  # ============================== DM FEEDBACK TABLE ==============================
     CREATE_DM_FEEDBACK=     """
         CREATE TABLE IF NOT EXISTS dm_feedback (
             num             SERIAL      PRIMARY KEY,
@@ -394,9 +393,17 @@ class DatabaseCmds(object):
             timestamp       TIMESTAMP
             );
 
-        COMMENT ON TABLE dm_feedback IS            'Holds the entry data for giveaways preformed by nuggetbot. It holds member id's and how many entries the member has.';
-        COMMENT ON COLUMN dm_feedback.num IS       'Discord ID of the member.';
+        COMMENT ON TABLE dm_feedback IS                 'Holds the entry data for giveaways preformed by nuggetbot. It holds member id''s and how many entries the member has.';
+        COMMENT ON COLUMN dm_feedback.num IS            'Serial of the feedback received, this is out primary key since the same user can give feedback multiple times.';
+        COMMENT ON COLUMN dm_feedback.user_id IS        'Discord ID of the member.';
+        COMMENT ON COLUMN dm_feedback.dmchannel_id IS   'ID of the private channel the feedback was posted on. IE the channel between the bot the user.';      
+        COMMENT ON COLUMN dm_feedback.sent_msg_id IS    'ID of the reposted message.';
+        COMMENT ON COLUMN dm_feedback.sent_chl_id IS    'ID of the channel feedback was reposted in. IE the Feedback channel set in setup.ini. This data is stored just in case the channel changes.';
+        COMMENT ON COLUMN dm_feedback.sent_guild_id IS  'ID of the guild the feedback channel is located in. I''m sure it''ll be useful eventually.';
+        COMMENT ON COLUMN dm_feedback.timestamp IS      'Timestamp of when the feedback was submitted.';
         """
+
+    EXISTS_DM_FEEDBACK=     "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'DM_FEEDBACK');"
 
     ADD_DM_FEEDBACK="""
         INSERT INTO dm_feedback(
@@ -423,10 +430,8 @@ class DatabaseCmds(object):
         LIMIT 1
         """
 
-    EXISTS_DM_FEEDBACK=     "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'DM_FEEDBACK');"
 
-
-# ============================== GUILD TABLE ==============================
+  # ============================== GUILD TABLE ==============================
     CREATE_GUILD_TABLE=""" 
         CREATE TABLE IF NOT EXISTS guild (
             guild_id        BIGINT              PRIMARY KEY,
@@ -460,19 +465,19 @@ class DatabaseCmds(object):
         """
         
     #SET_GUILD_DATA=
-    SET_GUILD_OWNER=        'UPDATE guild SET owner_id = CAST($1 AS BIGINT) WHERE guild_id = CAST($2 AS BIGINT);'
-    SET_GUILD_ROLES=        'UPDATE guild SET roles = CAST($1 AS DISCORD_ROLE[]) WHERE guild_id = CAST($2 AS BIGINT);'
-    SET_GUILD_CHANNELS=     'UPDATE guild SET channels = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
-    SET_GUILD_ICON=         'UPDATE guild SET icon = $1 WHERE guild_id = CAST($2 AS BIGINT);'
+    SET_GUILD_OWNER=        'UPDATE public.guild SET owner_id = CAST($1 AS BIGINT) WHERE guild_id = CAST($2 AS BIGINT);'
+    SET_GUILD_ROLES=        'UPDATE public.guild SET roles = CAST($1 AS DISCORD_ROLE[]) WHERE guild_id = CAST($2 AS BIGINT);'
+    SET_GUILD_CHANNELS=     'UPDATE public.guild SET channels = CAST($1 AS BIGINT[]) WHERE guild_id = CAST($2 AS BIGINT);'
+    SET_GUILD_ICON=         'UPDATE public.guild SET icon = $1 WHERE guild_id = CAST($2 AS BIGINT);'
     GET_GUILD_ROLES=        'SELECT roles FROM public.guild WHERE guild_id = CAST($1 AS BIGINT);'
-    APPEND_GUILD_EMOJIS=    'UPDATE guild SET emojis = array_append(emojis, $1) WHERE guild_id = CAST($2 AS BIGINT);'
+    APPEND_GUILD_EMOJIS=    'UPDATE public.guild SET emojis = array_append(emojis, $1) WHERE guild_id = CAST($2 AS BIGINT);'
     APPEND_GUILD_BANS="""
         UPDATE public.guild 
         SET 
             bans = array_append(bans, CAST($1 AS DISCORD_BAN)) 
         WHERE 
             guild_id = CAST($2 AS BIGINT) AND 
-            NOT EXISTS (SELECT array_position((SELECT bans From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS DISCORD_BAN)));
+            NOT EXISTS (SELECT array_position((SELECT bans FROM public.guild WHERE guild_id = CAST($2 AS BIGINT)), CAST($1 AS DISCORD_BAN)));
         """
     APPEND_GUILD_UNBANS="""
         UPDATE public.guild 
@@ -480,18 +485,18 @@ class DatabaseCmds(object):
             unbans = array_append(unbans, CAST($1 AS DISCORD_BAN)) 
         WHERE 
             guild_id = CAST($2 AS BIGINT) AND 
-            NOT EXISTS (SELECT array_position((SELECT unbans From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS DISCORD_BAN)));
+            NOT EXISTS (SELECT array_position((SELECT unbans FROM public.guild WHERE guild_id = CAST($2 AS BIGINT)), CAST($1 AS DISCORD_BAN)));
         """
     APPEND_GUILD_ROLES="""
-        UPDATE guild 
+        UPDATE public.guild 
         SET 
             roles = array_append(roles, CAST($1 AS discord_role)) 
         WHERE 
             guild_id = CAST($2 AS BIGINT) AND 
-            NOT EXISTS (SELECT array_position((SELECT roles From guild where guild_id = CAST($2 AS BIGINT)), CAST($1 AS discord_role)));
+            NOT EXISTS (SELECT array_position((SELECT roles FROM public.guild WHERE guild_id = CAST($2 AS BIGINT)), CAST($1 AS discord_role)));
         """
     UPDATE_GUILD_ROLE="""
-        UPDATE guild 
+        UPDATE public.guild 
         SET 
             roles = array_replace(roles, CAST($1 AS DISCORD_ROLE), CAST($2 AS DISCORD_ROLE)) 
         WHERE 
@@ -520,17 +525,17 @@ class DatabaseCmds(object):
                             WHERE 
                                 guild.guild_id = CAST($7 AS BIGINT);
                             """
-    SET_GUILD_GALL_ENABLE=      "UPDATE guild SET gall_nbl = TRUE WHERE guild.guild_id = CAST($1 AS BIGINT);"
-    SET_GUILD_GALL_DISABLE=     "UPDATE guild SET gall_nbl = FALSE WHERE guild.guild_id = CAST($1 AS BIGINT);"
-    SET_GUILD_GALL_CHLS=        "UPDATE guild SET gall_ch = CAST($1 AS BIGINT[]) WHERE guild.guild_id = CAST($2 AS BIGINT);"
-    SET_GUILD_GALL_EXP=         "UPDATE guild SET gall_text_exp = CAST($1 AS INTEGER) WHERE guild.guild_id = CAST($2 AS BIGINT);"
-    SET_GUILD_GALL_USER_WL=     "UPDATE guild SET gall_user_wl = CAST($1 AS BIGINT[]) WHERE guild.guild_id = CAST($2 AS BIGINT);"
-    SET_GUILD_GALL_LINK_ENABLE= "UPDATE guild SET gall_nbl_links = TRUE WHERE guild.guild_id = CAST($1 AS BIGINT);"
-    SET_GUILD_GALL_LINK_DISABLE="UPDATE guild SET gall_nbl_links = FALSE WHERE guild.guild_id = CAST($1 AS BIGINT);"
-    SET_GUILD_GALL_LINKS=       "UPDATE guild SET gall_links = CAST($1 AS BIGINT[]) WHERE guild.guild_id = CAST($2 AS BIGINT);"
+    SET_GUILD_GALL_ENABLE=      "UPDATE public.guild SET gall_nbl = TRUE WHERE guild.guild_id = CAST($1 AS BIGINT);"
+    SET_GUILD_GALL_DISABLE=     "UPDATE public.guild SET gall_nbl = FALSE WHERE guild.guild_id = CAST($1 AS BIGINT);"
+    SET_GUILD_GALL_CHLS=        "UPDATE public.guild SET gall_ch = CAST($1 AS BIGINT[]) WHERE guild.guild_id = CAST($2 AS BIGINT);"
+    SET_GUILD_GALL_EXP=         "UPDATE public.guild SET gall_text_exp = CAST($1 AS INTEGER) WHERE guild.guild_id = CAST($2 AS BIGINT);"
+    SET_GUILD_GALL_USER_WL=     "UPDATE public.guild SET gall_user_wl = CAST($1 AS BIGINT[]) WHERE guild.guild_id = CAST($2 AS BIGINT);"
+    SET_GUILD_GALL_LINK_ENABLE= "UPDATE public.guild SET gall_nbl_links = TRUE WHERE guild.guild_id = CAST($1 AS BIGINT);"
+    SET_GUILD_GALL_LINK_DISABLE="UPDATE public.guild SET gall_nbl_links = FALSE WHERE guild.guild_id = CAST($1 AS BIGINT);"
+    SET_GUILD_GALL_LINKS=       "UPDATE public.guild SET gall_links = CAST($1 AS BIGINT[]) WHERE guild.guild_id = CAST($2 AS BIGINT);"
 
 
-# ============================== UUID TICKETS TABLE ==============================                                           
+  # ============================== UUID TICKETS TABLE ==============================                                           
     CREATE_UUID_TICKET = """ 
         CREATE TABLE IF NOT EXISTS uuid_tickets (
             uid             UUID            PRIMARY KEY,
@@ -557,7 +562,7 @@ class DatabaseCmds(object):
     EXISTS_UUID_TICKET=     "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE upper(table_name) = 'UUID_TICKETS');"
 
 
-# ============================== WEBHOOKS TABLE ============================== 
+  # ============================== WEBHOOKS TABLE ============================== 
     CREATE_WEBHOOK_TABLE = """ 
         CREATE TABLE IF NOT EXISTS webhooks (
             id          BIGINT          PRIMARY KEY,
@@ -576,7 +581,7 @@ class DatabaseCmds(object):
     GET_WEBHOOK=                "SELECT id, token FROM public.webhooks WHERE ch_id = CAST($1 as BIGINT) LIMIT 1" 
     SET_WEBHOOK=                "INSERT "
 
-# ============================== TRIGGERS ==============================
+  # ============================== TRIGGERS ==============================
     # -------------------- MESSAGE TRIGGERS --------------------
     CREATE_MSGINCREMENTER="""
         DO
@@ -661,7 +666,7 @@ class DatabaseCmds(object):
     EXISTS_GUILDICONHIST="SELECT EXISTS(SELECT * FROM information_schema.triggers WHERE upper(trigger_name) = 'MANAGEICONHIST');"
 
 
-### ============================== FUNCTIONS ==============================
+  # ============================== FUNCTIONS ==============================
     
     # -------------------- UPDATE_INVITES --------------------
     CREATE_FUNC_UPDATE_INVITES= """
@@ -1098,7 +1103,7 @@ class DatabaseCmds(object):
         $do$
         """
 
-### ============================== COMPOUND DATATYPES ==============================
+  # ============================== COMPOUND DATATYPES ==============================
     #(emoji.id, emoji.ext, emoji.bytes, emoji.timestamp)
     EXISTS_DISCORD_EMOJI=       "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_emoji')"
     CREATE_DISCORD_EMOJI="""
@@ -1179,7 +1184,6 @@ class DatabaseCmds(object):
         COMMENT ON TYPE guild_staff IS 'Staff member entry for the guild. This is mostly useful for historial purposes.';
         """
 
-
     #id, name, perms, hoisted, default, colour, date, deleted
     EXISTS_DISCORD_ROLE=        "SELECT EXISTS(SELECT * FROM pg_type WHERE typname='discord_role')"
     CREATE_DISCORD_ROLE="""
@@ -1202,5 +1206,3 @@ class DatabaseCmds(object):
 
         COMMENT ON TYPE discord_role IS 'This is some information about the roles within the discord guild. It contains enough information to remake the role should it ever be accidentally deleted.';
         """
-
-
