@@ -43,7 +43,7 @@ class MemberDMS(commands.Cog):
         self.cogset = dict()
         self.db = None
 
-  #-------------------- LISTENERS --------------------
+  # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
         self.cogset = await cogset.LOAD(cogname="feedback")
@@ -55,7 +55,7 @@ class MemberDMS(commands.Cog):
             await cogset.SAVE(self.cogset, cogname="feedback")
 
 
-  #-------------------- LOCAL COG STUFF --------------------
+  # -------------------- LOCAL COG STUFF --------------------
     async def cog_before_invoke(self, ctx):
         '''THIS IS CALLED BEFORE EVERY COG COMMAND, IT'S SOLE PURPOSE IS TO CONNECT TO THE DATABASE'''
 

@@ -26,6 +26,7 @@ import datetime
 import traceback
 from typing import Union
 from discord.ext import commands
+from collections.abc import Iterable
 
 # test imports
 from PIL import Image
@@ -35,16 +36,12 @@ from apscheduler import events
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from configparser import ConfigParser
-from .config import Config
-from .database import DatabaseCmds as pgCmds
 from . import exceptions
+from .config import Config
 from .utils import get_next, Response
-#from .fun import Fun
-#from .artists import Artists
-from .util.chat_formatting import escape_mass_mentions, AVATAR_URL_AS, GUILD_URL_AS, RANDOM_DISCORD_COLOR
-from .util import fake_objects
 from .util import gen_embed as GenEmbed
+from .database import DatabaseCmds as pgCmds
+from .util.chat_formatting import escape_mass_mentions, AVATAR_URL_AS, GUILD_URL_AS, RANDOM_DISCORD_COLOR
 
 from .decorators import in_channel, in_channel_name, in_reception, is_core, has_role, is_high_staff
 from .decorators import is_any_staff, turned_off, owner_only
@@ -93,7 +90,6 @@ class NuggetBot(commands.Bot):
         self.init_ok = True
         self.exit_signal = None
         self.start_timestamp = datetime.datetime.utcnow()
-        self.logging = ConfigParser()
         self.bot_commands = [att.replace('cmd_', '').lower() for att in dir(self) if att.startswith('cmd_')]
         self.bot_oneline_commands = ["rp", "rp_lewd",
                                     "artist", "book_wyrm", "notifyme", "vore", "nuggethelp",
@@ -193,11 +189,11 @@ class NuggetBot(commands.Bot):
 
         # ===== CREATE DATABASE COMPOSITE TYPES
         database_types=[
-            {"exists":"EXISTS_DISCORD_EMOJI",       "create":"CREATE_DISCORD_EMOJI",        "log":"Created discord emoji type."},
-            {"exists":"EXISTS_DISCORD_BANS",        "create":"CREATE_DISCORD_BANS",         "log":"Created discord ban type."},
-            {"exists":"EXISTS_DISCORD_STAFF",       "create":"CREATE_DISCORD_STAFF",        "log":"Created discord staff type."},
-            {"exists":"EXISTS_DISCORD_ROLE",        "create":"CREATE_DISCORD_ROLE",         "log":"Created discord role type."},
-            {"exists":"EXISTS_DISCORD_ICON",        "create":"CREATE_DISCORD_ICON",         "log":"Created discord icon type."}
+            {'exists':'EXISTS_DISCORD_EMOJI',       'create':'CREATE_DISCORD_EMOJI',        'log':'Created discord emoji type.'},
+            {'exists':'EXISTS_DISCORD_BANS',        'create':'CREATE_DISCORD_BANS',         'log':'Created discord ban type.'},
+            {'exists':'EXISTS_DISCORD_STAFF',       'create':'CREATE_DISCORD_STAFF',        'log':'Created discord staff type.'},
+            {'exists':'EXISTS_DISCORD_ROLE',        'create':'CREATE_DISCORD_ROLE',         'log':'Created discord role type.'},
+            {'exists':'EXISTS_DISCORD_ICON',        'create':'CREATE_DISCORD_ICON',         'log':'Created discord icon type.'}
         ]
 
         dblog.info(" Checking PG database types.")
@@ -210,18 +206,19 @@ class NuggetBot(commands.Bot):
 
         # ===== CREATE DATABASE TABLES AT STARTUP
         database_tables = [
-            {"exists":"EXISTS_MSGS_TABLE",          "create":"CREATE_MSGS_TABLE",           "log":"Created messages table."},
-            {"exists":"EXISTS_GALL_MSGS_TABLE",     "create":"CREATE_GALL_MSGS_TABLE",      "log":"Created gallery messages table."},
-            {"exists":"EXISTS_ARTIST_INFO_TABLE",   "create":"CREATE_ARTIST_INFO_TABLE",    "log":"Created artist_info table."},
-            {"exists":"EXISTS_INVITE_TABLE",        "create":"CREATE_INVITE_TABLE",         "log":"Created invite table."},
-            {"exists":"EXISTS_WEL_MSG_TABLE",       "create":"CREATE_WEL_MSG_TABLE",        "log":"Created welcome msg table."},
-            {"exists":"EXISTS_MEMBERS_TABLE",       "create":"CREATE_MEMBERS_TABLE",        "log":"Created members table."},
-            {"exists":"EXISTS_RECT_MSG_TABLE",      "create":"CREATE_RECT_MSG_TABLE",       "log":"Created reaction messages table."},
-            {"exists":"EXISTS_GVWY_PRE_WINS_TABLE", "create":"CREATE_GVWY_PRE_WINS_TABLE",  "log":"Created giveaway winners table."},
-            {"exists":"EXISTS_GVWY_BLOCKS_TABLE",   "create":"CREATE_GVWY_BLOCKS_TABLE",    "log":"Created giveaway blacklist table."},
-            {"exists":"EXISTS_GVWY_ENTRIES_TABLE",  "create":"CREATE_GVWY_ENTRIES_TABLE",   "log":"Created giveaway entries table."},
-            {"exists":"EXISTS_DM_FEEDBACK",         "create":"CREATE_DM_FEEDBACK",          "log":"Created DM Feedback table."},
-            {"exists":"EXISTS_GUILD_TABLE",         "create":"CREATE_GUILD_TABLE",          "log":"Created Guild table."}
+            {'exists':'EXISTS_MSGS_TABLE',          'create':'CREATE_MSGS_TABLE',           'log':'Created messages table.'},
+            {'exists':'EXISTS_GALL_MSGS_TABLE',     'create':'CREATE_GALL_MSGS_TABLE',      'log':'Created gallery messages table.'},
+            {'exists':'EXISTS_ARTIST_INFO_TABLE',   'create':'CREATE_ARTIST_INFO_TABLE',    'log':'Created artist_info table.'},
+            {'exists':'EXISTS_INVITE_TABLE',        'create':'CREATE_INVITE_TABLE',         'log':'Created invite table.'},
+            {'exists':'EXISTS_WEL_MSG_TABLE',       'create':'CREATE_WEL_MSG_TABLE',        'log':'Created welcome msg table.'},
+            {'exists':'EXISTS_MEMBERS_TABLE',       'create':'CREATE_MEMBERS_TABLE',        'log':'Created members table.'},
+            {'exists':'EXISTS_RECT_MSG_TABLE',      'create':'CREATE_RECT_MSG_TABLE',       'log':'Created reaction messages table.'},
+            {'exists':'EXISTS_GVWY_PRE_WINS_TABLE', 'create':'CREATE_GVWY_PRE_WINS_TABLE',  'log':'Created giveaway winners table.'},
+            {'exists':'EXISTS_GVWY_BLOCKS_TABLE',   'create':'CREATE_GVWY_BLOCKS_TABLE',    'log':'Created giveaway blacklist table.'},
+            {'exists':'EXISTS_GVWY_ENTRIES_TABLE',  'create':'CREATE_GVWY_ENTRIES_TABLE',   'log':'Created giveaway entries table.'},
+            {'exists':'EXISTS_DM_FEEDBACK',         'create':'CREATE_DM_FEEDBACK',          'log':'Created DM Feedback table.'},
+            {'exists':'EXISTS_GUILD_TABLE',         'create':'CREATE_GUILD_TABLE',          'log':'Created Guild table.'},
+            {'exists':'EXISTS_WEBHOOK_TABLE',       'create':'CREATE_WEBHOOK_TABLE',        'log':'Create webhook table.'}
         ]
 
         dblog.info(" Checking PG database tables.")
@@ -234,9 +231,9 @@ class NuggetBot(commands.Bot):
 
         # ===== CREATE DATABASE TRIGGERS
         database_triggers = [
-            {"exists":"EXISTS_MSGINCREMENTER",      "create":"CREATE_MSGINCREMENTER",       "log":"Created msg incrementer trigger."},
-            {"exists":"EXISTS_GUILDOWNERHIST",      "create":"CREATE_GUILDOWNERHIST",       "log":"Created guild owner history trigger."},
-            {"exists":"EXISTS_GUILDICONHIST",       "create":"CREATE_GUILDICONHIST",        "log":"Created guild icon history trigger."}
+            {'exists':'EXISTS_MSGINCREMENTER',      'create':'CREATE_MSGINCREMENTER',       'log':'Created msg incrementer trigger.'},
+            {'exists':'EXISTS_GUILDOWNERHIST',      'create':'CREATE_GUILDOWNERHIST',       'log':'Created guild owner history trigger.'},
+            {'exists':'EXISTS_GUILDICONHIST',       'create':'CREATE_GUILDICONHIST',        'log':'Created guild icon history trigger.'}
         ]
         
         dblog.info(" Checking PG database triggers.")
@@ -249,12 +246,12 @@ class NuggetBot(commands.Bot):
 
         # ===== CREATE DATABASE FUNCTIONS
         database_funtion = [
-            {"exists":"EXISTS_FUNC_UPDATE_INVITES",         "create":"CREATE_FUNC_UPDATE_INVITES",          "log":"Created UPDATE_INVITES function."},
-            {"exists":"EXISTS_FUNC_ARTIST_INFO",            "create":"CREATE_FUNC_ARTIST_INFO",             "log":"Created ARTIST_INFO function."},
-            {"exists":"EXISTS_FUNC_MEMBER_LEVEL_REWARD",    "create":"CREATE_FUNC_MEMBER_LEVEL_REWARD",     "log":"Created MEMBER_LEVEL_REWARD function."},
-            {"exists":"EXISTS_FUNC_LOG_MSG",                "create":"CREATE_FUNC_LOG_MSG",                 "log":"Created LOG_MESSAGE function."},
-            {"exists":"EXISTS_FUNC_LEVEL_UP_MEMBER",        "create":"CREATE_FUNC_LEVEL_UP_MEMBER",         "log":"Created LEVEL_UP_MEMBER function."},
-            {"exists":"EXISTS_FUNC_MEMBER_PRO_INFO",        "create":"CREATE_FUNC_MEMBER_PRO_INFO",         "log":"Created MEMBER_PRO_INFO function."}
+            {'exists':'EXISTS_FUNC_UPDATE_INVITES',         'create':'CREATE_FUNC_UPDATE_INVITES',          'log':'Created UPDATE_INVITES function.'},
+            {'exists':'EXISTS_FUNC_ARTIST_INFO',            'create':'CREATE_FUNC_ARTIST_INFO',             'log':'Created ARTIST_INFO function.'},
+            {'exists':'EXISTS_FUNC_MEMBER_LEVEL_REWARD',    'create':'CREATE_FUNC_MEMBER_LEVEL_REWARD',     'log':'Created MEMBER_LEVEL_REWARD function.'},
+            {'exists':'EXISTS_FUNC_LOG_MSG',                'create':'CREATE_FUNC_LOG_MSG',                 'log':'Created LOG_MESSAGE function.'},
+            {'exists':'EXISTS_FUNC_LEVEL_UP_MEMBER',        'create':'CREATE_FUNC_LEVEL_UP_MEMBER',         'log':'Created LEVEL_UP_MEMBER function.'},
+            {'exists':'EXISTS_FUNC_MEMBER_PRO_INFO',        'create':'CREATE_FUNC_MEMBER_PRO_INFO',         'log':'Created MEMBER_PRO_INFO function.'}
         ]   
 
         dblog.info(" Checking PG database functions.")
@@ -453,10 +450,6 @@ class NuggetBot(commands.Bot):
 
         except Exception as e:
             print(e)
-
-       # ===== Set logging
-        #self.logging.read("logging.ini")
-        #self.safe_print("[Log] Loaded logging ini file")
 
        # ===== PRESENCE
         await self.change_presence( activity=discord.Game(name="{0.command_prefix}{0.playing_game}".format(self.config)),
@@ -1005,6 +998,110 @@ class NuggetBot(commands.Bot):
 
         return
 
+    @asyncio.coroutine
+    async def execute_webhook2(self, channel:discord.TextChannel, content:str, username:str = None, avatar_url:Union[discord.Asset, str] = None, embed:discord.Embed = None, embeds = None, files = None, tts:bool = False):
+        '''
+        Custom discord.Webhook executer. 
+        Using this webhook executer forces the discord.py libaray to POST a webhook using the http.request function rather than the request function built into WebhookAdapter.
+        The big difference between the two functions is that http.request preforms the POST with an "Authorization" header which allows for the use of emojis and other bot level privilages.
+        
+        Parameters
+        ------------
+        webhook :class:`discord.Webhook`
+            The webhook you want to POST to.
+        content :class:`str`
+            Content of the POST message
+        username Optional[:class:`str`]
+            Username to post the webhook under. Overwrites the default name of the webhook.
+        avatar_url Optional[:class:`discord.Asset`]
+            Avatar for the webhook poster. Overwrites the default avatar of the webhook.
+        embed Optional[:class:`discord.Embed`]
+            discord Embed opject to post.
+        embeds List[:class:`discord.Embed`]
+            List of discord Embed object to post, maximum of 10 allowable.
+        tts :class:`bool`
+            Indicates if the message should be sent using text-to-speech.
+        '''
+        # ---------- SORTOUT THE PAYLOAD ----------
+        if embeds is not None and embed is not None:
+            raise discord.errors.InvalidArgument('Cannot mix embed and embeds keyword arguments.')
+
+        payload = {
+            'tts':tts
+        }
+
+        if content is not None:
+            payload['content'] = str(content).replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
+
+        if username:
+            payload['username'] = username
+
+        if avatar_url:
+            payload['avatar_url'] = str(avatar_url)
+
+        if embeds is not None:
+            if len(embeds) > 10:
+                raise discord.errors.InvalidArgument('embeds has a maximum of 10 elements.')
+            payload['embeds'] = [e.to_dict() for e in embeds]
+
+        if embed is not None:
+            payload['embeds'] = [embed.to_dict()]
+
+        # ---------- GET WEBHOOK FROM DB ----------
+        r = await self.db.fetchrow(pgCmds.GET_WEBHOOK, channel.id)
+
+        if not r:
+            ava = await self.user.avatar_url_as(format="png", size=128).read()
+            newWebhook = await channel.create_webhook(name='StoredInNuggetBot', avatar=ava, reason='Used by NuggetBot to post webhooks.')
+
+            webhook_id = newWebhook.id
+            webhook_token = newWebhook.token
+
+            await self.db.execute(pgCmds.SET_WEBHOOK, webhook_id, webhook_token, channel.id)
+
+        else: webhook_id, webhook_token = r
+
+        # ---------- SORT OUT FILES ----------
+        cleanup = None 
+
+        form = aiohttp.FormData()
+        form.add_field('payload_json', discord.utils.to_json(payload))
+
+        if files is not None:
+            for i, file in enumerate(files, start=1):
+                if isinstance(file, discord.message.Attachment):
+                    filename = file.filename
+                    fp = await file.read()
+
+                elif isinstance(file, discord.File):
+                    filename = file.filename, 
+                    fp = file.fp
+                
+                elif isinstance(file, Iterable):
+                    filename = file[0]
+                    fp = file[1]        
+
+                form.add_field('file%i' % i, fp, filename=filename, content_type='application/octet-stream')
+        
+            #def _anon():
+            #    for f in files:
+            #        f.close()
+
+            #cleanup = _anon
+
+        try:
+            await self.bot.http.request(route=discord.http.Route('POST', f'/webhooks/{webhook_id}/{webhook_token}'), data=form)
+        
+        except discord.errors.HTTPException:
+            print("http")
+            pass
+
+        finally:
+            pass
+            #if cleanup:
+            #    cleanup()
+
+        return
 
 
   # -------------------- Misc --------------------

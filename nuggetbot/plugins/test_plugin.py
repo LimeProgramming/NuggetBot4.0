@@ -171,6 +171,14 @@ class Test(commands.Cog):
         return
         print(msg.clean_content)
 
+    @commands.command(pass_context=True, hidden=True, name='webhook2', aliases=[])
+    async def cmd_webhook2(self, ctx):
+        if not ctx.message.attachments:
+            return 
+
+        print("here")
+        await self.bot.execute_webhook2(ctx.channel, content="this is a test", username='Lime testing broken things', avatar_url = ctx.author.avatar_url_as(format='png', size=128).__str__(), files=ctx.message.attachments)
+        print('done')
 
 def setup(bot):
     bot.add_cog(Test(bot))
