@@ -32,7 +32,9 @@ from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
 
 import dblogin 
-from .cog_utils import SAVE_COG_CONFIG, LOAD_COG_CONFIG, GET_AVATAR_BYTES
+from .util.misc import GET_AVATAR_BYTES
+from .util import cogset
+
 from .util import checks
 
 
@@ -100,13 +102,13 @@ class MemberLeveling(commands.Cog):
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
-        self.cogset = await LOAD_COG_CONFIG(cogname="memleveling")
+        self.cogset = await cogset.LOAD(cogname="memleveling")
         if not self.cogset:
             self.cogset= dict(
                 enablelogging=False
             )
 
-            await SAVE_COG_CONFIG(self.cogset, cogname="memleveling")
+            await cogset.SAVE(self.cogset, cogname="memleveling")
 
         all_cmds = list()
 
@@ -230,19 +232,19 @@ class MemberLeveling(commands.Cog):
     async def cmd_profile(self, ctx):
         """Display the user's avatar on their colour."""
 
-        ###===== THIS WILL MAKE THE BOT APPEAR AS TYPING WHILE PROCESSING AND UPLOADING THE GENERATED IMAGE
+        # ===== THIS WILL MAKE THE BOT APPEAR AS TYPING WHILE PROCESSING AND UPLOADING THE GENERATED IMAGE
         async with ctx.typing():
 
-            ###=== GET THE USERS PFP AS BYTES
+            # === GET THE USERS PFP AS BYTES
             avatar_bytes = await GET_AVATAR_BYTES(user = ctx.author, size = 128)
 
-            ###=== GET MEMBERS PROFILE INFO FROM THE DATABASE
+            # === GET MEMBERS PROFILE INFO FROM THE DATABASE
             level, nummsgs, gems, rank  = await self.db.fetchrow(pgCmds.GET_MEMBER_PROFILE, ctx.author.id)
 
-            ###=== SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
+            # === SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
             final_buffer = await self.bot.loop.run_in_executor(None, partial(self.GenProfileImage, avatar_bytes, ctx.author, level, rank, gems, nummsgs))
 
-            ###=== SEND THE RETURN IMAGE
+            # === SEND THE RETURN IMAGE
             await ctx.send(file=discord.File(filename="profile.png", fp=final_buffer))
 
     @checks.CORE()

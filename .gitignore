@@ -32,3 +32,6 @@ data/
 nuggetbot/util/__pycache__/
 *.sqlite
 .vscode
+*.pyc
+nuggetbot/plugins/images/wel/src/c/1.png
+nuggetbot/plugins/images/wel/src/c/
