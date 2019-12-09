@@ -268,7 +268,7 @@ class MemberLeveling(commands.Cog):
                                 icon_url=   ctx.guild.icon_url
                         )
 
-        await ctx.send(emebed=embed)
+        await ctx.send(embed=embed)
         return
 
 

@@ -22,6 +22,7 @@ import asyncio
 import asyncpg
 import datetime
 from typing import Union
+from functools import partial
 from discord.ext import commands
 
 from apscheduler import events
@@ -35,7 +36,8 @@ from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
 
 from .util import checks
-
+from .util import images
+from .util.misc import GET_AVATAR_BYTES
 
 description = """
 Handling of new members to the guild.
@@ -157,7 +159,7 @@ class NewMembers(commands.Cog):
 
         # ------------------------- LOG NEW MEMBER -------------------------
         embed = await GenEmbed.getMemJoinStaff(member=m, invite=invite)
-        await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
+        await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
 
         # ------------------------- SEND WELCOME MESSAGE -------------------------
         fmt = random.choice([f'Oh {m.mention} steps up to my dinner plate, I mean to {m.guild.name}!',
@@ -169,7 +171,7 @@ class NewMembers(commands.Cog):
         #fmt += "\nPlease give the rules in <#" + NewMembers.config.channels['public_rules_id'] + "> a read and when you're ready make a post in <#" + NewMembers.config.channels['entrance_gate'] + "> saying that you agreed to the rules."
 
         await asyncio.sleep(0.5)
-        welMSG = await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content=fmt)
+        welMSG = await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], content=fmt)
 
         # ------------------------- Update Database -------------------------
         await self.db.execute(pgCmds.ADD_WEL_MSG, welMSG.id, welMSG.channel.id, welMSG.guild.id, m.id)
@@ -226,12 +228,12 @@ class NewMembers(commands.Cog):
         # ------------------------- REMOVED MEMBER LOGGING -------------------------
         # ===== STAFF ONLY LOGGING
         embed = await GenEmbed.getMemLeaveStaff(m, banOrKick)
-        await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
+        await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
 
         # ===== PUBLIC VISABLE LOGGING, ONLY APPLICABLE IF EXMEMBER WAS GIVEN THE CORE ROLE
         if discord.utils.get(m.roles, id=NewMembers.config.roles['member']):
             embed = await GenEmbed.getMemLeaveUser(m, banOrKick)
-            await self.safe_send_msg_chid(NewMembers.config.channels['public_bot_log'], embed=embed)
+            await self.bot.send_msg_chid(NewMembers.config.channels['public_bot_log'], embed=embed)
 
         # ------------------------- REMOVE WELCOME MESSAGES -------------------------
         await self.del_user_welcome(m)
@@ -369,8 +371,18 @@ class NewMembers(commands.Cog):
         await self.cancel_scheduled_kick(ctx.author)
 
         # ===== TELL THE USERS A NEW MEMBER HAS JOINED
-        embed = await GenEmbed.getMemJoinUser(ctx.author)
-        await self.safe_send_msg_chid(self.config.channels['public_bot_log'], embed=embed)
+        wel_ch = self.bot.get_channel(self.config.channels['public_bot_log'])
+
+        async with wel_ch.typing():
+            # === GET THE USERS PFP AS BYTES
+            avatar_bytes = await GET_AVATAR_BYTES(user = ctx.author, size = 128)
+
+            # === SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
+            final_buffer = await self.bot.loop.run_in_executor(None, partial(images.GenWelcomeImg, avatar_bytes, ctx.author))
+
+            # === SEND THE RETURN IMAGE
+            await wel_ch.send(file=discord.File(filename="welcome.png", fp=final_buffer))
+
 
         # ===== DELETE USER MESSAGES IN THE GATE
         await self.del_user_welcome(ctx.author)
@@ -379,249 +391,6 @@ class NewMembers(commands.Cog):
 
         
   # -------------------- FUNCTIONS --------------------
-    @asyncio.coroutine
-    async def safe_send_message(self, dest:Union[discord.TextChannel, discord.Message, discord.ext.commands.Context], content=None, embed=None, tts=False, expire_in=None, also_delete:discord.Message =None, quiet=True):
-        '''
-        Parameters
-        ------------
-        dest Union[:class:`discord.TextChannel`, :class:`discord.Message`, :class:`discord.Context`]
-            Where to send the message to. If message or context is provided message will be sent to the same channel they are located.
-        content :class:`str`
-            The content of the message to send.
-        embed :class:`discord.Embed`
-            The rich embed for the content.
-        tts :class:`bool`
-            Indicates if the message should be sent using text-to-speech.
-        expire_in :class:`float`
-            If provided, dictates how long the message should exist before being deleted
-        also_delete :class:`discord.Message`
-            Another message to also delete (typically invoking message), also affected by expire_in
-        quiet :class:`bool`
-            If True errors are not reported.
-
-        Returns
-        --------
-        :class:`~discord.Message`
-            The message that was sent.
-        '''
-        # ===== IF DESTINATION IS A MESSAGE
-        if isinstance(dest, discord.Message):
-            dest = dest.channel 
-
-        msg = None
-        try:
-            msg = await dest.send(content=content, embed=embed, tts=tts, delete_after=expire_in)
-
-            if also_delete and isinstance(also_delete, discord.Message):
-                asyncio.ensure_future(self.__del_msg_later(also_delete, expire_in))
-
-        except discord.Forbidden:
-            if not quiet:
-                self.safe_print("[Warning] Cannot send message to {dest.name}, no permission")
-
-        except discord.NotFound:
-            if not quiet:
-                self.safe_print("[Warning] Cannot send message to {dest.name}, invalid channel?")
-
-        return msg
-
-    @asyncio.coroutine
-    async def safe_send_msg_chid(self, ch_id:int, *, content:str = None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:Union[discord.Message, discord.ext.commands.Context] = None, quiet=True):
-        '''
-        Alt version of safe send message where messages can be send using channel id. Saves getting the channel from discord API.
-        Made for sending to channels entered into the config.py. Also handles the exceptions to the best of it's ability.
-        Must provide either embed or content.
-
-        Parameters
-        ------------
-        ch_id :class:`int`           
-            Channel id of the destination, can be a private channel.
-        content :class:`str`           
-            Text content which will be sent.
-        embed :class:`discord.Embed` 
-            Discord Embed object.
-        tts :class:`boolean`         
-            Enable text to speech or not.
-        expire_in :class:`int`        
-            Number of seconds before deleting the returned message
-        also_delete Union[:class:`discord.Message`, :class:`discord.Context`]
-            Another message to delete after time set with expire_in
-        quiet :class:`bool`
-            If True errors are not reported.
-
-        Returns
-        --------
-        :class:`~discord.Message`
-            The message that was sent.
-
-        '''
-        
-        # ===== ENTURE CONTENT IS A STRING OR NONE
-        content = str(content) if content is not None else None
-        
-        # ===== SERIALIZE EMBEDS
-        if embed is not None:
-            embed = embed.to_dict()
-
-        msg = None
-
-        try:
-            msg = await self.bot.http.send_message(ch_id, content=content, embed=embed, tts=tts)
-
-            ###=== SCHEDULE SENT MESSAGE FOR DELETION
-            if expire_in:
-                asyncio.ensure_future(self.__del_msg_later(msg, expire_in))
-
-            ###=== DELETE ADDITIONAL MESSAGE IF APPLICABLE
-            if also_delete:
-                asyncio.ensure_future(self.__del_msg_later(also_delete, expire_in))
-
-        except discord.Forbidden:
-            if not quiet:
-                self.safe_print(f"[Error] [new_members] Unable to send to channel {ch_id} due to lack of permissions.")
-
-        except discord.NotFound:
-            if not quiet:
-                self.safe_print(f"[Error] [new_members] Cannot send message to channel {ch_id}, invalid channel?")
-
-        return msg
-    
-    @asyncio.coroutine
-    async def safe_delete_msg(self, message:discord.Message, reason:str = None, *, delay:float = None, quiet=False):
-        """
-        Messages to be deleted are routed though here to handle the exceptions. 
-        Unlike message.delete() this function supports an audit log reason.
-
-        Parameters
-        ------------
-        message :class:`discord.Message`
-            Message to be deleted.
-        reason :class:`str`
-            Audit Log reason for deleteing the message
-        delay: Optional[:class:`float`]
-            If provided, the number of seconds to wait in the background before deleting the message.
-        quiet :class:`bool`
-            If True errors are not reported.
-        """
-
-        try:
-            if delay is not None:
-
-                async def delete():
-                    await asyncio.sleep(delay, loop=message._state.loop)
-                    await self.bot.http.delete_message(message.channel.id, message.id, reason=reason)
-
-                asyncio.ensure_future(delete(), loop=message._state.loop)
-
-            else:
-                await self.bot.http.delete_message(message.channel.id, message.id, reason=reason)
-            
-        except discord.errors.Forbidden:
-            if not quiet:
-                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", no permission")
-
-        except discord.errors.NotFound:
-            if not quiet:
-                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", message not found")
-
-        except discord.errors.HTTPException:
-            if not quiet:
-                self.safe_print(f"[Warning] Cannot delete message \"{message.clean_content}\", generic error.")
-            
-        return
-    
-    @asyncio.coroutine
-    async def safe_delete_msg_id(self, message:int, channel:int, reason:str = None, *, delay:float = None, quiet=False):
-        """
-        Messages to be deleted are routed though here to handle the exceptions.
-        This deletes using bot.http functions to bypass having to find each message before deleting it.
-
-        Parameters
-        ------------
-        message :class:`int`
-            Message ID of message to be deleted.
-        channel :class:`int`
-            Channel ID of channel the message was posted in.
-        reason Optional[:class:`str`]
-            Reason for message being deleted
-        delay Optional[:class:`float`]
-            If provided, the number of seconds to wait in the background before deleting the message.
-        quiet Optional[:class:`bool`]
-            If True errors are not reported.
-        """
-        
-        try:
-            if delay is not None:
-
-                async def delete():
-                    await asyncio.sleep(delay)
-                    await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
-
-                asyncio.ensure_future(delete())
-
-            else:
-                await self.bot.http.delete_message(channel_id=channel, message_id=message, reason=reason)
-
-        except discord.errors.Forbidden:
-            if not quiet:
-                self.safe_print(f"[Warning] Cannot delete message \"{message}\", no permission")
-
-        except discord.errors.NotFound:
-            if not quiet:
-                self.safe_print(f"[Warning] Cannot delete message \"{message}\", message not found")
-
-        except discord.errors.HTTPException:
-            if not quiet:
-                self.safe_print(f"[Warning] Cannot delete message \"{message}\", generic error.")
-        return
-
-    @asyncio.coroutine
-    async def safe_delete_msgs_id(self, messages:list, channel:int, reason:str = None, quiet=False):
-        """
-        Bulk message deletes are routed though here to handle the exceptions.
-        This deletes using bot.http functions to bypass having to find each message and channel before deleting.
-        Also safely handles message id lists greater than 100 messages 
-
-        Parameters
-        ------------
-        messages List[:class:`int`]
-            List of message ID's to be deleted.
-        channel :class:`int`
-            Channel ID of channel the messages are posted in.
-        reason Optional[:class:`str`]
-            Reason for messages being deleted
-        quiet Optional[:class:`bool`]
-            If True errors are not reported.
-
-        """
-
-        # ===== DO NOTHING IF USER IS BEING SILLY
-        if len(messages) == 0:
-            return
-
-        # ===== IF LENTH MESSAGES IS 1, DELETE IT NORMALLY.
-        if len(messages) == 1:
-            await self.safe_delete_msg_id(messages[0], channel, reason, quiet=quiet)
-            return
-
-        # ===== SPLIT MESSAGES LIST TO ENSURE NUM IS 100 OR LESS, DISCORD API LIMITATION
-        messages = NewMembers.__split_list(messages, size=100)
-
-        try:
-            for m in messages:
-                await self.bot.http.delete_messages(channel_id=channel, message_ids=m, reason=reason)
-
-        except discord.errors.Forbidden:
-
-            if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message}\", no permission")
-
-        except discord.errors.NotFound:
-            if not quiet:
-                self.safe_print("[Warning] Cannot delete message \"{message}\", message not found")
-
-        return
-
     @asyncio.coroutine
     async def del_user_welcome(self, user):
         """
@@ -651,7 +420,7 @@ class NewMembers(commands.Cog):
 
             else:
                 # = IF MESSAGE IS TOO OLD, DELETE ONE BY ONE.
-                await self.safe_delete_msg_id(MYDM["msg_id"], MYDM["ch_id"], reason="Welcome message cleanup.")
+                await self.bot.delete_msg_id(MYDM["msg_id"], MYDM["ch_id"], reason="Welcome message cleanup.")
                 await asyncio.sleep(0.2)
 
         # ===== IF THERE ARE MESSAGES TO BE BULK DELETED.
@@ -659,7 +428,7 @@ class NewMembers(commands.Cog):
 
             # === EVEN THOUGH ALL MESSAGES WILL MOST LIKELY BE FROM THE SAME CHANNEL, THIS ENSURES COMPATIBILTY WITH WELCOME MESSAGES FROM MULTIPLE CHANNELS
             for i in bulkDelete.keys():
-                await self.safe_delete_msgs_id(messages=bulkDelete[i], channel=i, reason="Welcome message cleanup.")
+                await self.bot.delete_msgs_id(messages=bulkDelete[i], channel=i, reason="Welcome message cleanup.")
 
         # ===== DELETE WELCOME MESSAGES FROM THE DATABASE
         await self.db.execute(pgCmds.REM_MEM_WEL_MSG, user.id)
@@ -668,7 +437,7 @@ class NewMembers(commands.Cog):
     async def ask_yn(self, msg, question, timeout=60, expire_in=0):
         """Custom function which ask a yes or no question using reactions, returns True for yes | false for no | none for timeout"""
 
-        message = await self.safe_send_message(msg.channel, question)
+        message = await self.bot.send_msg(msg.channel, question)
         error = None
         try:
             await message.add_reaction("👍")
@@ -687,8 +456,8 @@ class NewMembers(commands.Cog):
             error = '`Error with adding reaction, defaulting to "No"`'
 
         if error is not None:
-            await self.safe_delete_msg(message)
-            await self.safe_send_message(msg.channel, error)
+            await self.bot.delete_msg(message)
+            await self.bot.send_msg(msg.channel, error)
             return False
         
         def check(reaction, user):
@@ -730,7 +499,7 @@ class NewMembers(commands.Cog):
         """
 
         await asyncio.sleep(after)
-        await self.safe_delete_msg(message)
+        await self.bot.delete_msg(message)
         return
 
     @asyncio.coroutine
@@ -769,13 +538,13 @@ class NewMembers(commands.Cog):
 
         except discord.Forbidden:
             if not quiet:
-                await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content="```css\nAn error has occurred```I do not have proper permissions to get the invite information.")
+                await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], content="```css\nAn error has occurred```I do not have proper permissions to get the invite information.")
 
             return None
 
         except discord.HTTPException:
             if not quiet:
-                await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content="```css\nAn error has occurred```An error occurred when getting the invite information.")
+                await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], content="```css\nAn error has occurred```An error occurred when getting the invite information.")
 
             return None
 
@@ -873,9 +642,10 @@ class NewMembers(commands.Cog):
         arrs.append(arr)
         return arrs
 
+
   # -------------------- SCHEDULING STUFF --------------------
 
-   # -------------------- Auto Kick Members --------------------
+  # -------------------- Auto Kick Members --------------------
     async def check_new_members(self):
         """
         [Called on_ready]
@@ -949,7 +719,7 @@ class NewMembers(commands.Cog):
         
         ###===== SEND REPORT MESSAGE TO STAFF
         embed = await GenEmbed.getScheduleRemNewRole(member=member, daysUntilRemove=daysUntilRemove)
-        await self.safe_send_msg_chid(self.config.channels['bot_log'], embed=embed)
+        await self.bot.send_msg_chid(self.config.channels['bot_log'], embed=embed)
 
         ###===== ADD EVENT TO THE SCHEDULER
         self.scheduler.add_job(
@@ -998,7 +768,7 @@ class NewMembers(commands.Cog):
             await member.remove_roles(self.roles['newmember'], reason="Auto remove Fresh role")
         
             embed = await GenEmbed.genRemNewRole(member=member)
-            await self.safe_send_msg_chid(self.config.channels['bot_log'], embed=embed)
+            await self.bot.send_msg_chid(self.config.channels['bot_log'], embed=embed)
 
         except discord.Forbidden:
             self.safe_print(f"I could not remove {member.mention}'s Fresh role due to Permission error.")
@@ -1037,14 +807,14 @@ class NewMembers(commands.Cog):
         for job in self.jobstore.get_all_jobs():
             if ["_kick_entrance", str(member.id)] == job.id.split(" "):
                 if not quiet:
-                    await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content="{0.mention} already scheduled for a kick".format(member))
+                    await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], content="{0.mention} already scheduled for a kick".format(member))
                 return
 
         embed = await GenEmbed.getScheduleKick( member=member, 
                                                 daysUntilKick=daysUntilKick, 
                                                 kickDate=(datetime.datetime.now() + datetime.timedelta(seconds=((daysUntilKick*24*60*60) + 3600))))
 
-        await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
+        await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
 
         #===== add the kicking of member to the scheduler
         self.scheduler.add_job(call_schedule,
@@ -1086,17 +856,17 @@ class NewMembers(commands.Cog):
 
                 #= report event
                 embed = await GenEmbed.genKickEntrance(member, NewMembers.config.channels['entrance_gate'])
-                await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
+                await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], embed=embed)
         
         #===== Error if bot lacks permission
         except discord.errors.Forbidden:
             self.safe_print("[Error] (Scheduled event) I do not have permissions to kick members")
-            await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content="I could not kick <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions".format(member))
+            await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], content="I could not kick <@{0.id}> | {0.name}#{0.discriminator}, due to lack of permissions".format(member))
         
         #===== Error for generic error, eg discord api gateway down
         except discord.errors.HTTPException:
             self.safe_print("[Error] (Scheduled event) I could not kick a member")
-            await self.safe_send_msg_chid(NewMembers.config.channels['bot_log'], content="I could not kick <@{0.id}> | {0.name}#{0.discriminator}, due to an error".format(member))
+            await self.bot.send_msg_chid(NewMembers.config.channels['bot_log'], content="I could not kick <@{0.id}> | {0.name}#{0.discriminator}, due to an error".format(member))
 
         return
 

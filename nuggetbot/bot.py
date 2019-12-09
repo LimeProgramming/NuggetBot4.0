@@ -1062,7 +1062,8 @@ class NuggetBot(commands.Bot):
         else: webhook_id, webhook_token = r
 
         # ---------- SORT OUT FILES ----------
-        cleanup = None 
+        cleanup = None
+        cleanup_files = [] 
 
         form = aiohttp.FormData()
         form.add_field('payload_json', discord.utils.to_json(payload))
@@ -1074,6 +1075,7 @@ class NuggetBot(commands.Bot):
                     fp = await file.read()
 
                 elif isinstance(file, discord.File):
+                    cleanup_files.append(file)
                     filename = file.filename, 
                     fp = file.fp
                 
@@ -1083,11 +1085,11 @@ class NuggetBot(commands.Bot):
 
                 form.add_field('file%i' % i, fp, filename=filename, content_type='application/octet-stream')
         
-            #def _anon():
-            #    for f in files:
-            #        f.close()
+            def _anon():
+                for f in cleanup_files:
+                    f.close()
 
-            #cleanup = _anon
+            cleanup = _anon
 
         try:
             await self.bot.http.request(route=discord.http.Route('POST', f'/webhooks/{webhook_id}/{webhook_token}'), data=form)
@@ -1097,9 +1099,8 @@ class NuggetBot(commands.Bot):
             pass
 
         finally:
-            pass
-            #if cleanup:
-            #    cleanup()
+            if cleanup:
+                cleanup()
 
         return
 
