@@ -213,13 +213,13 @@ class Gallery(commands.Cog):
   #-------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
-        self.cogset = await cogset.LOAD(cogname="gallery")
+        self.cogset = await cogset.LOAD(cogname=self.qualified_name)
         if not self.cogset:
             self.cogset= dict(
                 enablelogging=False
             )
 
-            await cogset.SAVE(self.cogset, cogname="gallery")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
     #@commands.Cog.listener()
     async def on_ready_old(self):

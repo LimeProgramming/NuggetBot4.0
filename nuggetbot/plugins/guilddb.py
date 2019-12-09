@@ -193,14 +193,14 @@ class GuildDB(commands.Cog):
         await self.connect_db()
 
         # ===== LOAD THE COGSET
-        self.cogset = await cogset.LOAD(cogname="guilddb")
+        self.cogset = await cogset.LOAD(cogname=self.qualified_name)
 
         if not self.cogset:
             self.cogset= dict(
                 lastAuditLog=    None
             )
 
-            await cogset.SAVE(self.cogset, cogname="guilddb")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         # ===== DELAY THE COG BY 2 MINUTES TO LET THE MAIN BOT DO IT'S WORK
         await asyncio.sleep(120)
@@ -491,7 +491,7 @@ class GuildDB(commands.Cog):
 
         self.cogset['lastAuditLog'] = entry[0].id
 
-        await cogset.SAVE(self.cogset, cogname="guilddb")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
 def setup(bot):
     bot.add_cog(GuildDB(bot))

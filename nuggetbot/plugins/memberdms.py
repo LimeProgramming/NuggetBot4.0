@@ -46,13 +46,13 @@ class MemberDMS(commands.Cog):
   # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
-        self.cogset = await cogset.LOAD(cogname="feedback")
+        self.cogset = await cogset.LOAD(cogname=self.qualified_name)
         if not self.cogset:
             self.cogset= dict(
                 enablelogging=True
             )
 
-            await cogset.SAVE(self.cogset, cogname="feedback")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
 
   # -------------------- LOCAL COG STUFF --------------------

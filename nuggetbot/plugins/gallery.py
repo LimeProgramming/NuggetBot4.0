@@ -150,7 +150,7 @@ class Gallery(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
 
-        self.cogset = await cogset.LOAD(cogname="gallery")
+        self.cogset = await cogset.LOAD(cogname=self.qualified_name)
         if not self.cogset:
             self.cogset= dict(
                 guild_id=      0,
@@ -163,7 +163,7 @@ class Gallery(commands.Cog):
                 link_wl=       []
             )
 
-            await cogset.SAVE(self.cogset, cogname="gallery")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         await asyncio.sleep(120)
         
@@ -250,7 +250,7 @@ class Gallery(commands.Cog):
                                 )
 
         # ===== SAVE SETTINGS  
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         await ctx.channel.send(content="Galleries are **enabled**.")
 
@@ -269,7 +269,7 @@ class Gallery(commands.Cog):
         self.cogset['enable']= False
 
         # ===== SAVE SETTINGS  
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         # ===== DELETE THE JOB IF IT EXISTS
         for job in self.jobstore.get_all_jobs():
@@ -314,7 +314,7 @@ class Gallery(commands.Cog):
             ret_msg = f"<#{ch_id}> has been made a gallery channel."
 
         # ===== SAVE SETTINGS  
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         # ===== END
         await ctx.channel.send(content=ret_msg, delete_after=Gallery.delete_after)
@@ -339,7 +339,7 @@ class Gallery(commands.Cog):
 
         # ===== SAVE COG SETTINGS
         self.cogset['text_expirein'] = new_time
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         resetJob = False
 
@@ -395,7 +395,7 @@ class Gallery(commands.Cog):
 
 
         # ===== WRITE TO THE DATABASE
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         # ===== RETURN
         await ctx.channel.send(content=ret_msg, delete_after=Gallery.delete_after)
@@ -430,7 +430,7 @@ class Gallery(commands.Cog):
         self.cogset['allow_links']=update
             
         # ===== WRITE TO THE DATABASE
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         # ===== RETURN
         await ctx.channel.send(content=f"Links in the gallery channels is now set to{update}.", delete_after=Gallery.delete_after)
@@ -463,7 +463,7 @@ class Gallery(commands.Cog):
             self.cogset['link_wl'] = new_gal_link_wl
 
         # ===== WRITE TO THE DATABASE
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         # ===== RETURN
         await ctx.channel.send(content="{}\n have been added to the gallery link whitelist.".format('\n'.join(links)), delete_after=Gallery.delete_after)
@@ -495,7 +495,7 @@ class Gallery(commands.Cog):
             self.cogset['link_wl'] = new_gal_link_wl
 
         # ===== WRITE TO THE DATABASE
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         # ===== RETURN
         await ctx.channel.send(content="{}\n have been removed from the gallery link whitelist.".format('\n'.join(links)), delete_after=Gallery.delete_after)
@@ -524,7 +524,7 @@ class Gallery(commands.Cog):
         self.cogset['link_wl']=         config.gallerys['link_wl']
 
         # ===== SAVE COG SETTING
-        await cogset.SAVE(self.cogset, cogname="gallery")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
         
         # ===== RETURN
         await ctx.channel.send(content="Gallery information has been updated from the setup.ini file", delete_after=15)

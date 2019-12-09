@@ -47,7 +47,7 @@ class Giveaway(commands.Cog):
         self.db = await asyncpg.create_pool(**credentials)
 
         # ===== LOAD COG SETTINGS
-        self.cogset = await cogset.LOAD(cogname="giveaway")
+        self.cogset = await cogset.LOAD(cogname=self.qualified_name)
 
         if not self.cogset:
             self.cogset= dict(
@@ -55,7 +55,7 @@ class Giveaway(commands.Cog):
                 RafDatetime=       ""
             )
 
-            await cogset.SAVE(self.cogset, cogname="giveaway")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         giveaway_channel_id = Giveaway.config.gvwy_channel_id
 
@@ -528,7 +528,7 @@ class Giveaway(commands.Cog):
         """
         #===== CLOSE RAFFLE ENTRY
         self.cogset['RafEntryActive']
-        await cogset.SAVE(self.cogset, cogname="giveaway")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         #===== GET GIVEAWAY ROLE AND MEMBERS
         giveawayRole = discord.utils.get(ctx.guild.roles, id=Giveaway.config.gvwy_role_id)
@@ -561,7 +561,7 @@ class Giveaway(commands.Cog):
             self.cogset['RafEntryActive'] = True
             self.cogset['RafDatetime'] = {'open':datetime.datetime.utcnow(), 'past':datetime.datetime.utcnow() + datetime.timedelta(days = -15)}
 
-            await cogset.SAVE(self.cogset, cogname="giveaway")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
             await ctx.channel.send(content="Entries now allowed :thumbsup:")
             return
@@ -583,7 +583,7 @@ class Giveaway(commands.Cog):
         if self.cogset['RafEntryActive']:
             self.cogset['RafEntryActive'] = False
 
-            await cogset.SAVE(self.cogset, cogname="giveaway")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
             await ctx.channel.send(content="Entries now turned off :thumbsup:")
             return

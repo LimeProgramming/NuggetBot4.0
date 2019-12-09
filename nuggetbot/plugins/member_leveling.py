@@ -45,7 +45,7 @@ class MemberLeveling(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        MemberLeveling.config = Config()
+        #MemberLeveling.config = Config()
         self.cogset = dict()
         self.db = None
 
@@ -100,13 +100,13 @@ class MemberLeveling(commands.Cog):
   # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self):
-        self.cogset = await cogset.LOAD(cogname="memleveling")
+        self.cogset = await cogset.LOAD(cogname=self.qualified_name)
         if not self.cogset:
             self.cogset= dict(
                 enablelogging=False
             )
 
-            await cogset.SAVE(self.cogset, cogname="memleveling")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         all_cmds = list()
 
@@ -131,6 +131,10 @@ class MemberLeveling(commands.Cog):
         # ===== IF MESSAGE IS NOT A NORMAL TEXT MSG, IF AUTHOR IS A BOT OR MESSAGE WAS IN DMS. IGNORE IT.
         if msg.type != discord.MessageType.default or msg.author.bot or not msg.guild:
             return
+
+        # ===== IGNORE GATED MESSAGES
+        if msg.channel.id == self.bot.config.channels['entrance_gate']:
+            return 
 
         # ===== WRITE THE DATA TO THE DATABASE
         r = await self.db.fetchrow(pgCmds.LOG_MSG, msg.id, msg.channel.id, msg.guild.id, msg.author.id, msg.created_at)

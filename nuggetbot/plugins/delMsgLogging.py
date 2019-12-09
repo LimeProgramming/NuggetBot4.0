@@ -44,7 +44,7 @@ class DelMsgLogging(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
 
-        self.cogset = await cogset.LOAD(cogname="delmsglogging")
+        self.cogset = await cogset.LOAD(cogname=self.qualified_name)
 
         if not self.cogset:
             self.cogset= dict(
@@ -55,7 +55,7 @@ class DelMsgLogging(commands.Cog):
                 report_ch_id=       DelMsgLogging.config.channels['bot_log'],
             )
 
-            await cogset.SAVE(self.cogset, cogname="delmsglogging")
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
     @commands.Cog.listener()
     async def on_message_delete(self, msg):
@@ -264,7 +264,7 @@ class DelMsgLogging(commands.Cog):
 
         self.cogset['enableDelMsgLog'] = not self.cogset['enableDelMsgLog']
 
-        await cogset.SAVE(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         await ctx.channel.send(f"Deleted message logging has been set to {self.cogset['enableDelMsgLog']}")
         return
@@ -287,7 +287,7 @@ class DelMsgLogging(commands.Cog):
 
         self.cogset['save_attach'] = not self.cogset['save_attach']
 
-        await cogset.SAVE(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         await ctx.channel.send(f"Deleted message logging download attachments has been set to {self.cogset['save_attach']}")
         return
@@ -321,7 +321,7 @@ class DelMsgLogging(commands.Cog):
             await ctx.channel.send(content=f"<#{ch_id}> is added to the list of monitored channels.", delete_after=15)
 
         ###===== SAVE THE SETTINGS
-        await cogset.SAVE(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
         return
 
     @checks.HIGHEST_STAFF()
@@ -350,7 +350,7 @@ class DelMsgLogging(commands.Cog):
             await ctx.channel.send(content=f"<@{user_id}> is no longer on the list of monitored members.", delete_after=15)
 
         ###===== SAVE THE SETTINGS
-        await cogset.SAVE(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
         return
 
     @checks.HIGHEST_STAFF()
@@ -379,7 +379,7 @@ class DelMsgLogging(commands.Cog):
         ###===== SAVE THE SETTINGS
         self.cogset['report_ch_id'] = ch_id
         self.report_ch = None
-        await cogset.SAVE(self.cogset, cogname="delmsglogging")
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         ###===== REPORT TO INVOKER
         await ctx.channel.send(content=f"https://discordapp.com/channels/{channelReal.guild.id}/{channelReal.id} \nIs now the current channel I will report deleted messages to.", delete_after=60)
