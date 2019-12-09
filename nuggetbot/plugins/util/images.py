@@ -3,26 +3,23 @@ import re
 import random
 import discord
 from io import BytesIO
+from pathlib import Path
 from typing import Union
 from PIL import (Image, ImageDraw, ImageFilter, ImageFont)
 
-
-
+lvMSGS= ((0, 10), (10, 75), (75, 200), (200, 350), (350, 500), (500, 575), (575, 661), (661, 760), (760, 874), (874, 1005), (1005, 1156), (1156, 1318), (1318, 1503), (1503, 1713), (1713, 1953), (1953, 2226), (2226, 2538), (2538, 2893), (2893, 3298), (3298, 3760), (3760, 4286), (4286, 4843), (4843, 5473), (5473, 6184), (6184, 6988), (6988, 7896), (7896, 8922), (8922, 10082), (10082, 11393), (11393, 12874), (12874, 14548), (14548, 16294), (16294, 18249), (18249, 20439), (20439, 22892), (22892, 25639), (25639, 28716), (28716, 32162), (32162, 36021), (36021, 40344), (40344, 45185), (45185, 50155), (50155, 55672), (55672, 61796), (61796, 68594), (68594, 76139), (76139, 84514), (84514, 93811), (93811, 104130), (104130, 115584), (115584, 128298), (128298, 141769), (141769, 156655), (156655, 173104), (173104, 191280), (191280, 211364), (211364, 233557), (233557, 258080), (258080, 285178), (285178, 315122), (315122, 348210), (348210, 383031), (383031, 421334), (421334, 463467), (463467, 509814), (509814, 560795), (560795, 616874), (616874, 678561), (678561, 746417), (746417, 821059), (821059, 903165), (903165, 988966), (988966, 1082918), (1082918, 1185795), (1185795, 1298446), (1298446, 1421798), (1421798, 1556869), (1556869, 1704772), (1704772, 1866725), (1866725, 2044064), (2044064, 2238250), (2238250, 2439692), (2439692, 2659264), (2659264, 2898598), (2898598, 3159472), (3159472, 3443824), (3443824, 3753768), (3753768, 4091607), (4091607, 4459852), (4459852, 4861239), (4861239, 5298751), (5298751, 5749145), (5749145, 6237822), (6237822, 6768037), (6768037, 7343320), (7343320, 7967502), (7967502, 8644740), (8644740, 9379543), (9379543, 10176804), (10176804, 11041832))
+    
 
 def GenWelcomeImg(avatar_bytes: bytes, member: Union[discord.User, discord.Member]) -> BytesIO:
-    print(os.path.split(os.path.realpath(__file__))[0])
-
-
     # ===== VARS
     out_image = BytesIO()
-    imagedir = os.path.join(os.path.split(os.path.split(os.path.realpath(__file__))[0])[0], "images")
-    highLight = os.path.join(imagedir, "wel", 'c', f'{random.randint(1,61)}.png')
+    imagedir = Path(__file__).parents[1].joinpath('images')
 
     # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
     img =  __square_pfp_blur(avatar_bytes, member.status.__str__(), imagedir, status=False)
 
     with Image.open(os.path.join(imagedir, "wel", 'welbg.png')).convert('RGBA') as welbg:
-        with Image.open(highLight).convert('RGBA') as hl:
+        with Image.open(os.path.join(imagedir, "wel", 'c', f'{random.randint(1,61)}.png')).convert('RGBA') as hl:
             
             # = ADD THE HIGHLIGHT TO THE IMAGE
             workingImg = Image.alpha_composite(welbg, hl)
@@ -41,11 +38,173 @@ def GenWelcomeImg(avatar_bytes: bytes, member: Union[discord.User, discord.Membe
     out_image.seek(0)
 
     return out_image
+    
+def GenLevelUPImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], level: int, rank: int, gems: int, reward:int) -> BytesIO:
+    # ===== VARS
+    out_image = BytesIO()
+    imagedir = Path(__file__).parents[1].joinpath('images')
+
+    # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
+    img = __square_pfp_blur(avatar_bytes, member.status.__str__(), imagedir)
+
+    # ===== OPEN THE MAIN BACKGROUND IMAGE FOR THE LEVELUP IMAGE
+    with Image.open(os.path.join(imagedir, "levelupbg2.png")) as background:
+
+        # =====    ADD THE PROFILE IMAGE
+        background.paste(img, (10, 10), mask=img)
+
+        # =====    ADD THE GEM IMAGES
+        gem1 = Image.open(os.path.join(imagedir, "gem1.png")).convert('RGBA')
+        gem2 = Image.open(os.path.join(imagedir, "gem2.png")).convert('RGBA')
+        gem3 = Image.open(os.path.join(imagedir, "gem3.png")).convert('RGBA')
+
+        background.paste(gem2, (550, 109), mask=gem2)
+        background.paste(gem1, (577, 109), mask=gem1)
+        background.paste(gem3, (608, 109), mask=gem3)
+
+
+        background.paste(gem1, (187, 64), mask=gem1)
+
+        # =====    ADD THE TEXT
+        #-------    FONTS
+        lfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
+        zfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
+        sfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Light.ttf"), 32)
+
+        draw = ImageDraw.Draw(background)
+
+        #= username
+        draw.text((160, 105), __get_clean_name(member), fill=(230, 230, 230, 255), font=sfont)
+        #= Level up
+        draw.text((259, 0), "Level Up", fill=(230, 230, 230, 255), font=lfont)
+        #= Reward
+        draw.text((222, 50), f"Reward: {reward}", fill=(230, 230, 230, 255), font=zfont)
+        #= Level
+        draw.text((550, 0), "LV:", fill=(230, 230, 230, 255), font=zfont)
+        draw.text((650, 0), f"{level}", fill=(230, 230, 230, 255), font=lfont)
+        #= Rank
+        draw.text((550, 46), f"Rank:", fill=(230, 230, 230, 255), font=zfont)
+        draw.text((650, 46), f"{rank}", fill=(230, 230, 230, 255), font=lfont)
+        #= Gems
+        draw.text((650, 92), f"{gems}", fill=(230, 230, 230, 255), font=lfont)
+
+        background.save(out_image, "png")
+
+    out_image.seek(0)
+
+    return out_image
+
+def GenProfileImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], level: int, rank: int, gems: int, nummsgs:int) -> BytesIO:
+    # ===== VARS
+    out_image = BytesIO()
+    imagedir = Path(__file__).parents[1].joinpath('images')
+
+    # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
+    img = __square_pfp_blur(avatar_bytes, member.status.__str__(), imagedir)
+    
+    with Image.open(os.path.join(imagedir, "profilebg.png")) as background:
+        # =====    ADD THE PROFILE IMAGE
+        background.paste(img, (10, 10), mask=img)
+
+        # =====    ADD THE GEM IMAGES
+        gem1 = Image.open(os.path.join(imagedir, "gem1.png")).convert('RGBA')
+        gem2 = Image.open(os.path.join(imagedir, "gem2.png")).convert('RGBA')
+        gem3 = Image.open(os.path.join(imagedir, "gem3.png")).convert('RGBA')
+
+        background.paste(gem2, (550, 109), mask=gem2)
+        background.paste(gem1, (577, 109), mask=gem1)
+        background.paste(gem3, (608, 109), mask=gem3)
+
+        # =====    ADD THE PROGRESS BAR
+        background.paste(Image.new("RGBA", (776, 30), (0, 85, 183, 255)), (12, 152), mask=None)
+
+        if level < 100:
+            a, b = lvMSGS[level]
+            x = int(((nummsgs - a) / (b - a)) * 776)
+
+            if x < 1:
+                x = 1
+            elif x > 776:
+                x = 775
+        else:
+            x = 776
+
+        background.paste(Image.new("RGBA", (x, 30), (0, 175, 96, 255)), (12, 152), mask=None)
+
+        # =====    ADD THE TEXT
+        #-------    FONTS
+        lfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
+        zfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
+        sfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Light.ttf"), 32)
+
+        draw = ImageDraw.Draw(background)
+
+        #= username
+        draw.text((160, 105), __get_clean_name(member), fill=(230, 230, 230, 255), font=sfont)
+        #= Level
+        draw.text((550, 0), "LV:", fill=(230, 230, 230, 255), font=zfont)
+        draw.text((650, 0), f"{level}", fill=(230, 230, 230, 255), font=lfont)
+        #= Rank
+        draw.text((550, 46), f"Rank:", fill=(230, 230, 230, 255), font=zfont)
+        draw.text((650, 46), f"{rank}", fill=(230, 230, 230, 255), font=lfont)
+        #= Gems
+        draw.text((650, 92), f"{gems}", fill=(230, 230, 230, 255), font=lfont)
+
+        background.save(out_image, "png")
+
+    out_image.seek(0)
+
+    return out_image
+
+def GenGiftedGemsImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], ggems: int) -> BytesIO:
+    # ===== VARS
+    out_image = BytesIO()
+    imagedir = Path(__file__).parents[1].joinpath('images')
+
+    # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
+    img = __square_pfp_blur(avatar_bytes, member.status.__str__(), imagedir)
+
+    # ===== OPEN THE MAIN BACKGROUND IMAGE FOR THE LEVELUP IMAGE
+    with Image.open(os.path.join(imagedir, "levelupbg2.png")) as background:
+
+        # =====    ADD THE PROFILE IMAGE
+        background.paste(img, (10, 10), mask=img)
+
+        # =====    ADD THE GEM IMAGES
+        gem1 = Image.open(os.path.join(imagedir, "gem1.png")).convert('RGBA')
+        gem2 = Image.open(os.path.join(imagedir, "gem2.png")).convert('RGBA')
+        gem3 = Image.open(os.path.join(imagedir, "gem3.png")).convert('RGBA')
+
+        background.paste(gem2, (167, 64), mask=gem2)
+        background.paste(gem1, (194, 64), mask=gem1)
+        background.paste(gem3, (225, 64), mask=gem3)
+
+        # =====    ADD THE TEXT
+        #-------    FONTS
+        lfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
+        zfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
+        sfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Light.ttf"), 32)
+
+        draw = ImageDraw.Draw(background)
+
+        #= username
+        draw.text((160, 105), __get_clean_name(member, 40), fill=(230, 230, 230, 255), font=sfont)
+        #= Level up
+        draw.text((259, 0), "Received", fill=(230, 230, 230, 255), font=lfont)
+        #= Reward
+        draw.text((260, 50), f"Gems: {ggems}", fill=(230, 230, 230, 255), font=zfont)
+
+        background.save(out_image, "png")
+
+    out_image.seek(0)
+
+    return out_image
 
 
 
-
-
+# =====================================================================================================
+# ------------------------------- FUNCS USED BY THE GEN FUNCTIONS ABOVE -------------------------------
+# =====================================================================================================
 
 def __square_pfp_blur(avatar_bytes, mstat, imgdir, *, RADIUS=2, status=True):
     """

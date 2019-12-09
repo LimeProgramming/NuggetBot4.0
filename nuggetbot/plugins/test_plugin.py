@@ -68,6 +68,7 @@ class Test(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        #print(f"from test {os.getcwd()}")
         return
         await asyncio.sleep(4)
 
