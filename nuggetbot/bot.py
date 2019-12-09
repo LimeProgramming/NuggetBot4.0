@@ -370,7 +370,7 @@ class NuggetBot(commands.Bot):
 
 # ======================================== Bot Events ========================================
     async def on_ready(self):
-        print('\rConnected!  NuggetBot v3.2\n')
+        print('\rConnected!  NuggetBot v3.3\n')
 
         self.safe_print("--------------------------------------------------------------------------------")
         self.safe_print("Bot:   {0.name}#{0.discriminator} \t\t| ID: {0.id}".format(self.user))
@@ -379,7 +379,6 @@ class NuggetBot(commands.Bot):
 
         self.safe_print("Owner: {0.name}#{0.discriminator} \t| ID: {0.id}".format(owner))
 
-        #===== the "r" prefix means that the string is a literal, think raw string where "\n" prints "\n" and not a new line
         self.safe_print(r"--------------------------------------------------------------------------------")
         self.safe_print(r" _______                              __ __________        __                   ")
         self.safe_print(r" \      \  __ __  ____   ____   _____/  |\______   \ _____/  |_                 ")
@@ -455,59 +454,13 @@ class NuggetBot(commands.Bot):
         await self.change_presence( activity=discord.Game(name="{0.command_prefix}{0.playing_game}".format(self.config)),
                                     status=discord.Status.online)
 
-        #try:
-        #    await self.bot.http.ban(190586062727282688, 605100382569365573, reason="test")
-        #except Exception as e:
-        #    print(e)
-
-
-        #var = {
-        #    '1⃣' : self.config.name_colors[1],
-        #    '2⃣' : self.config.name_colors[2],
-        #    '3⃣' : self.config.name_colors[3],
-        #    '4⃣' : self.config.name_colors[4],
-        #    '5⃣' : self.config.name_colors[5],
-        #    '6⃣' : self.config.name_colors[6]
-        #}
-
-        #var2 = json.dumps(var)
-
-        #print(var2) 
-        
-        #try:
-        #    await self.db.execute(pgCmds.ADD_RECT_MSG, 609145721546866722, 605100383169413132, 605100382569365573, "_name_colors", var2)
-        #except Exception as e:
-        #    print(e)
-        
-        #try:
-
-        #    ch = self.get_guild(605100382569365573).get_channel(605100383169413132)
-        #    msg = await ch.fetch_message(609145721546866722)
-
-        #    await msg.add_reaction('1⃣')
-        #    await msg.add_reaction('2⃣')
-        #    await msg.add_reaction('3⃣')
-        #    await msg.add_reaction('4⃣')
-        #    await msg.add_reaction('5⃣')
-        #    await msg.add_reaction('6⃣')
-
-        #except Exception as e:
-        #    print(e)
-
-        NuggetBot.reactionmsgs = [609145721546866722] 
-
-        #self.
-
-       #===== scheduler
+       # ===== SCHEDULER
         self.scheduler.start()
         self.scheduler.print_jobs()
 
-        #ch = self.get_guild(605100382569365573).owner
-        #print(AVATAR_URL_AS(user=ch))
 
-    ###Updated
     async def on_resume(self):
-        #===== If the bot is still setting up
+        # ===== If the bot is still setting up
         await self.wait_until_ready()
 
         self.safe_print("Bot resumed")
@@ -566,6 +519,7 @@ class NuggetBot(commands.Bot):
         return
 
     async def on_raw_reaction_add(self, payload):
+        return
         # ===== BLOCK REACTIONS FROM DM'S
         if not payload.guild_id:
             return 
@@ -1296,8 +1250,12 @@ class NuggetBot(commands.Bot):
         c = 0
 
         for channel in guild.channels:
-            
+            # === IGNORE VOICECHANNELS AND CATEGORIES
             if not channel.type == discord.ChannelType.text:
+                continue
+            
+            # === IGNORE GATE CHANNEL
+            if channel.id == self.config.channels['entrance_gate']:
                 continue
 
             MRLoggedMessage = yield from self.db.fetchrow(f"SELECT * FROM messages WHERE ch_id = {channel.id} AND timestamp = (SELECT MAX(timestamp) from messages where ch_id = {channel.id})")
@@ -1306,7 +1264,6 @@ class NuggetBot(commands.Bot):
                 MRLoggedMessage = None
             else:
                 MRLoggedMessage = MRLoggedMessage["timestamp"] + datetime.timedelta(seconds = 1)
-
 
 
             #or (channel.permissions_for(guild.get_member(self.user.id)).read_message_history == False)):

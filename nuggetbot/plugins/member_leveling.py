@@ -34,6 +34,7 @@ from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, A
 import dblogin 
 from .util.misc import GET_AVATAR_BYTES
 from .util import cogset, checks
+from .util.images import GenGiftedGemsImage, GenLevelUPImage, GenProfileImage
 
 
 class MemberLeveling(commands.Cog):
@@ -45,7 +46,6 @@ class MemberLeveling(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        #MemberLeveling.config = Config()
         self.cogset = dict()
         self.db = None
 
@@ -75,7 +75,7 @@ class MemberLeveling(commands.Cog):
         elif isinstance(error, discord.ext.commands.errors.BadArgument):
             await ctx.send_help(ctx.invoked_with, delete_after=30)
 
-            if MemberLeveling.config.delete_invoking:
+            if self.config.config.delete_invoking:
                 await ctx.message.delete()
 
         else:
@@ -91,7 +91,7 @@ class MemberLeveling(commands.Cog):
         Delete invoker message
         """
 
-        if MemberLeveling.config.delete_invoking:
+        if self.bot.config.delete_invoking:
             await ctx.message.delete()
 
         return
@@ -162,7 +162,7 @@ class MemberLeveling(commands.Cog):
                 avatar_bytes = await GET_AVATAR_BYTES(user=msg.author, size=128)
 
                 # = GENERATE THE MEMBER LEVELED UP IMAGE
-                fn = partial(self.GenLevelUPImage, avatar_bytes, msg.author, r['new_level'], rank, total_gems, incgems)
+                fn = partial(GenLevelUPImage, avatar_bytes, msg.author, r['new_level'], rank, total_gems, incgems)
                 final_buffer = await self.bot.loop.run_in_executor(None, fn)
 
 
@@ -192,7 +192,7 @@ class MemberLeveling(commands.Cog):
             avatar_bytes = await GET_AVATAR_BYTES(user = member, size = 128)
 
             # === SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
-            final_buffer = await self.bot.loop.run_in_executor(None, partial(self.GenGiftedGemsImage, avatar_bytes, member, gems))
+            final_buffer = await self.bot.loop.run_in_executor(None, partial(GenGiftedGemsImage, avatar_bytes, member, gems))
             
             # === SEND THE RETURN IMAGE
             await ctx.send(file=discord.File(filename="profile.png", fp=final_buffer))
@@ -223,7 +223,7 @@ class MemberLeveling(commands.Cog):
             level, nummsgs, gems, rank  = await self.db.fetchrow(pgCmds.GET_MEMBER_PROFILE, member.id)
 
             # === SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
-            final_buffer = await self.bot.loop.run_in_executor(None, partial(self.GenProfileImage, avatar_bytes, member, level, rank, gems, nummsgs))
+            final_buffer = await self.bot.loop.run_in_executor(None, partial(GenProfileImage, avatar_bytes, member, level, rank, gems, nummsgs))
 
             # === SEND THE RETURN IMAGE
             await ctx.send(file=discord.File(filename="profile.png", fp=final_buffer))
@@ -244,7 +244,7 @@ class MemberLeveling(commands.Cog):
             level, nummsgs, gems, rank  = await self.db.fetchrow(pgCmds.GET_MEMBER_PROFILE, ctx.author.id)
 
             # === SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
-            final_buffer = await self.bot.loop.run_in_executor(None, partial(self.GenProfileImage, avatar_bytes, ctx.author, level, rank, gems, nummsgs))
+            final_buffer = await self.bot.loop.run_in_executor(None, partial(GenProfileImage, avatar_bytes, ctx.author, level, rank, gems, nummsgs))
 
             # === SEND THE RETURN IMAGE
             await ctx.send(file=discord.File(filename="profile.png", fp=final_buffer))
@@ -274,229 +274,6 @@ class MemberLeveling(commands.Cog):
 
         await ctx.send(embed=embed)
         return
-
-
-  # -------------------- IMAGE GENERATORS --------------------
-    @staticmethod
-    def GenLevelUPImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], level: int, rank: int, gems: int, reward:int) -> BytesIO:
-        #===== VARS
-        out_image = BytesIO()
-        imagedir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "images")
-
-        # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
-        img = MemberLeveling.__square_blur_icon(avatar_bytes, member.status.__str__(), imagedir)
-
-        # ===== OPEN THE MAIN BACKGROUND IMAGE FOR THE LEVELUP IMAGE
-        with Image.open(os.path.join(imagedir, "levelupbg2.png")) as background:
-
-            # =====    ADD THE PROFILE IMAGE
-            background.paste(img, (10, 10), mask=img)
-
-            # =====    ADD THE GEM IMAGES
-            gem1 = Image.open(os.path.join(imagedir, "gem1.png")).convert('RGBA')
-            gem2 = Image.open(os.path.join(imagedir, "gem2.png")).convert('RGBA')
-            gem3 = Image.open(os.path.join(imagedir, "gem3.png")).convert('RGBA')
-
-            background.paste(gem2, (550, 109), mask=gem2)
-            background.paste(gem1, (577, 109), mask=gem1)
-            background.paste(gem3, (608, 109), mask=gem3)
-
-
-            background.paste(gem1, (187, 64), mask=gem1)
-
-            # =====    ADD THE TEXT
-            #-------    FONTS
-            lfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
-            zfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
-            sfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Light.ttf"), 32)
-
-            draw = ImageDraw.Draw(background)
-
-            #= username
-            draw.text((160, 105), MemberLeveling.__gen_member_name(member), fill=(230, 230, 230, 255), font=sfont)
-            #= Level up
-            draw.text((259, 0), "Level Up", fill=(230, 230, 230, 255), font=lfont)
-            #= Reward
-            draw.text((222, 50), f"Reward: {reward}", fill=(230, 230, 230, 255), font=zfont)
-            #= Level
-            draw.text((550, 0), "LV:", fill=(230, 230, 230, 255), font=zfont)
-            draw.text((650, 0), f"{level}", fill=(230, 230, 230, 255), font=lfont)
-            #= Rank
-            draw.text((550, 46), f"Rank:", fill=(230, 230, 230, 255), font=zfont)
-            draw.text((650, 46), f"{rank}", fill=(230, 230, 230, 255), font=lfont)
-            #= Gems
-            draw.text((650, 92), f"{gems}", fill=(230, 230, 230, 255), font=lfont)
-
-            background.save(out_image, "png")
-
-        out_image.seek(0)
-
-        return out_image
-
-    @staticmethod
-    def GenProfileImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], level: int, rank: int, gems: int, nummsgs:int) -> BytesIO:
-        #===== VARS
-        out_image = BytesIO()
-        imagedir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "images")
-
-        # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
-        img = MemberLeveling.__square_blur_icon(avatar_bytes, member.status.__str__(), imagedir)
-        
-        with Image.open(os.path.join(imagedir, "profilebg.png")) as background:
-            # =====    ADD THE PROFILE IMAGE
-            background.paste(img, (10, 10), mask=img)
-
-            # =====    ADD THE GEM IMAGES
-            gem1 = Image.open(os.path.join(imagedir, "gem1.png")).convert('RGBA')
-            gem2 = Image.open(os.path.join(imagedir, "gem2.png")).convert('RGBA')
-            gem3 = Image.open(os.path.join(imagedir, "gem3.png")).convert('RGBA')
-
-            background.paste(gem2, (550, 109), mask=gem2)
-            background.paste(gem1, (577, 109), mask=gem1)
-            background.paste(gem3, (608, 109), mask=gem3)
-
-            # =====    ADD THE PROGRESS BAR
-            background.paste(Image.new("RGBA", (776, 30), (0, 85, 183, 255)), (12, 152), mask=None)
-
-            if level < 100:
-                a, b = MemberLeveling.lvMSGS[level]
-                x = int(((nummsgs - a) / (b - a)) * 776)
-
-                if x < 1:
-                    x = 1
-                elif x > 776:
-                    x = 775
-            else:
-                x = 776
-
-            background.paste(Image.new("RGBA", (x, 30), (0, 175, 96, 255)), (12, 152), mask=None)
-
-            # =====    ADD THE TEXT
-            #-------    FONTS
-            lfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
-            zfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
-            sfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Light.ttf"), 32)
-
-            draw = ImageDraw.Draw(background)
-
-            #= username
-            draw.text((160, 105), MemberLeveling.__gen_member_name(member), fill=(230, 230, 230, 255), font=sfont)
-            #= Level
-            draw.text((550, 0), "LV:", fill=(230, 230, 230, 255), font=zfont)
-            draw.text((650, 0), f"{level}", fill=(230, 230, 230, 255), font=lfont)
-            #= Rank
-            draw.text((550, 46), f"Rank:", fill=(230, 230, 230, 255), font=zfont)
-            draw.text((650, 46), f"{rank}", fill=(230, 230, 230, 255), font=lfont)
-            #= Gems
-            draw.text((650, 92), f"{gems}", fill=(230, 230, 230, 255), font=lfont)
-
-            background.save(out_image, "png")
-
-        out_image.seek(0)
-
-        return out_image
-
-    @staticmethod
-    def GenGiftedGemsImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], ggems: int) -> BytesIO:
-        #===== VARS
-        out_image = BytesIO()
-        imagedir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "images")
-
-        # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
-        img = MemberLeveling.__square_blur_icon(avatar_bytes, member.status.__str__(), imagedir)
-
-        # ===== OPEN THE MAIN BACKGROUND IMAGE FOR THE LEVELUP IMAGE
-        with Image.open(os.path.join(imagedir, "levelupbg2.png")) as background:
-
-            # =====    ADD THE PROFILE IMAGE
-            background.paste(img, (10, 10), mask=img)
-
-            # =====    ADD THE GEM IMAGES
-            gem1 = Image.open(os.path.join(imagedir, "gem1.png")).convert('RGBA')
-            gem2 = Image.open(os.path.join(imagedir, "gem2.png")).convert('RGBA')
-            gem3 = Image.open(os.path.join(imagedir, "gem3.png")).convert('RGBA')
-
-            background.paste(gem2, (167, 64), mask=gem2)
-            background.paste(gem1, (194, 64), mask=gem1)
-            background.paste(gem3, (225, 64), mask=gem3)
-
-            # =====    ADD THE TEXT
-            #-------    FONTS
-            lfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
-            zfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
-            sfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Light.ttf"), 32)
-
-            draw = ImageDraw.Draw(background)
-
-            #= username
-            draw.text((160, 105), MemberLeveling.__gen_member_name(member, 40), fill=(230, 230, 230, 255), font=sfont)
-            #= Level up
-            draw.text((259, 0), "Received", fill=(230, 230, 230, 255), font=lfont)
-            #= Reward
-            draw.text((260, 50), f"Gems: {ggems}", fill=(230, 230, 230, 255), font=zfont)
-
-            background.save(out_image, "png")
-
-        out_image.seek(0)
-
-        return out_image
-
-    @staticmethod
-    def __square_blur_icon(avatar_bytes, mstat, imgdir, RADIUS=2):
-        """
-        This just blurs the edges of a members pfp
-        """
-
-        diam = 2*RADIUS
-
-        # ===== OPEN THE MEMBERS STATUS IMAGE
-        status = Image.open(os.path.join(imgdir, f"{mstat if mstat in ['offline', 'online', 'dnd', 'idle'] else 'online'}.png")).convert('RGBA')
-
-        # ===== WITH OPEN THE MEMBERS PFP
-        with Image.open(BytesIO(avatar_bytes)).convert('RGBA') as rgba_avatar:
-            canvas = Image.new('RGBA', (rgba_avatar.size[0]+diam, rgba_avatar.size[1]+diam), (35,39,42,0))
-            canvas.paste(rgba_avatar, (RADIUS, RADIUS))
-
-        # ===== GENERATE OUR BLUR MASK
-        with Image.new('L', canvas.size, 0) as mask:
-            draw = ImageDraw.Draw(mask)
-            x0, y0 = 0, 0
-            x1, y1 = canvas.size
-            for d in range(diam+RADIUS):
-                x1, y1 = x1-1, y1-1
-                alpha = 255 if d<RADIUS else int(255*(diam+RADIUS-d)/diam)
-                draw.rectangle([x0, y0, x1, y1], outline=alpha)
-                x0, y0 = x0+1, y0+1
-
-            blur = canvas.filter(ImageFilter.GaussianBlur(RADIUS/2))
-            canvas.paste(blur, mask=mask)
-            
-        # ===== RETURN OUR COMPOSITED IMAGE
-        # order of layers: new image, blured member pfp, member status image
-        return Image.alpha_composite(Image.new('RGBA', canvas.size, (35,39,42,255)), Image.alpha_composite(canvas, status))
-
-    @staticmethod
-    def __gen_member_name(member, maxlen=22):
-
-        # ===== IF THE MEMBER HAS A NICKNAME, USE THAT AND IGNORE THE DISCRIMINATOR
-        if member.nick:
-            if len(member.nick) <= maxlen: 
-               name = member.nick 
-            else:
-                name = member.nick[:maxlen]
-        
-        # ===== IF MEMBER ONLY HAS THEIR USERNAME, USE THAT AND INCLUDE DISCRIMINATOR      
-        else:
-            if len(f"{member.name}#{member.discriminator}") <= maxlen:
-                name = f"{member.name}#{member.discriminator}"
-
-            elif len(member.name) <= maxlen:
-                name = member.name
-
-            else:
-                name = f"{member.name[:maxlen]}..."
-            
-        return name 
 
 def setup(bot):
     bot.add_cog(MemberLeveling(bot))
