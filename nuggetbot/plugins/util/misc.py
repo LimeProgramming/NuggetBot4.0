@@ -47,64 +47,64 @@ async def GET_AVATAR_BYTES(user: Union[User, Member], size: int, *, fmt='png', m
     path = None
     stored = dict()
 
-    ###---------------- MANAGE DEFAULT AVATAR ---------------###
+    # ---------------- MANAGE DEFAULT AVATAR ---------------
     if not user.avatar:
         with open(os.path.join('nuggetbot', 'plugins', 'images', 'defaultavatar', f'{size}', f'{user.default_avatar.value}.{fmt}'), 'rb') as image:
             avatar_bytes = image.read()
                 
         return avatar_bytes
 
-    ###---------------- MANAGE CUSTOM AVATAR ----------------###
+    # ---------------- MANAGE CUSTOM AVATAR ----------------
     try:
-        ###=== LOAD THE EXISTING YML FILE
+        # === LOAD THE EXISTING YML FILE
         with open(os.path.join('data','storedAvatars.yml'), 'r') as storedAvatars:
             stored = yaml.load(storedAvatars, Loader=yaml.FullLoader)
 
-        ###=== ENUMERATE AND CYCLE THROUGH THE LIST OF STORED IMAGES FOR THE MEMBER
+        # === ENUMERATE AND CYCLE THROUGH THE LIST OF STORED IMAGES FOR THE MEMBER
         for i, img in  enumerate(stored[user.id]):
 
-            ###= IF A MATCH HAS BEEN FOUND
+            # = IF A MATCH HAS BEEN FOUND
             if img['size'] == size and img['mime'] == fmt:
                 
-                #= CHECK IF USER HAS CHANGED THEIR AVATAR
+                # = CHECK IF USER HAS CHANGED THEIR AVATAR
                 if img['avatar'] == str(user.avatar):
                     path = img['path']
                 
-                #= IF USER CHNAGED THEIR AVATAR BUT STORED FILE IS STILL NEW
+                # = IF USER CHNAGED THEIR AVATAR BUT STORED FILE IS STILL NEW
                 elif (datetime.datetime.utcnow() - img['timestamp'] ).days < max_age:
                     path = img['path']
                 
-                #= IF A MATCH WAS FOUND BUT IT'S TOO OUTDATED. 
-                #--- THIS THEN JUST STORES THE INDEX OF THE OUTDATED ENTRY.
+                # = IF A MATCH WAS FOUND BUT IT'S TOO OUTDATED. 
+                # --- THIS THEN JUST STORES THE INDEX OF THE OUTDATED ENTRY.
                 else:
                     failed = i
 
                 #= EXIT LOOP
                 break
         
-        ###=== IF A PATH HAS BEEN FOUND
+        # === IF A PATH HAS BEEN FOUND
         if path:
-            ###= CHECK IF FILE ACTUALLY EXISTS AND RETURN THE BYTES
+            # = CHECK IF FILE ACTUALLY EXISTS AND RETURN THE BYTES
             if os.path.exists(path):
                 with open(path, 'rb') as image:
                     avatar_bytes = image.read()
                 
                 return avatar_bytes
 
-            ###= IF FILE WAS NOT FOUND, SET FAILED TO ENTRY INDEX
+            # = IF FILE WAS NOT FOUND, SET FAILED TO ENTRY INDEX
             else:
                 failed = i
     
-    ###========================
-    ###===== IF THERE'S AN ERROR SET FAILED TO TRUE AND RUN THE CODE BELOW
+    # ========================
+    # ===== IF THERE'S AN ERROR SET FAILED TO TRUE AND RUN THE CODE BELOW
     except (FileNotFoundError, KeyError):
         failed = True
 
-    ###===== IF WE HIT THIS POINT, ASSUME THE ABOVE FAILED
+    # ===== IF WE HIT THIS POINT, ASSUME THE ABOVE FAILED
     avatar_bytes = await user.avatar_url_as(format=fmt, static_format='webp', size=size).read()
     path = os.path.join('data', 'cache', 'avatars', f'{str(user.id)}_{str(size)}.{fmt}')
     
-    ###===== SAVE THE IMAGE TO FILE
+    # ===== SAVE THE IMAGE TO FILE
     with open(path, 'wb') as image:
         image.write(avatar_bytes)
 
@@ -114,18 +114,18 @@ async def GET_AVATAR_BYTES(user: Union[User, Member], size: int, *, fmt='png', m
         'timestamp':    datetime.datetime.utcnow()
     }
 
-    ###===== THIS REPLACES AN EXISTING ENTRY IN OUR YML FILE
+    # ===== THIS REPLACES AN EXISTING ENTRY IN OUR YML FILE
     if not isinstance(failed, bool):
         stored[user.id][failed] = data
 
-    ###===== THIS MAKES AN ENTRY IN OUR YML FILE IF NO EXISTING ENTRY WAS FOUND
+    # ===== THIS MAKES AN ENTRY IN OUR YML FILE IF NO EXISTING ENTRY WAS FOUND
     else:
         if user.id in stored.keys():
             stored[user.id].append(data)
         else:
             stored[user.id] = [data]
 
-    ###===== WRITE THE UPDATED STORE TO THE YML FILE
+    # ===== WRITE THE UPDATED STORE TO THE YML FILE
     with open(os.path.join('data','storedAvatars.yml'), 'w') as storedAvatars:
         yaml.dump(stored, storedAvatars, sort_keys=True)
 

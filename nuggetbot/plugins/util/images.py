@@ -247,6 +247,22 @@ def __square_pfp_blur(avatar_bytes, mstat, imgdir, *, RADIUS=2, status=True):
     else:
         return Image.alpha_composite(Image.new('RGBA', canvas.size, (35,39,42,255)), canvas)
 
+
+def __round_pfp_blur(avatar_bytes, mstat, imgdir, *, RADIUS=2, status=True, basecolour=(35,39,42,255)):
+
+    if isinstance(avatar_bytes, BytesIO):
+        avatar_bytes = avatar_bytes.getvalue()
+
+    with Image.open(BytesIO(avatar_bytes)).convert('RGBA') as rgba_avatar:
+        with Image.new('L', rgba_avatar.size, 0) as mask:
+            draw = ImageDraw.Draw(mask)
+            draw.ellipse([(0,0), rgba_avatar.size], fill=255)
+            mask = mask.filter(ImageFilter.GaussianBlur(RADIUS))
+            im = Image.composite(rgba_avatar, Image.new('RGBA', rgba_avatar.size, basecolour), mask)
+
+    return im
+
+
 def __get_clean_name(member, maxlen=22, *, at=False):
 
     # ===== IF THE MEMBER HAS A NICKNAME, USE THAT AND IGNORE THE DISCRIMINATOR

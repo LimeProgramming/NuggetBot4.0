@@ -12,48 +12,28 @@ FurSail Invite URL: http://discord.gg/QMEgfcg
 Kind Regards
 -Lime
 """
-#from nuggetbot.plugin import Plugin
-#import discord
-#import asyncio
-#import logging
 
-#from discord.ext import commands
-#bot = commands.Bot(command_prefix='~', description="I don't fucking care")
-
-#log = logging.getLogger('discord')
-
-
-
-#async def test_print(r):
-#    print(r) 
-
-#@bot.listen()
-#async def on_message(self, message):
-#    print("test plugin is alive")
-
-#class Test(Plugin):
-#    is_global = True
-
-
-#    async def on_ready(self):
-#        pass
-
-#    async def on_message(self, message):
-#        print("test plugin is alive")
-from functools import partial
-import discord
-import random
-from discord.ext import commands
-import asyncio
-from nuggetbot import exceptions
-from nuggetbot.config import Config
-from typing import Union
 import os
 import re
+import random
+import asyncpg
+import discord
+import asyncio
+
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from typing import Union
+from pathlib import Path
+from functools import partial
+from discord.ext import commands
+from PIL import (Image, ImageDraw, ImageFilter, ImageFont)
+
 from .util.misc import GET_AVATAR_BYTES
 from .util import images
+from nuggetbot import exceptions
+from nuggetbot.config import Config
+from nuggetbot.database import DatabaseCmds as pgCmds
+
+import dblogin 
 
 def to_emoji(c):
     base = 0x1f1e6
@@ -64,10 +44,35 @@ class Test(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.db = None
 
+  # -------------------- LOCAL COG STUFF -------------------- 
+    async def connect_db(self):
+        """
+        Connects to the database using variables set in the dblogin.py file.
+        """
 
+        credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
+        self.db = await asyncpg.create_pool(**credentials)
+
+        return
+
+    async def disconnet_db(self):
+        """
+        Closes the connection to the database.
+        """
+        await self.db.close()
+
+        return
+
+    @asyncio.coroutine
+    async def cog_command_error(self, ctx, error):
+        print(error)
+
+  # -------------------- LISTENERS -------------------- 
     @commands.Cog.listener()
     async def on_ready(self):
+        await self.connect_db()
         #print(f"from test {os.getcwd()}")
         return
         await asyncio.sleep(4)
@@ -170,7 +175,7 @@ class Test(commands.Cog):
 
         return
 
-
+  # -------------------- COMMANDS -------------------- 
     @commands.Cog.listener()
     async def on_message(self, msg):
         return
@@ -201,6 +206,142 @@ class Test(commands.Cog):
             await ctx.send(file=discord.File(filename="welcome.png", fp=final_buffer))
 
 
+    @commands.command(pass_context=True, hidden=True, name='leaderboardtest', aliases=[])
+    async def cmd_leaderboardtest(self, ctx):
+        
+        results = dict()
+        
+        for i, result in enumerate(await self.db.fetch(pgCmds.GET_MEMBER_LEADERBOARD)):
+            mem = ctx.guild.get_member(result['user_id'])
+            
+            rpfp = BytesIO()
+
+            with Image.open(BytesIO(await GET_AVATAR_BYTES(user = mem, size = 128))).convert('RGBA') as rgba_avatar:
+                out = rgba_avatar.resize((80,80), Image.LANCZOS)
+                out.save(rpfp, "png")
+            
+            rpfp.seek(0)
+
+            results[i] = dict(
+                member = mem,
+                avatar = rpfp,
+                db = result
+                )
+
+        async with ctx.typing():
+            final_buffer = await self.bot.loop.run_in_executor(None, partial(self.GenLeaderboard, results))
+
+            # === SEND THE RETURN IMAGE
+            await ctx.send(file=discord.File(filename="profile.png", fp=final_buffer))
+            
+
+
+    @staticmethod
+    def GenLeaderboard(l) -> BytesIO:
+        # ===== VARS
+        out_image = BytesIO()
+        imagedir = Path(__file__).parents[0].joinpath('images')
+        barmax = l[0]['db']['nummsgs']
+        top = 100
+        inc = 100
+
+        with Image.open(os.path.join(imagedir, "leaderboardbg.png")) as background:
+            
+            draw = ImageDraw.Draw(background)
+
+            # ==== MAKE OUR FONT
+            nameFont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 32)
+            levelNumberFont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
+            leaderboardFont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 62)
+            levelFont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
+
+            draw.text((206, 7), "Leaderboard", fill=(205, 205, 205, 255), font=leaderboardFont)
+
+            for i in l.values():
+                pfp = Test.__round_pfp_blur(i['avatar'], (i['member']).status.__str__(), imagedir, RADIUS=1)
+
+                # = PASTE IN THE PFP
+                background.paste(pfp, (30, top), mask=pfp)
+
+                # = PASTE IN THE PROGRESS BAR
+                background.paste(Image.new("RGBA", (640, 12), (0, 85, 183, 255)), (120, (top + 61)), mask=None)
+                
+                if i['db']['nummsgs'] == barmax:
+                    x = 640
+                
+                else:
+                    x = int(round((i['db']['nummsgs'] / barmax) * 640))
+
+                    # JUST IN CASE
+                    if x < 1:
+                        x = 1 
+
+                    elif x > 640:
+                        x = 640
+
+                # = PASTE IN THE PROGRESS ONTO PROGRESS BAR
+                background.paste(Image.new("RGBA", (x, 12), (0, 175, 96, 255)), (120, (top + 61)), mask=None)
+
+                # - LEVEL
+                draw.text((600, (top + 3)), "LV:", fill=(230, 230, 230, 255), font=levelFont)
+                draw.text((680, (top - 1)), f"{i['db']['level']}", fill=(230, 230, 230, 255), font=levelNumberFont)
+                # - NAME
+                draw.text((130, (top + 8)), Test.__get_clean_name(i['member'], 30, at=True), fill=(135, 134, 142, 255), font=nameFont)
+
+                # = INCREMENT
+                top = top + inc
+
+            background.save(out_image, "png")
+
+        out_image.seek(0)
+
+        return out_image
+
+
+    @staticmethod
+    def __round_pfp_blur(avatar_bytes, mstat, imgdir, *, RADIUS=2, status=True, basecolour=(35,39,42,255)):
+        
+        if isinstance(avatar_bytes, BytesIO):
+            avatar_bytes = avatar_bytes.getvalue()
+
+        diam = 2*RADIUS
+
+        with Image.open(BytesIO(avatar_bytes)).convert('RGBA') as ava:
+            with Image.new('L', ava.size, 0) as mask:
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse([(diam, diam), (ava.size[0] - diam, ava.size[1] - diam)], fill=255)
+                mask = mask.filter(ImageFilter.GaussianBlur(RADIUS))
+                im = Image.alpha_composite(Image.new('RGBA', ava.size, basecolour), Image.composite(ava, Image.new('RGBA', ava.size, (0,0,0,0)), mask))
+
+        return im
+    
+
+    @staticmethod
+    def __get_clean_name(member, maxlen=22, *, at=False):
+
+        # ===== IF THE MEMBER HAS A NICKNAME, USE THAT AND IGNORE THE DISCRIMINATOR
+        if member.nick:
+            name = f'@{member.nick}' if at else member.nick
+            re.sub(r'[^\x00-\x7f]',r'', name).strip()
+
+            if len(name) > maxlen: 
+                name = f"{name[:maxlen]}..."
+        
+        # ===== IF MEMBER ONLY HAS THEIR USERNAME, USE THAT AND INCLUDE DISCRIMINATOR      
+        else:
+            mname = f'@{member.name}' if at else member.name
+            re.sub(r'[^\x00-\x7f]',r'', mname).strip()
+
+            if len(f"{mname}#{member.discriminator}") <= maxlen:
+                name = f"{mname}#{member.discriminator}"
+
+            elif len(mname) <= maxlen:
+                name = mname
+
+            else:
+                name = f"{mname[:maxlen]}..."
+            
+        return name 
 
 
 def setup(bot):
