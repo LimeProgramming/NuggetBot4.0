@@ -18,6 +18,7 @@ import discord
 from discord.ext import commands
 from discord.utils import _bytes_to_base64_data
 import os
+import sys
 
 # aiohttp should be installed if discord.py is
 import aiohttp
@@ -108,7 +109,9 @@ class ImageCog(commands.Cog):
 
         return
 
-    async def on_cog_command_error(self, ctx, error):
+    @asyncio.coroutine
+    async def cog_command_error(self, ctx, error):
+        print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
 
     async def get_avatar(self, user: Union[discord.User, discord.Member]) -> bytes:

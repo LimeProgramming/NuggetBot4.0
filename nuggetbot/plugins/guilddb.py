@@ -13,6 +13,7 @@ Kind Regards
 -Lime
 """
 
+import sys
 import random
 import logging
 import discord
@@ -88,6 +89,7 @@ class GuildDB(commands.Cog):
 
 
   # -------------------- LOCAL COG STUFF --------------------  
+    @asyncio.coroutine
     async def cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.NotOwner):
             await ctx.guild.owner.send(content=f"{ctx.author.mention} tried to use the owner only command{ctx.invoked_with}")
@@ -97,6 +99,10 @@ class GuildDB(commands.Cog):
 
         elif isinstance(error, discord.ext.commands.errors.MissingPermissions):
             await ctx.channel.send('Admin permissions are required to use this command.')
+
+        else:
+            print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
+            print(error)
 
     async def cog_after_invoke(self, ctx):
         if GuildDB.config.delete_invoking:

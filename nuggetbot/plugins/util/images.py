@@ -249,16 +249,18 @@ def __square_pfp_blur(avatar_bytes, mstat, imgdir, *, RADIUS=2, status=True):
 
 
 def __round_pfp_blur(avatar_bytes, mstat, imgdir, *, RADIUS=2, status=True, basecolour=(35,39,42,255)):
-
+    
     if isinstance(avatar_bytes, BytesIO):
         avatar_bytes = avatar_bytes.getvalue()
 
-    with Image.open(BytesIO(avatar_bytes)).convert('RGBA') as rgba_avatar:
-        with Image.new('L', rgba_avatar.size, 0) as mask:
+    diam = 2*RADIUS
+
+    with Image.open(BytesIO(avatar_bytes)).convert('RGBA') as ava:
+        with Image.new('L', ava.size, 0) as mask:
             draw = ImageDraw.Draw(mask)
-            draw.ellipse([(0,0), rgba_avatar.size], fill=255)
+            draw.ellipse([(diam, diam), (ava.size[0] - diam, ava.size[1] - diam)], fill=255)
             mask = mask.filter(ImageFilter.GaussianBlur(RADIUS))
-            im = Image.composite(rgba_avatar, Image.new('RGBA', rgba_avatar.size, basecolour), mask)
+            im = Image.alpha_composite(Image.new('RGBA', ava.size, basecolour), Image.composite(ava, Image.new('RGBA', ava.size, (0,0,0,0)), mask))
 
     return im
 

@@ -14,6 +14,7 @@ Kind Regards
 """
 
 import os
+import sys
 import json
 import dblogin 
 import discord
@@ -73,6 +74,10 @@ class MemberDMS(commands.Cog):
 
         return
 
+    @asyncio.coroutine
+    async def cog_command_error(self, ctx, error):
+        print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
+        print(error)
 
   # -------------------- STATIC METHOD --------------------
     @staticmethod

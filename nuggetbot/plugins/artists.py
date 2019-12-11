@@ -13,6 +13,7 @@ Kind Regards
 -Lime
 """
 
+import sys
 import discord
 import asyncio
 import asyncpg
@@ -163,6 +164,7 @@ class Artists(commands.Cog):
             embeds.append(embed)
 
         return embeds
+
 
   #-------------------- COMMANDS --------------------
     #@has_role(["Artist"])

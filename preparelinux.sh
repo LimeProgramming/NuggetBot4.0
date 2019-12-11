@@ -175,6 +175,7 @@ packages=(
     pyzbar
     pyzbar[scripts]
     psutil
+    PYyaml
 )
 
 for p in "${packages[@]}"

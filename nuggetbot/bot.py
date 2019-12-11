@@ -515,7 +515,12 @@ class NuggetBot(commands.Bot):
         elif isinstance(error, discord.ext.commands.errors.CheckFailure):
             if self.config.delete_invoking:
                 await ctx.message.delete()
-                
+
+        else:
+            print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
+            print(error)
+            #traceback.print_exc()
+
         return
 
     async def on_raw_reaction_add(self, payload):

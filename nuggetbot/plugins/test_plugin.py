@@ -15,6 +15,7 @@ Kind Regards
 
 import os
 import re
+import sys
 import random
 import asyncpg
 import discord
@@ -67,6 +68,7 @@ class Test(commands.Cog):
 
     @asyncio.coroutine
     async def cog_command_error(self, ctx, error):
+        print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
 
   # -------------------- LISTENERS -------------------- 
@@ -245,11 +247,12 @@ class Test(commands.Cog):
         top = 100
         inc = 100
 
+        # ===== OPEN LEADERBOARD BACKGROUND
         with Image.open(os.path.join(imagedir, "leaderboardbg.png")) as background:
             
             draw = ImageDraw.Draw(background)
 
-            # ==== MAKE OUR FONT
+            # === MAKE OUR FONT
             nameFont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 32)
             levelNumberFont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
             leaderboardFont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 62)
@@ -265,19 +268,15 @@ class Test(commands.Cog):
 
                 # = PASTE IN THE PROGRESS BAR
                 background.paste(Image.new("RGBA", (640, 12), (0, 85, 183, 255)), (120, (top + 61)), mask=None)
-                
-                if i['db']['nummsgs'] == barmax:
+
+                x = int(round((i['db']['nummsgs'] / barmax) * 640))
+
+                # JUST IN CASE
+                if x < 1:
+                    x = 1 
+
+                elif x > 640:
                     x = 640
-                
-                else:
-                    x = int(round((i['db']['nummsgs'] / barmax) * 640))
-
-                    # JUST IN CASE
-                    if x < 1:
-                        x = 1 
-
-                    elif x > 640:
-                        x = 640
 
                 # = PASTE IN THE PROGRESS ONTO PROGRESS BAR
                 background.paste(Image.new("RGBA", (x, 12), (0, 175, 96, 255)), (120, (top + 61)), mask=None)

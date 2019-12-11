@@ -13,6 +13,7 @@ Kind Regards
 -Lime
 """
 
+import sys
 import discord
 import asyncio
 import random
@@ -50,6 +51,11 @@ class Fun(commands.Cog):
 
         return
 
+    @asyncio.coroutine
+    async def cog_command_error(self, ctx, error):
+        print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
+        print(error)
+        
   # -------------------- COG COMMANDS --------------------
     #@in_channel([ChnlID.reception, ChnlID.blessrng])
     @checks.CORE()

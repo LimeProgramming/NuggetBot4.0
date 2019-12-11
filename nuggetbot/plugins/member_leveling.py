@@ -14,6 +14,7 @@ Kind Regards
 """
 
 import os
+import sys
 import json
 import dblogin 
 import discord
@@ -68,6 +69,7 @@ class MemberLeveling(commands.Cog):
 
         return
 
+    @asyncio.coroutine
     async def cog_command_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.CheckFailure):
             pass
@@ -79,13 +81,11 @@ class MemberLeveling(commands.Cog):
                 await ctx.message.delete()
 
         else:
-            print(type(error))
+            print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
             print(error)
 
         return 
         
-        #    #'discord.ext.commands.errors.CommandInvokeError'
-
     async def cog_after_invoke(self, ctx):
         """
         Delete invoker message

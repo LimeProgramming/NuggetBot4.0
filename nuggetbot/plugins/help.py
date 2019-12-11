@@ -13,6 +13,8 @@ Kind Regards
 -Lime
 """
 
+import sys
+import asyncio
 import discord
 import datetime
 from discord.ext import commands
@@ -41,7 +43,9 @@ class Help(commands.Cog):
 
         return
     
+    @asyncio.coroutine
     async def cog_command_error(self, ctx, error):
+        print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
 
 

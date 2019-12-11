@@ -14,6 +14,8 @@ Kind Regards
 """
 
 import os 
+import sys
+import asyncio
 import discord
 import datetime
 import collections
@@ -146,8 +148,10 @@ class DelMsgLogging(commands.Cog):
 
         return
 
-    async def on_cog_command_error(self, ctx, error):
-        pass
+    @asyncio.coroutine
+    async def cog_command_error(self, ctx, error):
+        print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
+        print(error)
 
 
   #-------------------- STATIC METHODS --------------------

@@ -106,6 +106,10 @@ class NewMembers(commands.Cog):
 
         return
 
+    @asyncio.coroutine
+    async def cog_command_error(self, ctx, error):
+        print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
+        print(error)
 
   # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
