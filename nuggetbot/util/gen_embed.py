@@ -25,10 +25,11 @@ async def getMemJoinStaff(member, invite):
 
     #===== If user is a bot account
     if member.bot:
-        embed.add_field(    name=       "Bot Account",
-                            value=      "This user account is a bot.",
-                            inline=     False
-                        )
+        embed.add_field(    
+            name=       "Bot Account",
+            value=      "This user account is a bot.",
+            inline=     False
+            )
 
     #===== if account is less than 7 days old
     diff = (datetime.datetime.utcnow() - member.created_at)
@@ -47,11 +48,12 @@ async def getMemJoinStaff(member, invite):
         else:
             ago = "{} seconds".format(diff.seconds)
 
-        embed.add_field(    name=       "New Account",
-                            value=      "Account made {} ago. "
-                                        "Be cautious of possible troll.".format(ago),
-                            inline=     False
-                        )
+        embed.add_field(    
+            name=       "New Account",
+            value=      "Account made {} ago. "
+                        "Be cautious of possible troll.".format(ago),
+            inline=     False
+            )
 
     #===== Invite info
     if invite is not None:

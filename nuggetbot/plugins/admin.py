@@ -17,6 +17,7 @@ import os
 import copy
 import json
 import psutil
+import pathlib
 import discord
 import asyncio
 import asyncpg
@@ -831,10 +832,10 @@ class Admin(commands.Cog):
             ret = val/1073741824
 
             if ret < 1:
-                ret = "{0:.1f} MB".format((val/1048576))
+                ret = "{0:.2f} MB".format((val/1048576))
                 return ret 
 
-            ret = "{0:.1f} GB".format(ret)
+            ret = "{0:.2f} GB".format(ret)
             return ret
 
         # ===== CPU INFORMATION
@@ -844,11 +845,7 @@ class Admin(commands.Cog):
         mem = psutil.virtual_memory()
 
         # ===== DISK DRIVE SPACE    
-        if (platform.platform()).lower().startswith("linux"):
-            d = psutil.disk_usage(r"/")
-
-        elif platform.platform().lower().startswith("win"):
-            d = psutil.disk_usage(os.path.splitdrive(os.path.abspath(__file__))[0])
+        d = psutil.disk_usage(pathlib.Path.cwd().__str__())
 
         # ===== UPTIME
         updelta = datetime.datetime.utcnow() - self.bot.start_timestamp
@@ -871,47 +868,72 @@ class Admin(commands.Cog):
                                 type=       "rich"
                                 )
 
-        embed.add_field(name=   "CPU:",
-                        value=  f"**Cores:** {psutil.cpu_count(logical=False)} ({psutil.cpu_count(logical=True)})\n"
-                                f"**Architecture:** {platform.machine()}\n"
-                                f"**Affinity:** {len(psutil.Process().cpu_affinity())}\n"
-                                f"**Useage:** {psutil.cpu_percent()}%\n"
-                                f"**Freq:** {cpu_freq[0]} Mhz",
-                        inline= True
-                        )
-        
-        embed.add_field(name=   "Memory:",
-                        value=  f"**Total:** {MBorGB(mem[0])}\n"
-                                f"**Free:** {MBorGB(mem[1])}\n"
-                                f"**Used:** {mem[2]}%",
-                        inline= True
-                        )
-        
-        embed.add_field(name=   "Storage:",
-                        value=  f"**Total:** {MBorGB(d[0])}\n"
-                                f"**Free:** {MBorGB(d[2])}\n"
-                                f"**Used:** {d[3]}%",
-                        inline= True
-                        )
 
-        embed.add_field(name=   "Python:",
-                        value=  f"**Version:** {platform.python_version()}\n"
-                                f"**Discord.py** {discord.__version__}\n"
-                                f"**Bits:** {platform.architecture()[0]}",
-                        inline= True
-                        )
-
-        embed.add_field(name=   "Uptime:",
-                        value=  f"**Launched:** {self.bot.start_timestamp.strftime('%b %d, %Y')}\n"
-                                f"**Time:** days:{updelta.days}, hours:{hours}, minutes:{minutes}, seconds:{seconds}\n",
-                        inline= True
-                        )
-
-        embed.set_author(name=   f"{self.bot.user.name}#{self.bot.user.discriminator}",
-                        icon_url=AVATAR_URL_AS(self.bot.user)
-                        )
+        embed.add_field(
+            name=   "CPU:",
+            value=  f"> **Cores:** {psutil.cpu_count(logical=False)} ({psutil.cpu_count(logical=True)})\n"
+                    f"> **Architecture:** {platform.machine()}\n"
+                    f"> **Affinity:** {len(psutil.Process().cpu_affinity())}\n"
+                    f"> **Useage:** {psutil.cpu_percent()}%\n"
+                    f"> **Freq:** {cpu_freq[0]} Mhz",
+            inline= True
+            )
         
-        embed.set_thumbnail(        url=        AVATAR_URL_AS(user=self.bot.user, format=None, size=512))
+        embed.add_field(
+            name=   "Memory:",
+            value=  f"> **Total:** {MBorGB(mem[0])}\n"
+                    f"> **Free:** {MBorGB(mem[1])}\n"
+                    f"> **Used:** {mem[2]}%",
+            inline= True
+            )
+        
+        embed.add_field(
+            name=   "Storage:",
+            value=  f"> **Total:** {MBorGB(d[0])}\n"
+                    f"> **Free:** {MBorGB(d[2])}\n"
+                    f"> **Used:** {d[3]}%",
+            inline= True
+            )
+
+        embed.add_field(
+            name=   "Network:",
+            value=  "> **Useage:**\n"
+                    f"> - Send: {MBorGB(psutil.net_io_counters().bytes_sent)}"
+                    f"> - Recv: {MBorGB(psutil.net_io_counters().bytes_recv)}",
+            inline= True
+            )
+
+        embed.add_field(
+            name=   "Python:",
+            value=  f"> **Version:** {platform.python_version()}\n"
+                    f"> **Discord.py** {discord.__version__}\n"
+                    f"> **Bits:** {platform.architecture()[0]}",
+            inline= True
+            )
+
+        embed.add_field(
+            name=   "Bot Uptime:",
+            value=  f"> **Launched:** {self.bot.start_timestamp.strftime('%b %d, %Y')}\n"
+                    f"> **Time:** days:{updelta.days}, hours:{hours}, minutes:{minutes}, seconds:{seconds}\n",
+            inline= True
+            )
+
+        embed.add_field(
+            name=       "Process",
+            value=      f"> **Memory:** {MBorGB(psutil.Process().memory_info().rss)}\n"
+                        f"> **CPU:**    {psutil.Process().cpu_percent(interval=2)}%\n"
+                        f"> **Threads:**{psutil.Process().num_threads()}",
+            inline= True
+            )
+
+        embed.set_author(
+            name=   f"{self.bot.user.name}#{self.bot.user.discriminator}",
+            icon_url=AVATAR_URL_AS(self.bot.user)
+            )
+        
+        embed.set_thumbnail(
+            url=        AVATAR_URL_AS(user=self.bot.user, format=None, size=512)
+            )
 
         await ctx.channel.send(embed = embed)
         return
