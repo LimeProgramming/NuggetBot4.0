@@ -40,6 +40,7 @@ from . import exceptions
 from .config import Config
 from .utils import get_next, Response
 from .util import gen_embed as GenEmbed
+from .util import fake_objects as FakeOBJS
 from .database import DatabaseCmds as pgCmds
 from .util.chat_formatting import escape_mass_mentions, AVATAR_URL_AS, GUILD_URL_AS, RANDOM_DISCORD_COLOR
 
@@ -72,7 +73,8 @@ plugins = (
     ('nuggetbot.plugins.gallery',       'Gallery'),
     ('nuggetbot.plugins.help',          'Help'),
     ('nuggetbot.plugins.member_leveling', 'Member Leveling'),
-    ('nuggetbot.plugins.self_roles',    'Self Roles')
+    ('nuggetbot.plugins.self_roles',    'Self Roles'),
+    ('nuggetbot.plugins.new_members',    'New Members')
 )
 #    ('nuggetbot.plugins.new_members',   'New Members')
 #)
@@ -89,7 +91,15 @@ class NuggetBot(commands.Bot):
         self.config = Config()
         self.init_ok = True
         self.exit_signal = None
+
+      # ---------- Store a tuple of all the ctx bot commands ----------
+        self.all_cmds = tuple()
+        self.all_prefixs = tuple()
+    
+      # ---------- Store startup timestamp ----------
         self.start_timestamp = datetime.datetime.utcnow()
+
+      # ---------- Store a list of all the legacy bot commands ----------
         self.bot_commands = [att.replace('cmd_', '').lower() for att in dir(self) if att.startswith('cmd_')]
         self.bot_oneline_commands = ["rp", "rp_lewd",
                                     "artist", "book_wyrm", "notifyme", "vore", "nuggethelp",
@@ -389,10 +399,19 @@ class NuggetBot(commands.Bot):
         self.safe_print(r"--------------------------------------------------------------------------------")
         self.safe_print("\n")
 
-       # ===== PREFORM BASIC REQUIREMENTS CHECKS
+      # ---------- Store a tuple of all the ctx bot commands ----------
+        all_cmds = list()
+
+        for command in self.commands:
+            all_cmds = all_cmds + command.aliases + [command.name]
+
+        self.all_cmds = tuple(all_cmds)
+        self.all_prefixs = (self.command_prefix, '>', '<', '?', '.', '!')
+
+      # ---------- PREFORM BASIC REQUIREMENTS CHECKS ----------
         await self.minimum_permissions_check()
 
-       # ===== CONNECT TO AND PRIME THE POSTGRE DATABASE
+      # ---------- CONNECT TO AND PRIME THE POSTGRE DATABASE ----------
         try:
             await self.pgdb_on_ready()
         except Exception as e:
@@ -450,11 +469,11 @@ class NuggetBot(commands.Bot):
         except Exception as e:
             print(e)
 
-       # ===== PRESENCE
+      # ---------- PRESENCE ----------
         await self.change_presence( activity=discord.Game(name="{0.command_prefix}{0.playing_game}".format(self.config)),
                                     status=discord.Status.online)
 
-       # ===== SCHEDULER
+      # ---------- SCHEDULER ----------
         self.scheduler.start()
         self.scheduler.print_jobs()
 
@@ -599,7 +618,7 @@ class NuggetBot(commands.Bot):
         if message.author == self.user:
             return
 
-       # ------------------------------ LEGACY BOT CLASS COMMANDS ------------------------------
+       # ---------- LEGACY BOT CLASS COMMANDS ----------
         if message.guild and message.guild.id == self.config.target_guild_id and message.clean_content.startswith(self.config.command_prefix):
         
             command = message.clean_content[len(self.config.command_prefix):].lower().split(" ")
@@ -635,7 +654,7 @@ class NuggetBot(commands.Bot):
             except Exception as e:
                 print(e)   
 
-       # ------------------------------ commands.Bot COMMANDS ------------------------------
+       # ---------- commands.Bot COMMANDS ----------
         await NuggetBot.bot.process_commands(message)
 
 
@@ -689,7 +708,7 @@ class NuggetBot(commands.Bot):
         return msg
 
     @asyncio.coroutine
-    async def send_msg_chid(self, ch_id:Union[int, discord.Object], *, content:str = None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:Union[discord.Message, discord.ext.commands.Context] = None, quiet=True):
+    async def send_msg_chid(self, ch_id:Union[int, discord.Object], *, content:str = None, embed:discord.Embed = None, tts=False, expire_in:int = 0, also_delete:Union[discord.Message, discord.ext.commands.Context] = None, quiet=True, guild_id=None):
         '''
         Alt version of safe send message where messages can be send using channel id. Saves getting the channel from discord API.
         Made for sending to channels entered into the config.py. Also handles the exceptions to the best of it's ability.
@@ -734,13 +753,15 @@ class NuggetBot(commands.Bot):
         try:
             msg = await self.bot.http.send_message(ch_id, content=content, embed=embed, tts=tts)
 
+            fakemsg = FakeOBJS.FakeMsg1(msg, guild_id)
+
             # === SCHEDULE SENT MESSAGE FOR DELETION
             if expire_in:
-                asyncio.ensure_future(self.__del_msg_later(msg, expire_in))
+                asyncio.ensure_future(self.delete_msg_id(fakemsg.id, fakemsg.channel.id, delay=expire_in))
 
             # === DELETE ADDITIONAL MESSAGE IF APPLICABLE
             if also_delete:
-                asyncio.ensure_future(self.__del_msg_later(also_delete, expire_in))
+                asyncio.ensure_future(self.delete_msg(also_delete, delay=expire_in))
 
         except discord.Forbidden:
             if not quiet:
@@ -750,7 +771,7 @@ class NuggetBot(commands.Bot):
             if not quiet:
                 self.safe_print(f"[Error] [new_members] Cannot send message to channel {ch_id}, invalid channel?")
 
-        return msg
+        return fakemsg
 
     @asyncio.coroutine
     async def delete_msg(self, message:discord.Message, reason:str = None, *, delay:float = None, quiet=False):
@@ -1321,7 +1342,7 @@ class NuggetBot(commands.Bot):
   # -------------------- Hide guild --------------------
     #@has_core_role
     #@in_reception
-    async def cmd_hideserver(self, msg):
+    async def dcmd_hideserver(self, msg):
         """
         Useage:
             [prefix]hideserver <xDxHxMxS/seconds>
@@ -1390,7 +1411,7 @@ class NuggetBot(commands.Bot):
         await self.hide_server(msg.author, seconds=total_seconds)
         return Response(reply=False)
     
-    async def cmd_cancel_hideserver(self, msg):
+    async def dcmd_cancel_hideserver(self, msg):
         """
         Useage:
             [prefix]cancel_hideserver

@@ -130,6 +130,7 @@ packages=(
     build-essential
     screen
     htop
+    iftop
     python3-pip
     python-qrtools
     libzbar-dev

@@ -218,7 +218,7 @@ class MemberDMS(commands.Cog):
 
         msg_content = msg.content.strip()[(len(ctx.prefix) + len(ctx.invoked_with)):]
         msg_attach = []
-        feedback_channel = discord.utils.get(guild.channels, id=self.config.channels['servey'])
+        feedback_channel = discord.utils.get(guild.channels, id=self.config.channels['feedback_id'])
 
 
         async with feedback_channel.typing():

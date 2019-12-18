@@ -65,26 +65,29 @@ async def getMemJoinStaff(member, invite):
                                                                             )
                             )
         else:
-            embed.add_field(name=       "Invite",
-                            inline=     False,
-                            value=      "User: {} / {}#{} | Code: {} | Uses: {}/{}".format( invite["inviter"]["mention"],
-                                                                                            invite["inviter"]["name"],
-                                                                                            invite["inviter"]["discriminator"],
-                                                                                            invite["code"],
-                                                                                            invite["uses"],
-                                                                                            invite["max_uses"]
-                                                                                            )
-                            )
+            embed.add_field(
+                name=       "Invite",
+                inline=     False,
+                value=      "User: {} / {}#{} | Code: {} | Uses: {}/{}".format( invite["inviter"]["mention"],
+                                                                                invite["inviter"]["name"],
+                                                                                invite["inviter"]["discriminator"],
+                                                                                invite["code"],
+                                                                                invite["uses"],
+                                                                                invite["max_uses"]
+                                                                                )
+                )
 
     else:
-        embed.add_field(    name=       "Invite",
-                            value=      "Invite not found",
-                            inline=     False
-                        )
+        embed.add_field(
+            name=       "Invite",
+            value=      "Invite not found",
+            inline=     False
+            )
 
     #===== Footer
-    embed.set_footer(       text=f"User ID: {member.id}"
-                    )
+    embed.set_footer(
+        text=       f"User ID: {member.id}"
+        )
 
     return embed
 
@@ -171,119 +174,140 @@ async def getMemJoinUser(member):
 
         colour=     random_embed_color(),
         type=       "rich",
-        timestamp=  datetime.datetime.utcnow())
+        timestamp=  datetime.datetime.utcnow()
+        )
 
     embed.set_author(       
         name=       'Member Joined',
         icon_url=   AVATAR_URL_AS(member)
-                    )
+        )
                     
     embed.set_footer(       
         icon_url=   GUILD_URL_AS(member.guild),
         text=       member.guild.name
-                    )
+        )
     
     return embed
 
 async def getScheduleRemNewRole(member, daysUntilRemove):
     #==== log event
-    embed = discord.Embed(  title=      'Event Scheduled', 
-                            description="{0.mention} | {0.name}#{0.discriminator} will have the Fresh role removed in {1} days.".format(member,
-                                                                                                                                        daysUntilRemove
-                                                                                                                                        ),
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow(),
-                            color=      0x0091E0)
+    embed = discord.Embed(  
+        title=      'Event Scheduled', 
+        description="{0.mention} | {0.name}#{0.discriminator} will have the New Member role removed in {1} days.".format(member,
+                                                                                                                    daysUntilRemove
+                                                                                                                    ),
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow(),
+        color=      0x0091E0
+        )
+
     return embed
 
 async def genRemNewRole(member):
-    embed = discord.Embed(  title=      'Scheduled Event', 
-                            description='{0.mention} | {0.name}#{0.discriminator} has had their Fresh role removed.'.format(member), 
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow(),
-                            color=      0xB20828
-                        )
+    embed = discord.Embed(  
+        title=      'Scheduled Event', 
+        description='{0.mention} | {0.name}#{0.discriminator} has had their New Member role removed.'.format(member), 
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow(),
+        color=      0xB20828
+        )
     
     return embed
 
 async def getScheduleKick(member, daysUntilKick, kickDate):
     #==== log event
-    embed = discord.Embed(  title=      'Event Scheduled', 
-                            description="{} | {}#{} will be kicked in {} days ({} CE), unless verified.".format(   member.mention,
-                                                                                                                member.name,
-                                                                                                                member.discriminator,
-                                                                                                                daysUntilKick,
-                                                                                                                kickDate.strftime('%H:%M:%S, %b %d, %Y')),
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow(),
-                            color=      0x0091E0)
+    embed = discord.Embed(  
+        title=      'Event Scheduled', 
+        description="{0.mention} | {0.name}#{0.discriminator} will be kicked in {} days ({} CE), unless verified.".format(  
+            member,
+            daysUntilKick,
+            kickDate.strftime('%H:%M:%S, %b %d, %Y')),
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow(),
+        color=      0x0091E0
+        )
+
     return embed
 
 async def genKickEntrance(member, entrance_gate_channel_id):
-    embed = discord.Embed(  title=      'Scheduled Event', 
-                            description='<@{0.id}> | {0.name}#{0.discriminator} has been kicked from <#{1}>.'.format(member, entrance_gate_channel_id), 
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow(),
-                            color=      0xB20828
-                        )
+    embed = discord.Embed(  
+        title=      'Scheduled Event', 
+        description='<@{0.id}> | {0.name}#{0.discriminator} has been kicked from <#{1}>.'.format(
+            member, 
+            entrance_gate_channel_id), 
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow(),
+        color=      0xB20828
+        )
     
     return embed
 
 #==================== Massive perms embeds
 async def getUserPermsOwner(member, msg):
-    embed = discord.Embed(  title=      "Server Owner",
-                            description="User: <@{0.id}> | {0.name}#{0.discriminator} is owner of {1.name}, behave yourself with them around.".format(  member,
-                                                                                                                                                        msg.guild
-                                                                                                                                                        ),
-                            colour=     0x51B5CC,
-                            timestamp=  datetime.datetime.utcnow(),
-                            type=       "rich"
-                            )
+    embed = discord.Embed(  
+        title=      "Server Owner",
+        description="User: <@{0.id}> | {0.name}#{0.discriminator} is owner of {1.name}, behave yourself with them around.".format( 
+            member,
+            msg.guild),
+        colour=     0x51B5CC,
+        timestamp=  datetime.datetime.utcnow(),
+        type=       "rich"
+        )
 
-    embed.set_thumbnail(    url=        AVATAR_URL_AS(member)
-                        )
+    embed.set_thumbnail(    
+        url=        AVATAR_URL_AS(member)
+        )
 
-    embed.set_author(       name=       "{0.name}#{0.discriminator}".format(member),
-                            icon_url=   AVATAR_URL_AS(member)
-                    )
+    embed.set_author(       
+        name=       "{0.name}#{0.discriminator}".format(member),
+        icon_url=   AVATAR_URL_AS(member)
+        )
 
-    embed.set_footer(       icon_url=   GUILD_URL_AS(msg.guild), 
-                            text=       "{0.guild.name} | ID: {1.id}".format(msg, member)
-                    )
+    embed.set_footer(       
+        icon_url=   GUILD_URL_AS(msg.guild), 
+        text=       "{0.guild.name} | ID: {1.id}".format(msg, member)
+        )
 
-    embed.add_field(        name=       "Roles[{}]".format( len(member.roles) - 1),
-                            value=      (" ".join([role.mention for role in member.roles if not role.is_everyone])) 
-                                        if len(member.roles) > 1 else 
-                                        ("Member has no roles.")
-                    )
+    embed.add_field(        
+        name=       "Roles[{}]".format( len(member.roles) - 1),
+        value=      (" ".join([role.mention for role in member.roles if not role.is_everyone])) 
+                    if len(member.roles) > 1 else 
+                    ("Member has no roles.")
+        )
 
     return embed
 
 async def getUserPermsAdmin(member, msg):
-    embed = discord.Embed(   title=      "Administrator",
-                            description="User: {0.mention} | {0.name}#{0.discriminator} has Admin permission and can do everything.\n"
-                                        "Hierarchy: {1}".format( member,
-                                                                (len(msg.guild.roles) - member.top_role.position)
-                                                                ),
-                            colour=     0x51B5CC,
-                            timestamp=  datetime.datetime.utcnow(),
-                            type=       "rich"
-                        )
+    embed = discord.Embed(  
+        title=      "Administrator",
+        description="User: {0.mention} | {0.name}#{0.discriminator} has Admin permission and can do everything.\nHierarchy: {1}".format( 
+            member,
+            (len(msg.guild.roles) - member.top_role.position)),
+        colour=     0x51B5CC,
+        timestamp=  datetime.datetime.utcnow(),
+        type=       "rich"
+        )
 
-    embed.set_thumbnail(    url=        AVATAR_URL_AS(member)
-                        )
-    embed.set_author(       name=       "{0.name}#{0.discriminator}".format(member),
-                            icon_url=   AVATAR_URL_AS(member)
-                    )
-    embed.set_footer(       icon_url=   GUILD_URL_AS(msg.guild), 
-                            text=       "{0.guild.name} | ID: {1.id}".format(msg, member)
-                    )
-    embed.add_field(        name=       "Roles[{}]".format( len(member.roles) - 1),
-                            
-                            value=      (" ".join([role.mention for role in member.roles if not role.is_everyone])) 
-                                        if len(member.roles) > 1 else 
-                                        ("Member has no roles.")
-                    )
+    embed.set_thumbnail(    
+        url=        AVATAR_URL_AS(member)
+        )
+
+    embed.set_author(       
+        name=       "{0.name}#{0.discriminator}".format(member),
+        icon_url=   AVATAR_URL_AS(member)
+        )
+
+    embed.set_footer(       
+        icon_url=   GUILD_URL_AS(msg.guild), 
+        text=       "{0.guild.name} | ID: {1.id}".format(msg, member)
+        )
+
+    embed.add_field(        
+        name=       "Roles[{}]".format( len(member.roles) - 1),
+        value=      (" ".join([role.mention for role in member.roles if not role.is_everyone])) 
+                    if len(member.roles) > 1 else 
+                    ("Member has no roles.")
+        )
 
     return embed
 
@@ -575,20 +599,23 @@ async def getRolePerms(msg, role, bot_avatar_url):
     return embeds
 
 async def getRolePermsAdmin(role, msg):
-    embed = discord.Embed(  title=      "Administrator",
-                            description="{} role has Admin permission and can do everything.".format(role.name),
-                            colour=     0x51B5CC,
-                            timestamp=  datetime.datetime.utcnow(),
-                            type=       "rich"
-                            )
+    embed = discord.Embed(  
+        title=      "Administrator",
+        description=f"{role.name} role has Admin permission and can do everything.",
+        colour=     0x51B5CC,
+        timestamp=  datetime.datetime.utcnow(),
+        type=       "rich"
+        )
 
-    embed.set_author(       name=       "{} Information".format(role.name),
-                            icon_url=   GUILD_URL_AS(msg.guild)
-                    )
+    embed.set_author(       
+        name=       f"{role.name} Information",
+        icon_url=   GUILD_URL_AS(msg.guild)
+        )
 
-    embed.set_footer(       icon_url=   GUILD_URL_AS(msg.guild), 
-                            text=       "{}".format(msg.guild.name)
-                    )
+    embed.set_footer(       
+        icon_url=   GUILD_URL_AS(msg.guild), 
+        text=       msg.guild.name
+        )
 
     return embed
 
@@ -597,38 +624,47 @@ async def getRolePermsAdmin(role, msg):
 
 
 async def getUserProfile(msg, info):
-    embed = discord.Embed(      description=    f"Level: {info['level']}\n"
-                                                f"Gems: {info['gems']} :gem:\n",
-                                colour =        random_embed_color(), #0xbe95c6,
-                                timestamp=      datetime.datetime.utcnow(),
-                                type=           "rich"
-    )
-    embed.set_author(           name=           "{0.name}#{0.discriminator}".format(msg.author),
-                                icon_url=       AVATAR_URL_AS(user=msg.author)
-    )
-    embed.set_thumbnail(        url=            AVATAR_URL_AS(user=msg.author))
+    embed = discord.Embed(      
+        description=    f"Level: {info['level']}\n"
+                        f"Gems: {info['gems']} :gem:\n",
+        colour =        random_embed_color(), #0xbe95c6,
+        timestamp=      datetime.datetime.utcnow(),
+        type=           "rich"
+        )
 
-    embed.set_footer(           icon_url=       GUILD_URL_AS(msg.guild), 
-                                text=           "{0.guild.name} | ID: {0.author.id}".format(msg)
-    )
+    embed.set_author(          
+        name=           "{0.name}#{0.discriminator}".format(msg.author),
+        icon_url=       AVATAR_URL_AS(user=msg.author)
+        )
+
+    embed.set_thumbnail(        
+        url=            AVATAR_URL_AS(user=msg.author)
+        )
+
+    embed.set_footer(
+        icon_url=       GUILD_URL_AS(msg.guild), 
+        text=           "{0.guild.name} | ID: {0.author.id}".format(msg)
+        )
     
     return embed 
     
 async def getCancelHideServer(member):
-    embed = discord.Embed(  description="{} has been made available to you again.\n"
-                                        "Welcome back.".format(member.guild.name),
-                            type=       'rich',
-                            timestamp=  datetime.datetime.utcnow(),
-                            color=      0x6953B2,
-                        )
+    embed = discord.Embed(  
+        description=    f"{member.guild.name} has been made available to you again.\nWelcome back.",
+        type=           'rich',
+        timestamp=      datetime.datetime.utcnow(),
+        color=          0x6953B2,
+        )
 
-    embed.set_footer(       icon_url=   GUILD_URL_AS(member.guild),
-                            text=       member.guild.name
-                    )
+    embed.set_footer(       
+        icon_url=       GUILD_URL_AS(member.guild),
+        text=           member.guild.name
+        )
         
-    embed.set_author(       name=       'Server Available',
-                            icon_url=   AVATAR_URL_AS(user=member)
-                    )
+    embed.set_author(      
+        name=           'Server Available',
+        icon_url=       AVATAR_URL_AS(user=member)
+        )
     
     return embed
 
@@ -636,52 +672,62 @@ async def getCancelHideServer(member):
 #==================== Owner commands
 async def ownerRestart(msg):
 
-    embed = discord.Embed(  description="Restarting 👋",
-                            colour=     0x6BB281,
-                            timestamp=  datetime.datetime.utcnow(),
-                            type=       "rich"
-                            )
-    embed.set_footer(       icon_url=   GUILD_URL_AS(msg.guild), 
-                            text=       msg.guild.name
-                    )
-    embed.set_author(       name=       "Owner Command",
-                            icon_url=   AVATAR_URL_AS(user=msg.author)
-                    )
+    embed = discord.Embed(  
+        description=    "Restarting 👋",
+        colour=         0x6BB281,
+        timestamp=      datetime.datetime.utcnow(),
+        type=           "rich"
+        )
+
+    embed.set_footer(       
+        icon_url=       GUILD_URL_AS(msg.guild), 
+        text=           msg.guild.name
+        )
+
+    embed.set_author(       
+        name=           "Owner Command",
+        icon_url=       AVATAR_URL_AS(user=msg.author)
+        )
 
     return embed 
 
 async def ownerShutdown(msg):
-    embed = discord.Embed(  description="Shutting Down 👋",
-                            colour=     0x6BB281,
-                            timestamp=  datetime.datetime.utcnow(),
-                            type=       "rich"
-                            )
+    embed = discord.Embed(  
+        description=    "Shutting Down 👋",
+        colour=         0x6BB281,
+        timestamp=      datetime.datetime.utcnow(),
+        type=           "rich"
+        )
 
-    embed.set_footer(       icon_url=   GUILD_URL_AS(msg.guild), 
-                            text=       msg.guild.name
-                    )
+    embed.set_footer(
+        icon_url=       GUILD_URL_AS(msg.guild), 
+        text=           msg.guild.name
+        )
 
-    embed.set_author(       name=       "Owner Command",
-                            icon_url=   AVATAR_URL_AS(user=msg.author)
-                    )
+    embed.set_author(
+        name=           "Owner Command",
+        icon_url=       AVATAR_URL_AS(user=msg.author)
+        )
 
     return embed
 
 @asyncio.coroutine
 async def genFeedbackSnooping(user_id, msg_id, chl_id, srv_id, present, senddate, guild):
-    embed = discord.Embed(  title=      'Anon Feedback',
-                            description=f'User: <@{user_id}> | Still on guild: {present}\n'
-                                        f"On {senddate.strftime('%b %d, %Y %H:%M:%S')} (UTC), posted:\n https://discordapp.com/channels/{srv_id}/{chl_id}/{msg_id}",
+    embed = discord.Embed(  
+        title=          'Anon Feedback',
+        description=    f'User: <@{user_id}> | Still on guild: {present}\n'
+                        f"On {senddate.strftime('%b %d, %Y %H:%M:%S')} (UTC), posted:\n https://discordapp.com/channels/{srv_id}/{chl_id}/{msg_id}",
 
-                            type=       "rich",
-                            timestamp=  datetime.datetime.utcnow(),
-                            color=      random_embed_color()
-                                    
-                            )
+        type=           "rich",
+        timestamp=      datetime.datetime.utcnow(),
+        color=          random_embed_color() 
+        )
 
-    embed.set_footer(       icon_url=   GUILD_URL_AS(guild),
-                            text=       guild.name
-                    )
+    embed.set_footer(
+        icon_url=       GUILD_URL_AS(guild),
+        text=           guild.name
+        )
+
     return embed
 
 

@@ -169,7 +169,7 @@ def GATED(*args):
         if not ctx or not ctx.guild:
             return False 
 
-        return bool (   (any(role.id in config.roles['gated'] for role in ctx.author.roles)) 
+        return bool (   (any(role.id == config.roles['gated'] for role in ctx.author.roles)) 
                     or  (__admin_or_bgowner(ctx))
                     )
 

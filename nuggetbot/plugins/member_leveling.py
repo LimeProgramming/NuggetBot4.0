@@ -113,8 +113,8 @@ class MemberLeveling(commands.Cog):
         for command in self.bot.commands:
             all_cmds = all_cmds + command.aliases + [command.name]
 
-        self.all_cmds = all_cmds
-        self.all_prefixs = [self.bot.command_prefix, '>', '<', '?', '.']
+        self.all_cmds = tuple(all_cmds)
+        self.all_prefixs = (self.bot.command_prefix, '>', '<', '?', '.', '!')
 
         await self.connect_db()
 
