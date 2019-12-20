@@ -132,7 +132,9 @@ class DatabaseCmds(object):
             )
         ON CONFLICT (user_id)
             DO
-            UPDATE SET ishere = TRUE;
+            UPDATE SET 
+                ishere = TRUE
+                joindate = $2;
         """
 
     READD_MEMBER=               "UPDATE public.members SET ishere = TRUE WHERE user_id = $1;"
@@ -145,6 +147,7 @@ class DatabaseCmds(object):
     LEVELUP_MEMBER=             "SELECT * FROM levelUpMember(CAST($1 AS INTEGER), CAST($2 AS INTEGER), CAST($3 AS BIGINT))"
     GET_MEMBER_PROFILE=         "SELECT * FROM memberProfileInfo(CAST($1 AS BIGINT));"
     ADDREM_MEMBER_GEMS=         "UPDATE public.members SET gems = (SELECT gems FROM public.members WHERE user_id = CAST($2 AS BIGINT)) + CAST($1 AS INTEGER) WHERE user_id = CAST($2 AS BIGINT);"
+    GET_ADDED_MEMBERS=          "SELECT COUNT(*) FROM public.members WHERE joindate >= (TIMEZONE('utc'::text, NOW()) - '1 days'::INTERVAL)"
 
 
   # ============================== INVITE TABLE ==============================

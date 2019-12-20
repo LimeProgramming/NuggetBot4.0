@@ -589,6 +589,7 @@ class Gallery(commands.Cog):
         await ctx.channel.send(embed=embed)
         return
 
+
   # -------------------- SCHEDULING --------------------
     def job_missed(self, event):
         """
@@ -625,7 +626,6 @@ class Gallery(commands.Cog):
         await ctx.channel.send(content=f"Gallery schedule has been set for {get_next(hours=self.cogset['text_expirein'])}")
 
         return
-
 
     async def _delete_gallery_messages(self, *args):
         # ===== QUIT ID GALLERIES ARE DISABLED.

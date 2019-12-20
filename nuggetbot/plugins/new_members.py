@@ -24,7 +24,7 @@ import asyncpg
 import datetime
 from typing import Union
 from functools import partial
-from discord.ext import commands
+from discord.ext import tasks, commands
 
 from apscheduler import events
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
@@ -35,8 +35,7 @@ from nuggetbot.utils import get_next
 from nuggetbot.database import DatabaseCmds as pgCmds
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
 
-from .util import checks
-from .util import images
+from .util import checks, cogset, images
 from .util.misc import GET_AVATAR_BYTES
 
 description = """
@@ -109,10 +108,23 @@ class NewMembers(commands.Cog):
         print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
 
+    def cog_unload(self):
+        pass
+
 
   # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self): 
+        # ---------- LOAD COGSET ----------
+        self.cogset = await cogset.LOAD(cogname=self.qualified_name)
+        if not self.cogset:
+            self.cogset= dict(
+                NMlastmsgid=0,
+                NMlastchid=0,
+            )
+
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+
       # ---------- WAIT FOR BOT TO RUN ON_READY ----------
         await asyncio.sleep(5)
 
@@ -140,8 +152,9 @@ class NewMembers(commands.Cog):
       # ---------- CHECK NEW MEMBERS ----------
         await self.check_new_members()
 
+      # ---------- START TASK LOOPS ----------
+        self.updateNewMembers.start()
 
-    
     @commands.Cog.listener()
     async def on_resume(self):
 
@@ -253,7 +266,7 @@ class NewMembers(commands.Cog):
         # ===== END
         return
     
-    #@commands.Cog.listener()
+    @commands.Cog.listener()
     async def on_member_update(self, before, after):
         """When there is an update to a users user data"""
 
@@ -373,7 +386,6 @@ class NewMembers(commands.Cog):
             await ctx.send(content="Alright then, no members kicked.", delete_after=30)
 
         return 
-
 
     @checks.GATED()
     @commands.command(pass_context=False, hidden=False, name='agree', aliases=['iagree', 'letmein'])
@@ -589,6 +601,23 @@ class NewMembers(commands.Cog):
 
 
   # -------------------- SCHEDULING STUFF --------------------
+
+   # -------------------- Task loops --------------------
+    @tasks.loop(hours=24.0)
+    async def updateNewMembers(self):
+        if self.cogset['NMlastmsgid']:
+            await self.bot.delete_msg_id(self.cogset['NMlastmsgid'], self.cogset['NMlastchid'])
+
+        newmems = await self.bot.fetchval(pgCmds.GET_ADDED_MEMBERS)
+
+        
+
+
+        
+
+    @updateNewMembers.before_loop
+    async def before_updateNewMembers(self):
+        await self.bot.wait_until_ready()
 
 
    # -------------------- Auto Kick Members --------------------
