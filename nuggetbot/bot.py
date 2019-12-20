@@ -22,6 +22,7 @@ import aiohttp
 import discord
 import asyncpg
 import logging
+import pathlib
 import datetime
 import traceback
 from typing import Union
@@ -113,7 +114,7 @@ class NuggetBot(commands.Bot):
 
         self.aiosession = aiohttp.ClientSession(loop=self.loop)
 
-        self.jobstore = SQLAlchemyJobStore(url='sqlite:///jobs.sqlite')
+        self.jobstore = SQLAlchemyJobStore(url=fr'sqlite:///{pathlib.Path.cwd() / "data" / "jobs" / "bot_jobs.sqlite"}')
         jobstores = {"default": self.jobstore}
         self.scheduler = AsyncIOScheduler(jobstores=jobstores)
         self.scheduler.add_listener(self.job_missed, events.EVENT_JOB_MISSED)

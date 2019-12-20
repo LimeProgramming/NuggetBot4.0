@@ -17,6 +17,7 @@ import re
 import discord
 import asyncio
 import asyncpg
+import pathlib
 import datetime
 import collections
 from discord.ext import commands
@@ -48,7 +49,7 @@ class Gallery(commands.Cog):
 
         self.cogset = dict()
 
-        self.jobstore = SQLAlchemyJobStore(url='sqlite:///gallery.sqlite')
+        self.jobstore = SQLAlchemyJobStore(url=fr'sqlite:///{pathlib.Path.cwd() / "data" / "jobs" / "gallery.sqlite"}')
         jobstores = {"default": self.jobstore}
         self.scheduler = AsyncIOScheduler(jobstores=jobstores)
         self.scheduler.add_listener(self.job_missed, events.EVENT_JOB_MISSED)

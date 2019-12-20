@@ -163,14 +163,14 @@ class NewMembers(commands.Cog):
         ###===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
         await self.bot.wait_until_ready()
 
-        # ------------------------- GET INVITE INFO -------------------------
+        # ---------- GET INVITE INFO ----------
         invite = await self.__get_invite_used()
 
-        # ------------------------- LOG NEW MEMBER -------------------------
+        # ---------- LOG NEW MEMBER ----------
         embed = await GenEmbed.getMemJoinStaff(member=m, invite=invite)
         await self.bot.send_msg_chid(self.bot.config.channels['bot_log'], embed=embed)
 
-        # ------------------------- SEND WELCOME MESSAGE -------------------------
+        # ---------- SEND WELCOME MESSAGE ----------
         fmt = random.choice([f'Oh {m.mention} steps up to my dinner plate, I mean to {m.guild.name}!',
                             f"I'm so excited to have {m.mention} join us, that I think I'll tear up the couch!",
                             f"Well dip me in batter and call me a nugget, {m.mention} has joined us at {m.guild.name}!",
@@ -182,18 +182,18 @@ class NewMembers(commands.Cog):
         await asyncio.sleep(0.5)
         welMSG = await self.bot.send_msg_chid(self.bot.config.channels['bot_log'], content=fmt, guild_id = m.guild.id)
 
-        # ------------------------- Update Database -------------------------
+        # ---------- Update Database ----------
         await self.bot.db.execute(pgCmds.ADD_WEL_MSG, welMSG.id, welMSG.channel.id, welMSG.guild.id, m.id)
         await self.bot.db.execute(pgCmds.ADD_MEMBER_FUNC, m.id, m.joined_at, m.created_at)
 
-        # ------------------------- AUTO ROLES -------------------------
+        # ---------- AUTO ROLES ----------
         if self.bot.config.roles["autoroles"]:
             for r_id in self.bot.config.roles['autoroles']:
                 await asyncio.sleep(0.4)
                 role = discord.utils.get(m.guild.roles, id=r_id)
                 await m.add_roles(role, reason="Auto Roles")
 
-        # ------------------------- Schedule a kick -------------------------
+        # ---------- Schedule a kick ----------
         await self.schedule_kick(m, daysUntilKick=Days.gated, days=Days.gated)
     
     @commands.Cog.listener()
@@ -205,10 +205,10 @@ class NewMembers(commands.Cog):
         if m.guild.id != self.bot.config.target_guild_id:
             return 
         
-        # ------------------------- CANCEL SCHEDULED KICK -------------------------
+        # ---------- CANCEL SCHEDULED KICK ----------
         await self.cancel_scheduled_kick(member=m)
 
-        # ------------------------- IF MEMBER IS KICKED OR BANNED -------------------------
+        # ---------- IF MEMBER IS KICKED OR BANNED ----------
         # ===== WAIT A BIT TO MAKE SURE THE GUILD AUDIT LOGS ARE UPDATED BEFORE READING THEM
         await asyncio.sleep(0.2)
 
@@ -234,7 +234,7 @@ class NewMembers(commands.Cog):
         except discord.errors.HTTPException:
             self.bot.safe_print("[Info]  HTTP error occurred, likely being rate limited or blocked by CloudFlare. Restart recommended.")
 
-        # ------------------------- REMOVED MEMBER LOGGING -------------------------
+        # ---------- REMOVED MEMBER LOGGING ----------
         # ===== STAFF ONLY LOGGING
         embed = await GenEmbed.getMemLeaveStaff(m, banOrKick)
         await self.bot.send_msg_chid(self.bot.config.channels['bot_log'], embed=embed)
@@ -244,10 +244,10 @@ class NewMembers(commands.Cog):
             embed = await GenEmbed.getMemLeaveUser(m, banOrKick)
             await self.bot.send_msg_chid(self.bot.config.channels['public_bot_log'], embed=embed)
 
-        # ------------------------- REMOVE WELCOME MESSAGES -------------------------
+        # ---------- REMOVE WELCOME MESSAGES ----------
         await self.del_user_welcome(m)
         
-        # ------------------------- UPDATE THE DATABASE -------------------------
+        # ---------- UPDATE THE DATABASE ----------
         await self.bot.db.execute(pgCmds.REMOVE_MEMBER_FUNC, m.id)
 
         # ===== END
