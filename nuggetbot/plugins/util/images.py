@@ -23,7 +23,7 @@ def GenWelcomeImg(avatar_bytes: bytes, member: Union[discord.User, discord.Membe
     img =  __square_pfp_blur(avatar_bytes, member.status.__str__(), imagedir, status=False)
 
     with Image.open(os.path.join(imagedir, "wel", 'welbg.png')).convert('RGBA') as welbg:
-        with Image.open(os.path.join(imagedir, "wel", 'c', f'{random.randint(1,61)}.png')).convert('RGBA') as hl:
+        with Image.open(os.path.join(imagedir, "wel", 'c', f'{random.randint(1,123)}.png')).convert('RGBA') as hl:
             
             # = ADD THE HIGHLIGHT TO THE IMAGE
             workingImg = Image.alpha_composite(welbg, hl)
@@ -42,7 +42,36 @@ def GenWelcomeImg(avatar_bytes: bytes, member: Union[discord.User, discord.Membe
     out_image.seek(0)
 
     return out_image
-    
+
+def GenGoodbyeImg(avatar_bytes: bytes, member: Union[discord.User, discord.Member]) -> BytesIO:
+    # ===== VARS
+    out_image = BytesIO()
+    imagedir = Path(__file__).parents[1].joinpath('images')
+
+    # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
+    img =  __square_pfp_blur(avatar_bytes, member.status.__str__(), imagedir, status=False)
+
+    with Image.open(os.path.join(imagedir, "wel", 'goodbyebg.png')).convert('RGBA') as welbg:
+        with Image.open(os.path.join(imagedir, "wel", 'c', f'{random.randint(1,123)}.png')).convert('RGBA') as hl:
+            
+            # = ADD THE HIGHLIGHT TO THE IMAGE
+            workingImg = Image.alpha_composite(welbg, hl)
+
+            # = ADD THE PFP TO THE IMAGE
+            workingImg.paste(img, (44, 29), mask=img)
+
+            # = MAKE OUR FONT
+            font = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 24)
+
+            draw = ImageDraw.Draw(workingImg)
+            draw.text((188, 98), __get_clean_name(member, 30, at=True), fill=(135, 134, 142, 255), font=font)
+
+            workingImg.save(out_image, "png")
+
+    out_image.seek(0)
+
+    return out_image
+
 def GenLevelUPImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], level: int, rank: int, gems: int, reward:int) -> BytesIO:
     # ===== VARS
     out_image = BytesIO()
