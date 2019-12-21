@@ -50,12 +50,10 @@ class Help(commands.Cog):
   #-------------------- COMMANDS --------------------   
     @checks.BotTester()
     @commands.command(pass_context=True, hidden=False, name='adminhelp', aliases=['bossHelp'])
-    async def cmd_adminhelp(self, ctx):
+    async def cmd_adminhelp(self, ctx, command = None):
         """
         [Bot Tester] Shows the full list of bot commands.
         """
-
-        command = ctx.message.content[(len(ctx.prefix) + len(ctx.invoked_with)):]
 
         if command:
             await ctx.send_help(command)
