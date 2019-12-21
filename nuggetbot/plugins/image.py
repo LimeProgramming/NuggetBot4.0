@@ -68,6 +68,7 @@ class ImageCog(commands.Cog):
         # create a ClientSession to be used for downloading avatars
         self.session = aiohttp.ClientSession(loop=bot.loop)
 
+
   #-------------------- READY LISTENER --------------------
     @commands.Cog.listener()
     async def on_ready(self):
@@ -124,6 +125,8 @@ class ImageCog(commands.Cog):
 
         return avatar_bytes
 
+
+  #-------------------- STATIC METHODS -------------------- 
     @staticmethod
     def processing(avatar_bytes: bytes, colour: tuple) -> BytesIO:
 
@@ -393,141 +396,19 @@ class ImageCog(commands.Cog):
 
         return ava_status
 
-    @staticmethod
-    def GenLevelUPImage(avatar_bytes: bytes, member: Union[discord.User, discord.Member], level: int, rank: int, gems: int, nummsgs:int) -> BytesIO:
-        #===== VARS
-        out_image = BytesIO()
 
-        head = os.path.split(os.path.realpath(__file__))[0]
-        imagedir = os.path.join(head, "images")
-
-        mstat = member.status.__str__()
-        if mstat not in ["offline", "online", "dnd", "idle"]:
-            mstat = "online"
-
-        ###===== OPEN STATUS IMAGE
-        status = Image.open(os.path.join(imagedir, f"{mstat}.png")).convert('RGBA')
-
-        ###===== ADD A SMALL BLUR TO THE EDGES OF THE USER AVATAR
-        with Image.open(BytesIO(avatar_bytes)).convert('RGBA') as rgba_avatar:
-
-            RADIUS = 2
-            diam = 2*RADIUS
-    
-            background = Image.new('RGBA', (rgba_avatar.size[0]+diam, rgba_avatar.size[1]+diam), (0,0,0,0))
-            background.paste(rgba_avatar, (RADIUS, RADIUS))
-
-            ###=== CREATE PASTE MASK
-            mask = Image.new('L', background.size, 0)
-            draw = ImageDraw.Draw(mask)
-            x0, y0 = 0, 0
-            x1, y1 = background.size
-            for d in range(diam+RADIUS):
-                x1, y1 = x1-1, y1-1
-                alpha = 255 if d<RADIUS else int(255*(diam+RADIUS-d)/diam)
-                draw.rectangle([x0, y0, x1, y1], outline=alpha)
-                x0, y0 = x0+1, y0+1
-
-            blur = background.filter(ImageFilter.GaussianBlur(RADIUS/2))
-            background.paste(blur, mask=mask)
-            
-            img = Image.alpha_composite(background, status)
-
-        ###===== OPEN THE MAIN BACKGROUND IMAGE FOR THE LEVELUP IMAGE
-        with Image.open(os.path.join(imagedir, "levelupbg2.png")) as background:
-
-            ###=====    ADD THE PROFILE IMAGE
-            background.paste(img, (10, 10), mask=img)
-
-            ###=====    ADD THE GEM IMAGES
-            gem1 = Image.open(os.path.join(imagedir, "gem1.png")).convert('RGBA')
-            gem2 = Image.open(os.path.join(imagedir, "gem2.png")).convert('RGBA')
-            gem3 = Image.open(os.path.join(imagedir, "gem3.png")).convert('RGBA')
-
-            background.paste(gem2, (550, 109), mask=gem2)
-            background.paste(gem1, (577, 109), mask=gem1)
-            background.paste(gem3, (608, 109), mask=gem3)
-
-
-            background.paste(gem1, (187, 64), mask=gem1)
-
-            ###=====    ADD THE TEXT
-            #-------    FONTS
-            lfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Semibold.ttf"), 42)
-            zfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Regular.ttf"), 38)
-            sfont = ImageFont.truetype(os.path.join(imagedir, "OpenSans-Light.ttf"), 32)
-
-            draw = ImageDraw.Draw(background)
-
-
-            #= username
-            if len(f"{member.name}#{member.discriminator}") <= 22:
-                name = f"{member.name}#{member.discriminator}"
-
-            elif len(f"{member.name}") <= 22:
-                name = f"{member.name}"
-
-            else:
-                name = f"{member.name}..."
-
-            draw.text((160, 105), name, fill=(230, 230, 230, 255), font=sfont)
-            #= Level up
-            draw.text((259, 0), "Level Up", fill=(230, 230, 230, 255), font=lfont)
-            #= Reward
-            draw.text((222, 50), "Reward: 123456", fill=(230, 230, 230, 255), font=zfont)
-            #= Level
-            draw.text((550, 0), "LV:", fill=(230, 230, 230, 255), font=zfont)
-            draw.text((650, 0), f"{level}", fill=(230, 230, 230, 255), font=lfont)
-            #= Rank
-            draw.text((550, 46), f"Rank:", fill=(230, 230, 230, 255), font=zfont)
-            draw.text((650, 46), f"{rank}", fill=(230, 230, 230, 255), font=lfont)
-            #= Gems
-            draw.text((650, 92), f"{gems}", fill=(230, 230, 230, 255), font=lfont)
-
-            background.save(out_image, "png")
-
-
-        out_image.seek(0)
-
-        return out_image
-
-    @staticmethod
-    def mask_circle_solid(pil_img, background_color, blur_radius, offset=0):
-        background = Image.new(pil_img.mode, pil_img.size, background_color)
-
-        offset = blur_radius * 2 + offset
-        mask = Image.new("L", pil_img.size, 0)
-        draw = ImageDraw.Draw(mask)
-        draw.ellipse((offset, offset, pil_img.size[0] - offset, pil_img.size[1] - offset), fill=255)
-        mask = mask.filter(ImageFilter.GaussianBlur(blur_radius))
-
-        return Image.composite(pil_img, background, mask)
-
-    @staticmethod
-    def circle_image_test(avatar_bytes: bytes):
-        ava_status = BytesIO()
-        rgba_avatar = Image.open(BytesIO(avatar_bytes)).convert('RGBA')
-
-        with Image.new("RGBA", (68, 68), (35, 39, 42)) as background:
-            background.paste(rgba_avatar, (2, 2), mask=rgba_avatar)
-
-            im_thumb = ImageCog.mask_circle_solid(background, (35, 39, 42), 2)
-
-        rgba_avatar.close()
-
-        im_thumb.save(ava_status, "png")
-
-        ava_status.seek(0)
-
-        return ava_status
-        #im = Image.open('data/src/lena.jpg')
-
+  #-------------------- COMMANDS -------------------- 
+    #@checks.BotTester()
     @commands.command(pass_context=True, hidden=False, name='qrtest', aliases=[])
     async def qrcodetest(self, ctx, *, member: discord.Member = None):
+        """
+        [Bot Tester] Generates a QR code with a random UUID as it's value
+        """
+
         member = member or ctx.author
 
         try:
-            #t = uuid.uuid4()
+            t = uuid.uuid4()
             #img = qrcode.make(t)#, image_factory=qrcode.image.pure.PymagingImage)
 
             qr = qrcode.QRCode(
@@ -537,9 +418,8 @@ class ImageCog(commands.Cog):
                 border=1,
             )
 
-            #qr.add_data(t)
-            #207344800381403137
-            qr.add_data(f"https://discordapp.com/users/{member.id}")
+            qr.add_data(t)
+            ##qr.add_data(f"https://discordapp.com/users/{member.id}")
             qr.make(fit=True)
 
             img = qr.make_image(fill_color="black", back_color="white").get_image()
@@ -558,9 +438,13 @@ class ImageCog(commands.Cog):
         #>>> qr = qrtools.QR()
         #>>> qr.decode("horn.png")
 
+    #@checks.BotTester()
     @commands.command(pass_context=True, hidden=False, name='qrtestdecode', aliases=[])
     async def qrcodedecodetest(self, ctx):
-        
+        """
+        [Bot Tester] Decodes a QRcode from an image sent as an attachment
+        """
+
         try:
             if not ctx.message.attachments or len(ctx.message.attachments) > 1:
                 await ctx.send("You need to attach an image and only one image for me to decode.")
@@ -576,7 +460,6 @@ class ImageCog(commands.Cog):
             return
 
         try:
-            
             uid = uuid.UUID(t.data.decode('utf-8'))
 
             await ctx.send(f"{str(uid)} UUID value of the scanned QR code.")
@@ -588,91 +471,12 @@ class ImageCog(commands.Cog):
 
         return
 
-    @commands.command(pass_context=True, hidden=False, name='leveluptest', aliases=[])
-    async def leveluptest(self, ctx, *, member: discord.Member = None):
-        member = member or ctx.author
-
-        async with ctx.typing():
-            rank = await self.db.fetchval('Select Count(user_id) from public.members where nummsgs > (Select nummsgs from public.members where user_id = CAST($1 AS BIGINT))', member.id)
-            rank = rank + 1 
-
-            level, nummsgs, gems = await self.db.fetchrow('Select level, nummsgs, gems from public.members where user_id = CAST($1 AS BIGINT)', member.id)
-            
-            ###===== GET USER AVATAR AS BYTES
-            avatar_bytes = await member.avatar_url_as(format='png', static_format='webp', size=128).read()
-
-
-            fn = partial(self.GenLevelUPImage, avatar_bytes, member, level, rank, gems, nummsgs)
-            final_buffer = await self.bot.loop.run_in_executor(None, fn)
-
-
-            file = discord.File(filename="circle.png", fp=final_buffer)
-            await ctx.send(file=file)
-
-        return
-
-
-
-    @commands.command()
-    async def circletest(self, ctx, *, member: discord.Member = None):
-        """Display the user's avatar on their colour."""
-
-        # this means that if the user does not supply a member, it will default to the
-        # author of the message.
-        member = member or ctx.author
-
-        async with ctx.typing():
-            avatar_bytes = await misc.GET_AVATAR_BYTES(user = member, size = 64)
-            fn = partial(self.circle_image_test, avatar_bytes)
-
-            final_buffer = await self.bot.loop.run_in_executor(None, fn)
-
-            # prepare the file
-            file = discord.File(filename="circle.png", fp=final_buffer)
-
-            await ctx.send(file=file)
-
-    ### playground code for the profile command
-    @commands.command()
-    async def imagetest(self, ctx, *, member: discord.Member = None):
-        """Display the user's avatar on their colour."""
-
-        # this means that if the user does not supply a member, it will default to the
-        # author of the message.
-        member = member or ctx.author
-
-        async with ctx.typing():
-            # this means the bot will type while it is processing and uploading the image
-
-
-            # grab the user's avatar as bytes
-            avatar_bytes = await misc.GET_AVATAR_BYTES(user = member, size = 128)
-            #avatar_bytes = await member.avatar_url_as(format='png', static_format='webp', size=128).read()
-
-            try:
-                rank = await self.db.fetchval('Select Count(user_id) from public.members where nummsgs > (Select nummsgs from public.members where user_id = CAST($1 AS BIGINT))', member.id)
-                rank = rank + 1 
-
-                level, nummsgs, gems = await self.db.fetchrow('Select level, nummsgs, gems from public.members where user_id = CAST($1 AS BIGINT)', member.id)
-
-                # create partial function so we don't have to stack the args in run_in_executor
-                fn = partial(self.processing4, avatar_bytes, member, level, rank, gems, nummsgs)
-
-                # this runs our processing in an executor, stopping it from blocking the thread loop.
-                # as we already seeked back the buffer in the other thread, we're good to go
-                final_buffer = await self.bot.loop.run_in_executor(None, fn)
-            except Exception as e:
-                print(e)
-                raise TypeError
-            # prepare the file
-            file = discord.File(filename="circle.png", fp=final_buffer)
-
-            # send it
-            await ctx.send(file=file)
-
-    @commands.command()
+    #@checks.BotTester()
+    @commands.command(pass_context=True, hidden=False, name='oldprofiletest', aliases=[])
     async def circle(self, ctx, *, member: discord.Member = None):
-        """Display the user's avatar on their colour."""
+        """
+        [Bot Tester] Old profile image generator
+        """
 
         # this means that if the user does not supply a member, it will default to the
         # author of the message.

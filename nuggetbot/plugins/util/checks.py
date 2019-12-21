@@ -175,6 +175,23 @@ def GATED(*args):
 
     return commands.check(pred)
 
+def BotTester(*args):
+    async def pred(ctx):
+        if not ctx or not ctx.guild:
+            return False   
+
+        if  (   (any(role.id in config.roles["any_staff"] for role in ctx.author.roles))
+            or  (any(role.id == config.roles["bottester"] for role in ctx.author.roles))
+            or  __admin_or_bgowner(ctx)
+            ):
+
+            return True
+
+        else:
+            return False
+
+    return commands.check(pred)
+
 # -------------------- STAFF DECORS --------------------
 ##Permissions decor | guild owner only
 def GUILD_OWNER(*args):
@@ -248,7 +265,9 @@ def ANY_STAFF(*args):
 
 ##Disables a bot command
 def DISABLED(*args):
-    return commands.check(False)
+    async def pred(ctx):
+        return False 
+    return commands.check(pred)
 
 # -------------------- BOT OWNER DECORS --------------------
 def BOT_OWNER(*args):

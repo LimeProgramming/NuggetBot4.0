@@ -46,6 +46,7 @@ class Config:
         self._login_token = config.get('Credentials', 'Token', fallback=ConfigDefaults.token)
         self.owner_id=      config.get('Credentials', 'Owner', fallback=ConfigDefaults.owner_id)
 
+
       # -------------------------------------------------- BOT --------------------------------------------------
         self.delete_invoking=   config.getboolean(  'Bot', 'DeleteInvoking',    fallback=ConfigDefaults.delete_invoking)
         self.command_prefix=    config.get(         'Bot', 'command_prefix',    fallback=ConfigDefaults.command_prefix)
@@ -53,7 +54,8 @@ class Config:
 
         #guild targetting
         self.target_guild_id = config.getint('Guild', 'guild_id', fallback=ConfigDefaults.target_guild_id)
-        
+
+
       # -------------------------------------------------- CHANNELS --------------------------------------------------
         self.channels = {}
 
@@ -66,7 +68,8 @@ class Config:
         self.channels['nugget_welcome_id']=             config.getint(  'Channel', 'Welcome MSG',    fallback=default_value)
         self.channels['entrance_gate']=                 config.getint(  'Channel', 'Entrance Gate',  fallback=default_value)
         self.channels['public_rules_id']=               config.getint(  'Channel', 'Public Rules',   fallback=default_value)
-        
+
+
       # -------------------------------------------------- ROLES --------------------------------------------------
         self.roles = {}
     
@@ -81,7 +84,7 @@ class Config:
         else:
             self.roles['autoroles'] = False
 
-        self.roles["uninformed"]=                       config.getint(  'Roles', 'Uninformed',      fallback=None)
+        self.roles['bottester']=                       config.getint(  'Roles', 'Bot-Tester',       fallback=None)
 
        #===== STAFF ROLES
 
@@ -93,6 +96,7 @@ class Config:
         self.roles['high_staff']= [self.roles['admin'], self.roles['mod']]
         self.roles['any_staff']=  [self.roles['admin'], self.roles['mod'], self.roles['tmod']]
         self.roles['user_staff']= [self.roles['admin'], self.roles['mod'], self.roles['tmod'], self.roles['member']]
+
 
       # -------------------------------------------------- GIVEAWAY --------------------------------------------------
         self.gvwy_channel_id=       config.getint(     'Giveaway', 'Channel',                fallback=None)

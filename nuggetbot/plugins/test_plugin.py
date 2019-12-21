@@ -29,7 +29,7 @@ from discord.ext import commands
 from PIL import (Image, ImageDraw, ImageFilter, ImageFont)
 
 from .util.misc import GET_AVATAR_BYTES
-from .util import images
+from .util import checks, cogset, images
 from nuggetbot import exceptions
 from nuggetbot.config import Config
 from nuggetbot.database import DatabaseCmds as pgCmds
@@ -70,6 +70,7 @@ class Test(commands.Cog):
     async def cog_command_error(self, ctx, error):
         print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
+
 
   # -------------------- LISTENERS -------------------- 
     @commands.Cog.listener()
@@ -177,14 +178,24 @@ class Test(commands.Cog):
 
         return
 
-  # -------------------- COMMANDS -------------------- 
+  # -------------------- Listeners -------------------- 
+
     @commands.Cog.listener()
     async def on_message(self, msg):
         return
         print(msg.clean_content)
 
-    @commands.command(pass_context=True, hidden=True, name='webhook2', aliases=[])
+
+  # -------------------- COMMANDS -------------------- 
+
+    @checks.DISABLED()
+    @checks.BotTester()
+    @commands.command(pass_context=True, hidden=False, name='webhook2', aliases=[])
     async def cmd_webhook2(self, ctx):
+        """
+        [Disabled command]
+        """
+
         if not ctx.message.attachments:
             return 
 
@@ -192,8 +203,13 @@ class Test(commands.Cog):
         await self.bot.execute_webhook2(ctx.channel, content="this is a test", username='Lime testing broken things', avatar_url = ctx.author.avatar_url_as(format='png', size=128).__str__(), files=ctx.message.attachments)
         print('done')
 
-    @commands.command(pass_context=True, hidden=True, name='welcomemsgtest', aliases=[])
+    @checks.BotTester()
+    @commands.command(pass_context=True, hidden=False, name='welcomemsgtest', aliases=[])
     async def cmd_welmsgtest(self, ctx, member:discord.Member = None):
+        """
+        [Bot Tester] Posts the newmember welcome image of either the poster or provided member.
+        """
+
         if member is None:
             member = ctx.author 
 
@@ -207,10 +223,33 @@ class Test(commands.Cog):
             # === SEND THE RETURN IMAGE
             await ctx.send(file=discord.File(filename="welcome.png", fp=final_buffer))
 
+    @checks.BotTester()
+    @commands.command(pass_context=True, hidden=False, name='goodbyemsgtest', aliases=[])
+    async def cmd_gbmsgtest(self, ctx, member:discord.Member = None):
+        """
+        [Bot Tester] Posts the goodbye image of either the poster or provided member.
+        """
 
-    @commands.command(pass_context=True, hidden=True, name='leaderboardtest', aliases=[])
+        if member is None:
+            member = ctx.author 
+
+        async with ctx.typing():
+            # === GET THE USERS PFP AS BYTES
+            avatar_bytes = await GET_AVATAR_BYTES(user = member, size = 128)
+
+            # === SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
+            final_buffer = await self.bot.loop.run_in_executor(None, partial(images.GenGoodbyeImg, avatar_bytes, member))
+
+            # === SEND THE RETURN IMAGE
+            await ctx.send(file=discord.File(filename="welcome.png", fp=final_buffer))
+
+    @checks.BotTester()
+    @commands.command(pass_context=True, hidden=False, name='leaderboardtest', aliases=[])
     async def cmd_leaderboardtest(self, ctx):
-        
+        """
+        [Bot Tester] Posts the guild leaderboard image
+        """
+
         results = dict()
         
         for i, result in enumerate(await self.db.fetch(pgCmds.GET_MEMBER_LEADERBOARD)):
@@ -296,7 +335,6 @@ class Test(commands.Cog):
 
         return out_image
 
-
     @staticmethod
     def __round_pfp_blur(avatar_bytes, mstat, imgdir, *, RADIUS=2, status=True, basecolour=(35,39,42,255)):
         
@@ -314,7 +352,6 @@ class Test(commands.Cog):
 
         return im
     
-
     @staticmethod
     def __get_clean_name(member, maxlen=22, *, at=False):
 

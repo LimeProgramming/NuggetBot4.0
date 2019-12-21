@@ -153,7 +153,7 @@ class NewMembers(commands.Cog):
         await self.check_new_members()
 
       # ---------- START TASK LOOPS ----------
-        self.updateNewMembers.start()
+        #self.updateNewMembers.start()
 
     @commands.Cog.listener()
     async def on_resume(self):

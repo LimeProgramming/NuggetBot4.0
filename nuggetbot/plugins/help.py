@@ -19,7 +19,6 @@ import discord
 import datetime
 from discord.ext import commands
 
-from nuggetbot.config import Config
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS, escape
 from .util import checks
 
@@ -32,13 +31,12 @@ class Help(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        Help.config = Config()
 
   #-------------------- LOCAL COG STUFF --------------------      
     async def cog_after_invoke(self, ctx):
         '''THIS IS CALLED AFTER EVERY COG COMMAND, IT DISCONNECTS FROM THE DATABASE AND DELETES INVOKING MESSAGE IF SET TO.'''
 
-        if ctx.message.guild and Help.config.delete_invoking:
+        if ctx.message.guild and self.bot.config.delete_invoking:
             await ctx.message.delete()
 
         return
@@ -50,20 +48,22 @@ class Help(commands.Cog):
 
 
   #-------------------- COMMANDS --------------------   
-    @checks.HIGHEST_STAFF()
+    @checks.BotTester()
     @commands.command(pass_context=True, hidden=False, name='adminhelp', aliases=['bossHelp'])
     async def cmd_adminhelp(self, ctx):
-        try:
-            command = ctx.message.content[(len(ctx.prefix) + len(ctx.invoked_with)):]
+        """
+        [Bot Tester] Shows the full list of bot commands.
+        """
 
-            if command:
-                await ctx.send_help(command)
-            else:
-                await ctx.send_help() 
-            return
+        command = ctx.message.content[(len(ctx.prefix) + len(ctx.invoked_with)):]
 
-        except Exception as e:
-            print(e)
+        if command:
+            await ctx.send_help(command)
+
+        else:
+            await ctx.send_help() 
+
+        return
 
     @checks.CORE()
     @checks.RECEPTION()
@@ -99,7 +99,7 @@ class Help(commands.Cog):
 
         embed.add_field(    
             name=   "NSFW Access",
-            value=  f"To get access to the NSFW channels just ping staff in <#{Help.config.channels['reception_id']}> with your age.",
+            value=  f"To get access to the NSFW channels just ping staff in <#{self.bot.config.channels['reception_id']}> with your age.",
             inline= False
             )
 

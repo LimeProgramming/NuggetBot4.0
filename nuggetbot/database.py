@@ -133,7 +133,7 @@ class DatabaseCmds(object):
         ON CONFLICT (user_id)
             DO
             UPDATE SET 
-                ishere = TRUE
+                ishere = TRUE,
                 joindate = $2;
         """
 
