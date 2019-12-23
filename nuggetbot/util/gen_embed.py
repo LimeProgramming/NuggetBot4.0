@@ -220,7 +220,7 @@ async def getScheduleKick(member, daysUntilKick, kickDate):
     #==== log event
     embed = discord.Embed(  
         title=      'Event Scheduled', 
-        description="{0.mention} | {0.name}#{0.discriminator} will be kicked in {} days ({} CE), unless verified.".format(  
+        description="{0.mention} | {0.name}#{0.discriminator} will be kicked in {1} days ({2} CE), unless verified.".format(  
             member,
             daysUntilKick,
             kickDate.strftime('%H:%M:%S, %b %d, %Y')),
@@ -242,6 +242,36 @@ async def genKickEntrance(member, entrance_gate_channel_id):
         color=      0xB20828
         )
     
+    return embed
+
+async def genReopenGuild(secondsUntilReopen):
+
+    reopenDate = datetime.datetime.utcnow() + datetime.timedelta(seconds=secondsUntilReopen)
+
+    #==== log event
+    embed = discord.Embed(  
+        title=      'Event Scheduled', 
+        description="Guild is now closed. Guild will reopen on {} (UTC).\n"
+                    "Discord users who join will be immidately kicked until the guild is reopned.".format(
+                        reopenDate.strftime('%H:%M:%S, %b %d, %Y')
+                        ),
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow(),
+        color=      random_embed_color()
+        )
+
+    return embed
+
+async def genCloseGuild():
+    #==== log event
+    embed = discord.Embed(  
+        title=      'Guild in now Closed', 
+        description="Discord users who join will be immidately kicked until the guild is reopned.",
+        type=       "rich",
+        timestamp=  datetime.datetime.utcnow(),
+        color=      random_embed_color()
+        )
+
     return embed
 
 #==================== Massive perms embeds

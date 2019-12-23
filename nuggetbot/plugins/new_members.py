@@ -13,6 +13,7 @@ Kind Regards
 -Lime
 """
 
+import re
 import sys
 import json
 import random
@@ -107,9 +108,64 @@ class NewMembers(commands.Cog):
     async def cog_command_error(self, ctx, error):
         print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
+        return
 
     def cog_unload(self):
         pass
+
+
+  # -------------------- STATIC METHODS --------------------
+    @staticmethod
+    def time_pat_to_secs(t):
+        '''
+        Converts a string in format <xDxHxMxS> (d for days, h for hours, M for minutes, S for seconds) to amount of seconds.
+        eg: 3d5h would be 77 hours
+
+        Args:
+            (str) or (int)
+
+        Returns:
+            (int) or (None)
+        '''
+
+        try:
+            total_seconds = int(t)
+            return total_seconds
+
+        except ValueError:
+            valid = False 
+
+            #===== if input doesn't match basic pattern
+            if (re.match(r"(\d+[DHMSdhms])+", t)):
+                
+                #=== if all acsii chars in the string are unique 
+                letters = re.findall(r"[DHMSdhms]", t)
+                if len(letters) == len(set(letters)):
+                    
+                    #= if more then 1 letter side by side
+                    #= ie. if t was 2dh30m then after the split you'd have ['', 'dh', 'm', '']
+                    if not ([i for i in re.split(r"[0-9]", t) if len(i) > 1]):
+                        
+                        # if letters are in order.
+                        if letters == sorted(letters, key=lambda letters: ["d", "h", "m", "s"].index(letters[0])):
+                            valid = True
+
+            if valid:
+                total_seconds = int() 
+
+                for data in re.findall(r'(\d+[DHMSdhms])', t):
+                    if data.endswith("d"):
+                        total_seconds += int(data[:-1])*86400
+                    if data.endswith("h"):
+                        total_seconds += int(data[:-1])*3600
+                    if data.endswith("m"):
+                        total_seconds += int(data[:-1])*60
+                    if data.endswith("s"):
+                        total_seconds += int(data[:-1])
+
+            return total_seconds 
+
+        return False
 
 
   # -------------------- LISTENERS --------------------
@@ -121,6 +177,8 @@ class NewMembers(commands.Cog):
             self.cogset= dict(
                 NMlastmsgid=0,
                 NMlastchid=0,
+                guildclosed=False,
+                agreeoff=False
             )
 
             await cogset.SAVE(self.cogset, cogname=self.qualified_name)
@@ -144,6 +202,7 @@ class NewMembers(commands.Cog):
         self.roles['member']=       discord.utils.get(self.tguild.roles, id=self.bot.config.roles['member'])
         self.roles['newmember']=    discord.utils.get(self.tguild.roles, id=self.bot.config.roles['newmember'])
         self.roles['gated']=        discord.utils.get(self.tguild.roles, id=self.bot.config.roles['gated'])
+        self.roles['name_colour']=  discord.utils.get(self.tguild.roles, id=self.bot.config.name_colors[0])
 
       # ---------- SCHEDULER ----------
         self.scheduler.start()
@@ -221,6 +280,7 @@ class NewMembers(commands.Cog):
         # ---------- CANCEL SCHEDULED KICK ----------
         await self.cancel_scheduled_kick(member=m)
 
+
         # ---------- IF MEMBER IS KICKED OR BANNED ----------
         # ===== WAIT A BIT TO MAKE SURE THE GUILD AUDIT LOGS ARE UPDATED BEFORE READING THEM
         await asyncio.sleep(0.2)
@@ -247,6 +307,7 @@ class NewMembers(commands.Cog):
         except discord.errors.HTTPException:
             self.bot.safe_print("[Info]  HTTP error occurred, likely being rate limited or blocked by CloudFlare. Restart recommended.")
 
+
         # ---------- REMOVED MEMBER LOGGING ----------
         # ===== STAFF ONLY LOGGING
         embed = await GenEmbed.getMemLeaveStaff(m, banOrKick)
@@ -254,12 +315,24 @@ class NewMembers(commands.Cog):
 
         # ===== PUBLIC VISABLE LOGGING, ONLY APPLICABLE IF EXMEMBER WAS GIVEN THE CORE ROLE
         if discord.utils.get(m.roles, id=self.bot.config.roles['member']):
-            embed = await GenEmbed.getMemLeaveUser(m, banOrKick)
-            await self.bot.send_msg_chid(self.bot.config.channels['public_bot_log'], embed=embed)
+
+            wel_ch = self.bot.get_channel(self.bot.config.channels['public_bot_log'])
+
+            async with wel_ch.typing():
+                # = GET THE USERS PFP AS BYTES
+                avatar_bytes = await GET_AVATAR_BYTES(user=m, size = 128)
+
+                # = SAFELY RUN SOME SYNCRONOUS CODE TO GENERATE THE IMAGE
+                final_buffer = await self.bot.loop.run_in_executor(None, partial(images.GenGoodbyeImg, avatar_bytes, m, banOrKick))
+
+                # = SEND THE RETURN IMAGE
+                await wel_ch.send(file=discord.File(filename="goodbye.png", fp=final_buffer))
+
 
         # ---------- REMOVE WELCOME MESSAGES ----------
         await self.del_user_welcome(m)
         
+
         # ---------- UPDATE THE DATABASE ----------
         await self.bot.db.execute(pgCmds.REMOVE_MEMBER_FUNC, m.id)
 
@@ -278,9 +351,6 @@ class NewMembers(commands.Cog):
             return
 
         # ===== HANDLING FOR STAFF ADDING THE MEMBER ROLE TO NEW USERS MANUALLY 
-        #if self.roles['member'] in after.roles and self.roles['gated'] in before.roles
-        #if any(item in after.roles for item in [])
-
         if {self.roles['member'], self.roles['gated']}.issubset(set(after.roles)) and self.roles['gated'] in before.roles:
             await self.handle_gated2member(after)
 
@@ -387,12 +457,49 @@ class NewMembers(commands.Cog):
 
         return 
 
+    @checks.HIGHEST_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='closeGuild', aliases=['closeguild'])
+    async def cmd_closeguild(self, ctx, timer=None):
+        """
+        [Admins] Closes the guild either for a certain amount of time in seconds or until manually reopened.
+
+        Useage:
+            [p]closeguild <xDxHxMxS>/<S> (d for days, h for hours, M for minutes, S for seconds)
+            eg: [p]closeguild 4D3H
+        """
+
+        t = None 
+
+        if timer:
+            t = NewMembers.time_pat_to_secs(timer)
+            if not t:
+                ctx.send_help('closeGuild')
+        
+        # ===== EDIT COGSET
+        self.cogset['guildclosed'] = True
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+
+        if t:
+            await self.schedule_reopen_guild(t)
+        
+        else:
+            embed = await GenEmbed.genCloseGuild()
+            await self.bot.send_msg_chid(self.bot.config.channels['bot_log'], embed=embed)
+
+        return 
+
+
+
+
     @checks.GATED()
     @commands.command(pass_context=False, hidden=False, name='agree', aliases=['iagree', 'letmein'])
     async def cmd_agree(self, ctx):
         """
         [Gated] Lets a new member sitting in the gate into the rest of the guild.
         """
+
+        if self.cogset['agreeoff'] or self.cogset['guildclosed']:
+            await ctx.send(f"```\nSorry <@{ctx.author.id}>, but the guild is not accepting new members at this time. This is most likely due to a raid.\nPlease ask staff for help or check back later.\n```")
 
         await ctx.author.add_roles(self.roles['member'])
 
@@ -403,10 +510,12 @@ class NewMembers(commands.Cog):
     @asyncio.coroutine
     async def handle_gated2member(self, member):
         # ===== ADD NEW MEMBER AND REMOVE GATED ROLES
+        await member.remove_roles(self.roles['gated'], reason="Removed Gated Role")
+        await asyncio.sleep(0.2)
         await member.add_roles(self.roles['newmember'], reason="Added new member role")
         await asyncio.sleep(0.2)
-        await member.remove_roles(self.roles['gated'], reason="Removed Gated Role")
-
+        await member.add_roles(self.roles['name_colour'], reason="Added name colour")
+        
         # ===== SCHEDULE REMOVAL OF NEW MEMBER ROLE
         await self.schedule_rem_newuser_role(member, daysUntilRemove=7, days=7)
 
@@ -763,6 +872,7 @@ class NewMembers(commands.Cog):
 
         return
 
+
    #-------------------- Kick new members --------------------
     @asyncio.coroutine
     async def cancel_scheduled_kick(self, member:Union[discord.User, discord.Member]):
@@ -855,6 +965,59 @@ class NewMembers(commands.Cog):
 
         return
 
+
+   #-------------------- Close Guild --------------------
+    @asyncio.coroutine
+    async def schedule_reopen_guild(self, secondsUntilReopen=3600, **kwargs):
+        """
+        [Called Close Guild Command]
+
+        Adds re-open guild func to the scheduler.
+        """
+
+        # ===== 
+        for job in self.jobstore.get_all_jobs():
+            if ["_reopen_guild"] == job.id.split(" "):
+                return
+        
+        # ===== SEND REPORT MESSAGE TO STAFF
+        embed = await GenEmbed.genReopenGuild(secondsUntilReopen)
+        await self.bot.send_msg_chid(self.bot.config.channels['bot_log'], embed=embed)
+
+        # ===== ADD EVENT TO THE SCHEDULER
+        self.scheduler.add_job(
+            call_schedule,
+            'date',
+            id=self._reopen_guild.__name__,
+            run_date=get_next(**kwargs),
+            kwargs={"func": "_reopen_guild"}
+            )
+
+        return
+
+    @asyncio.coroutine
+    async def _reopen_guild(self):
+        # ===== WAIT FOR THE BOT TO FINISH IT'S SETUP  
+        await self.bot.wait_until_ready()
+
+        # ===== EDIT COGSET
+        self.cogset['guildclosed'] = False
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+
+        # ===== REPORT TO STAFF
+        embed = discord.Embed(  
+            title=      'Guild is now open.', 
+            description="Users will now be able to join the guild.",
+            type=       "rich",
+            timestamp=  datetime.datetime.utcnow(),
+            color=      RANDOM_DISCORD_COLOR()
+            )
+
+        await self.bot.send_msg_chid(self.bot.config.channels['bot_log'], embed=embed)
+
+        return
+    
+
    #-------------------- TRINKETS --------------------
     def job_missed(self, event):
         """
@@ -877,6 +1040,11 @@ def setup(bot):
 
 async def call_schedule(func=None, arg=None, user_id=None, roles=None):
     if arg is None:
-        await NewMembers.bot._kick_entrance(user_id)
-        return
-    await getattr(NewMembers.bot, func)(arg)
+        if user_id is not None:
+            await NewMembers.bot._kick_entrance(user_id)
+
+        else:
+            await getattr(NewMembers.bot, func)
+
+    else:
+        await getattr(NewMembers.bot, func)(arg)

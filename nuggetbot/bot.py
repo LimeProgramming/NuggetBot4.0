@@ -63,19 +63,20 @@ Made by Calamity Lime#8500
 log = logging.getLogger(__name__)
 
 plugins = (
-    ('nuggetbot.plugins.test_plugin',   'Test'),
-    ('nuggetbot.plugins.giveaway',      'Giveaway'),
-    ('nuggetbot.plugins.image',         'Imagetest'),
-    ('nuggetbot.plugins.artists',       'Artists'),
-    ('nuggetbot.plugins.fun',           'Fun'),
-    ('nuggetbot.plugins.admin',         'Admin'),
-    ('nuggetbot.plugins.delMsgLogging', 'Deleted Message Logging'),
-    ('nuggetbot.plugins.memberdms',     'Feedback'),
-    ('nuggetbot.plugins.gallery',       'Gallery'),
-    ('nuggetbot.plugins.help',          'Help'),
-    ('nuggetbot.plugins.member_leveling', 'Member Leveling'),
-    ('nuggetbot.plugins.self_roles',    'Self Roles'),
-    ('nuggetbot.plugins.new_members',    'New Members')
+    ('nuggetbot.plugins.test_plugin',       'Test'),
+    ('nuggetbot.plugins.giveaway',          'Giveaway'),
+    ('nuggetbot.plugins.image',             'Imagetest'),
+    ('nuggetbot.plugins.artists',           'Artists'),
+    ('nuggetbot.plugins.fun',               'Fun'),
+    ('nuggetbot.plugins.admin',             'Admin'),
+    ('nuggetbot.plugins.delMsgLogging',     'Deleted Message Logging'),
+    ('nuggetbot.plugins.memberdms',         'Feedback'),
+    ('nuggetbot.plugins.gallery',           'Gallery'),
+    ('nuggetbot.plugins.help',              'Help'),
+    ('nuggetbot.plugins.member_leveling',   'Member Leveling'),
+    ('nuggetbot.plugins.self_roles',        'Self Roles'),
+    ('nuggetbot.plugins.new_members',       'New Members'),
+    ('nuggetbot.plugins.moderation',        'Moderation')
 )
 #    ('nuggetbot.plugins.new_members',   'New Members')
 #)

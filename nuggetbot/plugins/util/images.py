@@ -43,15 +43,23 @@ def GenWelcomeImg(avatar_bytes: bytes, member: Union[discord.User, discord.Membe
 
     return out_image
 
-def GenGoodbyeImg(avatar_bytes: bytes, member: Union[discord.User, discord.Member]) -> BytesIO:
+def GenGoodbyeImg(avatar_bytes: bytes, member: Union[discord.User, discord.Member], banOrKick) -> BytesIO:
     # ===== VARS
     out_image = BytesIO()
     imagedir = Path(__file__).parents[1].joinpath('images')
 
     # ===== BLUR THE EDGES OF A MEMBERS PFP AND ADD THEIR STATUS
     img =  __square_pfp_blur(avatar_bytes, member.status.__str__(), imagedir, status=False)
+    
+    background = 'goodbyebg.png'
+    if banOrKick:
+        if (banOrKick[0] == discord.AuditLogAction.ban):
+            background = 'bannedbg.png'
 
-    with Image.open(os.path.join(imagedir, "wel", 'goodbyebg.png')).convert('RGBA') as welbg:
+        elif (banOrKick[0] == discord.AuditLogAction.kick): 
+            background = 'kickedbg.png'
+
+    with Image.open(os.path.join(imagedir, "wel", background)).convert('RGBA') as welbg:
         with Image.open(os.path.join(imagedir, "wel", 'c', f'{random.randint(1,123)}.png')).convert('RGBA') as hl:
             
             # = ADD THE HIGHLIGHT TO THE IMAGE

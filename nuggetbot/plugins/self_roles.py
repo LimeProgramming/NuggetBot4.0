@@ -68,6 +68,7 @@ class SelfRoles(commands.Cog):
         print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
 
+
   # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self): 
@@ -202,9 +203,6 @@ class SelfRoles(commands.Cog):
 
       # ---------- HANDLE RELATED ROLES ----------
         await self.remove_user_reactions(msg = rolesMSG, member = member)
-
-
-        
 
 
   # -------------------- FUNCTIONS --------------------

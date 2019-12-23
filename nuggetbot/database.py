@@ -597,7 +597,7 @@ class DatabaseCmds(object):
                 timestamp =		TIMEZONE('utc'::text, NOW())
 
             WHERE 
-                ch_id = 	    CAST($3 AS BIGINT);
+                webhooks.ch_id = 	    CAST($3 AS BIGINT);
         """
 
   # ============================== TRIGGERS ==============================

@@ -78,6 +78,8 @@ class MemberDMS(commands.Cog):
     async def cog_command_error(self, ctx, error):
         print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
+        return
+
 
   # -------------------- STATIC METHOD --------------------
     @staticmethod
