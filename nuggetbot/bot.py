@@ -76,8 +76,9 @@ plugins = (
     ('nuggetbot.plugins.member_leveling',   'Member Leveling'),
     ('nuggetbot.plugins.self_roles',        'Self Roles'),
     ('nuggetbot.plugins.new_members',       'New Members'),
-    ('nuggetbot.plugins.moderation',        'Moderation')
-)
+    ('nuggetbot.plugins.moderation',        'Moderation'),
+    ('nuggetbot.plugins.misc',              'Misc')
+    )
 #    ('nuggetbot.plugins.new_members',   'New Members')
 #)
 

@@ -110,6 +110,7 @@ class Config:
         self.gvwy_role_name=        self.none_if_empty(     self.gvwy_role_name)
         self.gvwy_min_time_on_srv=  self.time_pat_to_hrs(   self.gvwy_min_time_on_srv)
 
+
       # -------------------------------------------------- ARTISTS --------------------------------------------------
 
         self.art_reasons = dict()
@@ -123,6 +124,7 @@ class Config:
         self.art_roles['artist']=   config.getint(  'Artist', 'Artist-Role',            fallback=None)
         self.art_roles['commer']=   config.getint(  'Artist', 'Commissioner-Role',      fallback=None)
         self.art_roles['opencoms']= config.getint(  'Artist', 'Open-Commissions-Role',  fallback=None)
+
 
       # -------------------------------------------------- GALLERY CHANNELS --------------------------------------------------
         self.gallerys = {}
@@ -140,6 +142,7 @@ class Config:
         self.gallerys['expire_in']= (self.time_pat_to_hrs(   self.gallerys['expire_in']) or 24)
         self.gallerys["user_wl"]=   self.split_id_list(     self.gallerys["user_wl"])
         self.gallerys['link_wl']=   self.clean_glry_links(  self.gallerys['link_wl'])
+
 
       # -------------------------------------------------- SELF ASSIGN ROLES --------------------------------------------------
         self.roles_channel_id =     config.getint(      'Channel',  'Self Assign Roles',    fallback=None)
@@ -159,6 +162,17 @@ class Config:
                 )
 
             self.name_colors.append(j)
+
+
+      # -------------------------------------------------- WALLETS --------------------------------------------------
+        self.wallets = dict()
+
+        for i in config.items("Guild Wallets"):
+            fname, sname = i[0].split('-')
+            wallet = i[1]
+
+            self.wallets[sname.upper()] = (fname.title(), wallet)
+
 
       # -------------------------------------------------- CHECKS --------------------------------------------------
         self.__int_chl_ids()

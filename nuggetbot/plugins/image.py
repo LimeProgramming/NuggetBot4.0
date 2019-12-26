@@ -398,14 +398,15 @@ class ImageCog(commands.Cog):
 
 
   #-------------------- COMMANDS -------------------- 
-    #@checks.BotTester()
+    @checks.BotTester()
     @commands.command(pass_context=True, hidden=False, name='qrtest', aliases=[])
-    async def qrcodetest(self, ctx, *, member: discord.Member = None):
+    async def qrcodetest(self, ctx, *, data = None):
         """
         [Bot Tester] Generates a QR code with a random UUID as it's value
         """
 
-        member = member or ctx.author
+        #member = member or ctx.author
+        data = data or "Provide some data next time."
 
         try:
             t = uuid.uuid4()
@@ -418,7 +419,7 @@ class ImageCog(commands.Cog):
                 border=1,
             )
 
-            qr.add_data(t)
+            qr.add_data(data)
             ##qr.add_data(f"https://discordapp.com/users/{member.id}")
             qr.make(fit=True)
 
