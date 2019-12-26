@@ -105,6 +105,7 @@ class Giveaway(commands.Cog):
         print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
         print(error)
 
+
   # -------------------- STATIC METHODS --------------------
     @staticmethod
     async def Get_user_id(content):
@@ -371,7 +372,7 @@ class Giveaway(commands.Cog):
 
     ###Adds a user to the previous winners list
     @checks.HIGH_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='makeprewinner', aliases=["gvwy_makeprewinner"])
+    @commands.command(pass_context=True, hidden=False, name='makeprewinner', aliases=["gvwy_makeprewinner"])
     async def cmd_makeprewinner(self, ctx):
         """
         [Admin/Mod] Adds a user to the list of previous winners.
@@ -394,7 +395,7 @@ class Giveaway(commands.Cog):
 
     ###Remove a user to the previous winners list
     @checks.HIGH_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='remprewinner', aliases=["gvwy_remprewinner"])
+    @commands.command(pass_context=True, hidden=False, name='remprewinner', aliases=["gvwy_remprewinner"])
     async def cmd_remprewinner(self, ctx):
         """
         [Admin/Mod] Removes a member from the previous winners list.
@@ -432,7 +433,7 @@ class Giveaway(commands.Cog):
         
     ###Returns a list of users who have won the raffle before
     @checks.ANY_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='checkprewinners', aliases=["gvwy_checkprewinners"])
+    @commands.command(pass_context=True, hidden=False, name='checkprewinners', aliases=["gvwy_checkprewinners"])
     async def cmd_checkprewinners(self, ctx):
         """
         [Any Staff] Returns a list of users who have won the raffle before.
@@ -633,7 +634,7 @@ class Giveaway(commands.Cog):
         return
 
     @checks.ANY_STAFF()
-    @commands.command(pass_context=True, hidden=True, name='giveawayoverride', aliases=["gvwy_giveawayoverride"])
+    @commands.command(pass_context=True, hidden=False, name='giveawayoverride', aliases=["gvwy_giveawayoverride"])
     async def cmd_giveawayoverride(self, ctx):
         """
         [Admin/Mod] Adds a user to a giveaway regardless of qualifcations.
