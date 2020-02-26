@@ -218,9 +218,9 @@ class Giveaway(commands.Cog):
                 return
 
             #=== IF NOT ACTIVE ENOUGH
-            if len(await self.db.fetch(pgCmds.GET_MEMBER_MSGS_BETWEEN, ctx.author.id, self.cogset['RafDatetime']["open"], self.cogset['RafDatetime']["past"])) < Giveaway.config.gvwy_min_msgs:
-                await ctx.channel.send(content=f"Sorry {ctx.author.mention}, but you have not been active enough on the server to enter the giveaway.", delete_after=Giveaway.delete_after) 
-                return
+            #if len(await self.db.fetch(pgCmds.GET_MEMBER_MSGS_BETWEEN, ctx.author.id, self.cogset['RafDatetime']["open"], self.cogset['RafDatetime']["past"])) < Giveaway.config.gvwy_min_msgs:
+            #    await ctx.channel.send(content=f"Sorry {ctx.author.mention}, but you have not been active enough on the server to enter the giveaway.", delete_after=Giveaway.delete_after) 
+            #    return
 
             #-------------------- ENTER MEMBER --------------------
             past_wins = await self.db.fetchval(pgCmds.GET_GVWY_NUM_WINS, ctx.author.id)

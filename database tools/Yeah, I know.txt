@@ -1,0 +1,6 @@
+Yes this is hacky and there would be better ways to do this with some toolset. 
+If you prefer to use some toolset, go for it. 
+
+This is just how I'm doing this. 
+
+Thank you.

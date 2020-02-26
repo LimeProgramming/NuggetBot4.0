@@ -1,0 +1,13 @@
+I can't share the DLL's and exe files for obvious reasons but heres how to get them.
+
+Install PostgreSQL
+Go to where you have PostgreSQL installed
+Open the bin folder
+Copy over all the following 
+	> All DLL files
+	> pg_dump.exe
+	> pg_dumpall.exe
+	> pg_restore.exe
+	> createdb.exe
+
+And you're done.
