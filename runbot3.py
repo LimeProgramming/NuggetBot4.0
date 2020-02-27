@@ -409,14 +409,26 @@ def main():
             if hasattr(e, '__module__') and e.__module__ == 'nuggetbot.exceptions':
                 if e.__class__.__name__ == 'HelpfulError':
                     log.info(e.message)
+
+                    file='data/reboot.txt' 
+                    with open(file, 'w') as filetowrite:
+                        filetowrite.write('0')
+
                     break
 
                 elif e.__class__.__name__ == "TerminateSignal":
+                    file='data/reboot.txt' 
+                    with open(file, 'w') as filetowrite:
+                        filetowrite.write('0')
+
                     break
 
                 elif e.__class__.__name__ == "RestartSignal":
-                    loops = 0
-                    pass
+                    file='data/reboot.txt' 
+                    with open(file, 'w') as filetowrite:
+                        filetowrite.write('1')
+
+                    break
             else:
                 log.exception("Error starting bot")
 
