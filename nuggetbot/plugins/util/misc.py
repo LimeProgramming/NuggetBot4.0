@@ -17,6 +17,8 @@ import os
 import yaml
 import asyncio
 import datetime
+from io import BytesIO
+from PIL import Image
 from typing import Union
 from discord import User, Member
 
@@ -102,6 +104,19 @@ async def GET_AVATAR_BYTES(user: Union[User, Member], size: int, *, fmt='png', m
 
     # ===== IF WE HIT THIS POINT, ASSUME THE ABOVE FAILED
     avatar_bytes = await user.avatar_url_as(format=fmt, static_format='webp', size=size).read()
+    
+    # ===== DOUBLE CHECK IMAGE SIZE BECAUSE DISCORD IS SHIT
+    with Image.open(BytesIO(avatar_bytes)).convert('RGBA') as im:
+        if (size, size) == im.size:
+            im.close()
+        
+        else:
+            avatar_bytes = BytesIO()
+            im.thumbnail((size,size), Image.LANCZOS)
+            im.save(avatar_bytes, "webp")
+            avatar_bytes.seek(0)
+            avatar_bytes = avatar_bytes.read()
+
     path = os.path.join('data', 'cache', 'avatars', f'{str(user.id)}_{str(size)}.{fmt}')
     
     # ===== SAVE THE IMAGE TO FILE
