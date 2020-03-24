@@ -473,7 +473,7 @@ class NuggetBot(commands.Bot):
             print(e)
 
       # ---------- PRESENCE ----------
-        await self.change_presence( activity=discord.Game(name="{0.command_prefix}{0.playing_game}".format(self.config)),
+        await self.change_presence( activity=discord.Game(name="?{0.playing_game}".format(self.config)),
                                     status=discord.Status.online)
 
       # ---------- SCHEDULER ----------
@@ -1991,7 +1991,7 @@ class NuggetBot(commands.Bot):
 
         await self.send_msg(msg.channel, embed=embed)
         await self.delete_msg(msg)
-        #self.exit_signal = exceptions.RestartSignal()
+        self.exit_signal = exceptions.RestartSignal()
 
         raise exceptions.RestartSignal
 

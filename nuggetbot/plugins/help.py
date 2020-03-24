@@ -116,26 +116,26 @@ class Help(commands.Cog):
             inline= False
             )
         
-        embed.add_field(    
-            name=   "Art and Commissions:",
-            value=  
-                    f"{ctx.prefix}Commissioner:\tAdds commissioner role, meant for people looking for commissions.\n"
-                    f"{ctx.prefix}FindArtists:\tDMs you info about any artist who have registered with us.\n"
-                    f"{ctx.prefix}OpenCommissions:\tAdds OpenCommissions role to artists, to show you have slots open.\n"
-                    f"{ctx.prefix}ArtistRegister <info>: For artists registering their info with us.\n"
-                    f"{ctx.prefix}PingCommissioners: Artists can ping people with the Commissioner role.\n"
-                    "[Note: expect more info on this subject soon]",
-            inline= False
-            )
+        #embed.add_field(    
+        #    name=   "Art and Commissions:",
+        #    value=  
+        #            f"{ctx.prefix}Commissioner:\tAdds commissioner role, meant for people looking for commissions.\n"
+        #            f"{ctx.prefix}FindArtists:\tDMs you info about any artist who have registered with us.\n"
+        #            f"{ctx.prefix}OpenCommissions:\tAdds OpenCommissions role to artists, to show you have slots open.\n"
+        #            f"{ctx.prefix}ArtistRegister <info>: For artists registering their info with us.\n"
+        #            f"{ctx.prefix}PingCommissioners: Artists can ping people with the Commissioner role.\n"
+        #            "[Note: expect more info on this subject soon]",
+        #    inline= False
+        #    )
 
-        embed.add_field(    
-            name=   "Need a break?:",
-            value=  "If you want to hide the server from yourself for a while; "
-                    f"you can post {ctx.prefix}HideServer <xDxHxMxS/seconds> and "
-                    "I'll try hide the server from you for a bit. You can re-show the server anytime. \n"
-                    "If you're stressed, don't worry: https://www.youtube.com/watch?v=L3HQMbQAWRc,",
-            inline= False
-            )
+        #embed.add_field(    
+        #    name=   "Need a break?:",
+        #    value=  "If you want to hide the server from yourself for a while; "
+        #            f"you can post {ctx.prefix}HideServer <xDxHxMxS/seconds> and "
+        #            "I'll try hide the server from you for a bit. You can re-show the server anytime. \n"
+        #            "If you're stressed, don't worry: https://www.youtube.com/watch?v=L3HQMbQAWRc,",
+        #    inline= False
+        #    )
 
         embed.set_footer(   
             text=    ctx.guild.name,
