@@ -205,14 +205,14 @@ class NewMembers(commands.Cog):
         self.roles['name_colour']=  discord.utils.get(self.tguild.roles, id=self.bot.config.name_colors[0])
 
       # ---------- SCHEDULER ----------
-        #self.scheduler.start()
-        #self.scheduler.print_jobs()
+        self.scheduler.start()
+        self.scheduler.print_jobs()
 
       # ---------- CHECK NEW MEMBERS ----------
         await self.check_new_members()
 
       # ---------- START TASK LOOPS ----------
-        #self.updateNewMembers.start()
+        #self.updateNewMembers.start() not this
 
     @commands.Cog.listener()
     async def on_resume(self):

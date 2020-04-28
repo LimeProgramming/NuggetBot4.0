@@ -264,7 +264,7 @@ def main():
                 break
 
         except Exception as e:
-            if hasattr(e, '__module__') and e.__module__ == 'nuggetemoji.util.exceptions':
+            if hasattr(e, '__module__') and e.__module__ == 'nuggetbot.exceptions':
                 print(e.__class__.__name__)
 
                 if e.__class__.__name__ == 'HelpfulError':

@@ -25,7 +25,6 @@ from typing import Union
 from discord.ext import commands
 
 from nuggetbot import exceptions
-from nuggetbot.config import Config
 from nuggetbot.util import gen_embed as GenEmbed
 from nuggetbot.utils import get_next
 from nuggetbot.database import DatabaseCmds as pgCmds
@@ -44,7 +43,6 @@ class SelfRoles(commands.Cog):
         self.emojistring =      ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '⬆️', '➡️', '⬇️', '⬅️']
         self.bot = bot
         self.cogset = dict()
-        SelfRoles.config = Config()
 
   # -------------------- LOCAL COG STUFF --------------------
 
@@ -85,8 +83,11 @@ class SelfRoles(commands.Cog):
 
 
   # -------------------- LISTENERS --------------------
+
     @commands.Cog.listener()
     async def on_ready(self): 
+
+        owner = await self.bot._get_owner()
 
       # ---------- LOADS THE COGSET ----------
         self.cogset = await cogset.LOAD(self.qualified_name)
@@ -94,51 +95,56 @@ class SelfRoles(commands.Cog):
             self.cogset= dict(
                 keys = dict(),
                 retmsgs = dict(),
-                selfroles = []
+                selfroles = [],
+                namecolors = []
             )
 
             await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
-            await self.post_name_colours_msg()
-
             return
-
 
       # ---------- GET THE ROLES CHANNEL ----------
         try:
-            roles_channel = await self.bot.fetch_channel(SelfRoles.config.roles_channel_id)
+            roles_channel = await self.bot.fetch_channel(self.bot.config.roles_channel_id)
 
         except discord.errors.InvalidData:
             raise exceptions.PostAsWebhook(
-                f'Could not fetch the self assign roles channel <#{SelfRoles.config.roles_channel_id}>. An unknown channel type was received from Discord.', 
+                f'Could not fetch the self assign roles channel <#{self.bot.config.roles_channel_id}>. An unknown channel type was received from Discord.', 
                 preface=f"```diff\n- An error has occured in {self.qualified_name}\n```")
 
         except discord.errors.NotFound:
             raise exceptions.PostAsWebhook(
-                f'Could not fetch the self assign roles channel <#{SelfRoles.config.roles_channel_id}>. Invalid Channel ID.', 
+                f'Could not fetch the self assign roles channel <#{self.bot.config.roles_channel_id}>. Invalid Channel ID.', 
                 preface=f"```diff\n- An error has occured in {self.qualified_name}\n```")
 
         except discord.errors.Forbidden:
             raise exceptions.PostAsWebhook(
-                f'Could not fetch the self assign roles channel <#{SelfRoles.config.roles_channel_id}>. I lack permissions to access that channel', 
+                f'Could not fetch the self assign roles channel <#{self.bot.config.roles_channel_id}>. I lack permissions to access that channel', 
                 preface=f"```diff\n- An error has occured in {self.qualified_name}\n```")
 
         except discord.errors.HTTPException:
             raise exceptions.PostAsWebhook(
-                f'Could not fetch the self assign roles channel <#{SelfRoles.config.roles_channel_id}>. Generic HTTP error.', 
+                f'Could not fetch the self assign roles channel <#{self.bot.config.roles_channel_id}>. Generic HTTP error.', 
                 preface=f"```diff\n- An error has occured in {self.qualified_name}\n```")
 
-
       # ---------- CHECK FOR CHANGES IN MESSAGES ----------
+        await asyncio.sleep(2) # Sometimes the dict below throws an error if this code runs too soon.
+
         for i in self.cogset['retmsgs'].keys():
 
             try:
-                msg = await roles_channel.fetch_message(i)
+                await roles_channel.fetch_message(i)
 
             except discord.errors.NotFound:
                 # = IF THE MESSAGE HAS BEEN DELETED, REMOVE MENTION OF IT FROM THE COGSET AND RE-RUN THE APPROPIATE FUNCTION TO RE-CREATE IT.
                 if self.cogset['retmsgs'][i] == 'name_color':
-                    await self.post_name_colours_msg()
+                    await owner.send("name colours message has been deleted since bot was turned off.")
+
+                elif self.cogset['retmsgs'][i] == 'self_roles':
+                    await owner.send("Self roles message has been deleted since bot was turned off.")
+
+                else:
+                    await owner.send(f"Function message {self.cogset['retmsgs'][i]} has been deleted since bot was turned off.")
 
                 del self.cogset['retmsgs'][i]
                 del self.cogset['keys'][i]
@@ -158,8 +164,9 @@ class SelfRoles(commands.Cog):
                     preface=f"```diff\n- An error has occured in {self.qualified_name}\n```")
 
         await cogset.SAVE(self.cogset, cogname=self.qualified_name)
-            
 
+        return
+            
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         """
@@ -223,11 +230,29 @@ class SelfRoles(commands.Cog):
         del self.cogset['retmsgs'][payload.message_id]
         del self.cogset['keys'][payload.message_id]
         return
-        
+    
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role):
+
+        if role.id in self.cogset['namecolors']:
+            self.cogset['namecolors'].remove(role.id)
+
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+
+            await self.update_name_colors_msg(role.guild)
+
+        elif role.id in self.cogset['selfroles']:
+            self.cogset['selfroles'].remove(role.id)
+
+            await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+
+            await self.update_self_roles_msg(role.guild)
+
+        return
 
 
   # -------------------- FUNCTIONS --------------------
-
+   # --------------- Misc ---------------
     async def remove_user_reactions(self, msg, member = None, all=False):
         '''
         Removes member's reaction from msg
@@ -260,58 +285,66 @@ class SelfRoles(commands.Cog):
                     pass
         return 
 
-    async def post_name_colours_msg(self):
-        # ===== VARIABLE SETUP
-        guild =         self.bot.get_guild(SelfRoles.config.target_guild_id)
-        dest_channel =  discord.utils.get(guild.channels, id=SelfRoles.config.roles_channel_id)
-        nc_roles =      [role for role in guild.roles if role.id in SelfRoles.config.name_colors]
-        emojin =        [':zero:', ':one:', ':two:', ':three:', ':four:', ':five:', ':six:', ':seven:', ':eight:', ':nine:', ':keycap_ten:', ':arrow_up:', ':arrow_right:', ':arrow_down:', ':arrow_left:']
-        emojis =        ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '⬆️', '➡️', '⬇️', '⬅️']
-        desc =          'Add a reaction to set your name colour!\n\n'
-        key =           dict()
-        rkey=           dict()
+   # --------------- Name Colours ---------------
+    async def gen_name_colors_msg(self, guild):
+        key =       dict()
+        rkey=       dict()
+        desc =      'Add a reaction to set your name colour!\n\n'
+        nc_roles =  [role for role in guild.roles if role.id in self.bot.config.name_colors]
+        nc_roles.reverse()
 
         # ===== BUILD THE EMBED DESCRIPTION
         for i, role in enumerate(nc_roles):
-            desc = f'{desc}{emojin[i]} - for {role.name}\n'
-            key[emojis[i]] = role.id
-            rkey[role.id] = emojis[i]
+            desc = f'{desc}{self.emojiname[i]} - for {role.name}\n'
+            key[self.emojistring[i]] = role.id
+            rkey[role.id] = self.emojistring[i]
 
         # ===== BUILD THE EMBED
         e = discord.Embed(
-            title=      "Set Name Colour",
-            description=desc,
-            colour=     RANDOM_DISCORD_COLOR(),
-            type=       "rich",
-            timestamp=  datetime.datetime.utcnow()
+            title=          "Set Name Colour",
+            description=    desc, 
+            colour=         RANDOM_DISCORD_COLOR(), 
+            type=           "rich", 
+            timestamp=      datetime.datetime.utcnow()
+            )
+        e.set_footer(
+            icon_url=       GUILD_URL_AS(guild), 
+            text=           guild.name
             )
 
-        e.set_footer(       
-            icon_url=   GUILD_URL_AS(guild), 
-            text=       "{0.name}".format(guild)
-            )
+        return (e, key, rkey, nc_roles)
 
-        # ===== SEND THE MESSAGE
-        msg = await self.bot.send_msg(dest_channel, embed=e)
+    async def update_name_colors_msg(self, guild):
+        channel =  discord.utils.get(guild.channels, id=self.bot.config.roles_channel_id)
+        msg_id = {v: k for k, v in self.cogset['retmsgs'].items()}['name_color']
+        name_color_msg = await channel.fetch_message(msg_id)
+
+        e, key, rkey, self_roles = await self.gen_name_colors_msg(guild)
+
+        # ===== Clear all old reactions
+        await self.remove_user_reactions(name_color_msg, all=True)
+
+        # ===== Update the message
+        await name_color_msg.edit(embed=e)
 
         # ===== ADD REACTIONS
-        for i in nc_roles:
-            await msg.add_reaction(rkey[i.id])
+        for i in self_roles:
+            await name_color_msg.add_reaction(rkey[i.id])
             await asyncio.sleep(0.4)
 
-        # ===== SAVE MSG ID AND EMOJI KEY
-        self.cogset['keys'][msg.id]     = key
-        self.cogset['retmsgs'][msg.id]  = 'name_color'
-        
+        # ===== Save Cogset
+        self.cogset['keys'][name_color_msg.id]=key
         await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         return
-
+   
+   # --------------- Self Roles ---------------
     async def gen_self_roles_msg(self, guild):
-        key =           dict()
-        rkey=           dict()
-        desc =          'Add a reaction to **toggle** your self assinable roles!\n\n'
-        self_roles =    [role for role in guild.roles if role.id in self.cogset['selfroles']]
+        key =       dict()
+        rkey=       dict()
+        desc =      'Add a reaction to **toggle** your self assignable roles!\n\n'
+        self_roles =[role for role in guild.roles if role.id in self.cogset['selfroles']]
+        self_roles.reverse()
                 
         # ===== BUILD THE EMBED DESCRIPTION
         for i, role in enumerate(self_roles):
@@ -321,7 +354,7 @@ class SelfRoles(commands.Cog):
 
         # ===== BUILD THE EMBED
         e = discord.Embed(
-            title=          "Set Name Colour", 
+            title=          "Give Yourself Some Roles", 
             description=    desc, 
             colour=         RANDOM_DISCORD_COLOR(), 
             type=           "rich", 
@@ -351,14 +384,200 @@ class SelfRoles(commands.Cog):
         for i in self_roles:
             await self_roles_msg.add_reaction(rkey[i.id])
             await asyncio.sleep(0.4)
+        
+        # ===== Save Cogset
+        self.cogset['keys'][self_roles_msg.id]=key
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+
+        return
 
   # -------------------- Commands --------------------
+
+   # ---------------- Name Colours Roles Group ---------------
+    @commands.group(pass_context=True, name='namecolours', aliases=['namecolors'], case_insensitive=True)
+    async def cmd_namecolors(self, ctx):
+        """Handles the name colour roles."""
+
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help('namecolours')
+
+    @cmd_namecolors.group(pass_context=True, name="add", aliases=['allow'], invoke_without_command=True, case_insensitive=True)
+    async def grp2_allow(self, ctx, role: discord.Role = None):
+        """[Administrator] Make a role an available name colour."""
+
+        # ===== If no role has been provided.
+        if role is None:
+            await ctx.send_help('namecolours')
+            return
+
+        # ===== If role is already self assignable
+        if role.id in self.cogset['namecolors']:
+            await ctx.send(f"Role <@&{role.id}> is already an available colour.")
+            return 
+
+        self.cogset['namecolors'].append(role.id)
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+        await self.bot.send_msg(dest=ctx.channel, content=f"Role <@&{role.id}> is now an available colour, please repost/update the self assignable roles message for changes to take effect.")
+        return
+
+    @cmd_namecolors.group(pass_context=True, name="remove", aliases=['delete'], invoke_without_command=True, case_insensitive=True)
+    async def grp2_remove(self, ctx, role: discord.Role = None):
+        """[Administrator] Remove an available name colour."""
+
+        # ===== If no role has been provided.
+        if role is None:
+            await ctx.send_help('namecolours')
+            return
+
+        # ===== If role is already self assignable
+        if role.id not in self.cogset['namecolors']:
+            await ctx.send(f"Role <@&{role.id}> wasn't an available colour.")
+            return 
+
+        self.cogset['namecolors'].append(role.id)
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+        await self.bot.send_msg(dest=ctx.channel, content=f"Role <@&{role.id}> is no longer an available colour, please repost/update the self assignable roles message for changes to take effect.")
+        return
+
+    @cmd_namecolors.group(pass_context=True, name="list", aliases=[], invoke_without_command=True, case_insensitive=True)
     @checks.HIGHEST_STAFF()
-    @commands.command(pass_context=True, hidden=False, name='PostSelfAssign', aliases=[])
-    async def cmd_post_self_roles_msg(self, ctx):
-        """
-        [Administrator] Post the self assignable roles message.
-        """
+    async def grp2_list(self, ctx):
+        """[Administrator] List all available name colours."""
+
+        nc_roles =    [role for role in ctx.guild.roles if role.id in self.cogset['namecolors']]
+        nc_roles.reverse()
+
+        desc = "\n".join((f"> {role.name}" for role in nc_roles))
+        desc += f"\nTotal number of self available colours: {len(nc_roles)}."
+
+        e = discord.Embed(
+            title=          "List of Available Name Colours", 
+            description=    desc, 
+            colour=         RANDOM_DISCORD_COLOR(), 
+            type=           "rich", 
+            timestamp=      datetime.datetime.utcnow()
+            )
+        e.set_footer(
+            icon_url=       GUILD_URL_AS(ctx.guild), 
+            text=           ctx.guild.name
+            )
+        
+        await self.bot.send_msg(dest=ctx.channel, embed=e)
+        return
+
+    @cmd_namecolors.group(pass_context=True, name="post", aliases=[], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp2_post(self, ctx):
+        """[Administrator] Post new available name colours message."""
+
+        dest_channel =  discord.utils.get(ctx.guild.textchannels, id=self.bot.config.roles_channel_id)
+
+        e, key, rkey, self_roles = await self.gen_name_colors_msg(ctx.guild)
+
+        # ===== SEND THE MESSAGE
+        msg = await self.bot.send_msg(dest_channel, embed=e)
+
+        # ===== ADD REACTIONS
+        for i in self_roles:
+            await msg.add_reaction(rkey[i.id])
+            await asyncio.sleep(0.4)
+
+        # ===== SAVE MSG ID AND EMOJI KEY
+        self.cogset['keys'][msg.id]     =   key
+        self.cogset['retmsgs'][msg.id]  =   'name_color'
+        
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+        return
+
+    @cmd_namecolors.group(pass_context=True, name="update", aliases=['refresh'], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp2_update(self, ctx):
+        """[Administrator] Update existing name colours message."""
+
+        await self.update_name_colors_msg(ctx.guild)
+
+        await self.bot.send_msg(dest=ctx.channel, content="name colours message has been updated.")
+        return
+
+
+   # ---------------- Self Assignable Roles Group ---------------
+    @commands.group(pass_context=True, name='selfassign', aliases=['selfroles'], case_insensitive=True)
+    async def cmd_selfassign(self, ctx):
+        """Handles the self assignable roles."""
+
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help('selfassign')
+
+    @cmd_selfassign.group(pass_context=True, name="allow", aliases=['add'], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp1_allow(self, ctx, role: discord.Role = None):
+        """[Administrator] Add a role to list of self assignable roles."""
+
+        # ===== If no role has been provided.
+        if role is None:
+            await ctx.send_help('selfassign')
+            return
+        
+        # ===== If role is already self assignable
+        if role.id in self.cogset['selfroles']:
+            await ctx.send(f"Role <@&{role.id}> is already self assignable.")
+            return 
+    
+        self.cogset['selfroles'].append(role.id)
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+        await self.bot.send_msg(dest=ctx.channel, content=f"Role <@&{role.id}> is now self assignable, please repost/update the self assignable roles message for changes to take effect.")
+        return
+
+    @cmd_selfassign.group(pass_context=True, name="remove", aliases=['delete'], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp1_remove(self, ctx, role: discord.Role = None ):
+        """[Administrator] Remove a role from list of self assignable roles."""
+
+        # ===== If no role has been provided.
+        if role is None:
+            await ctx.send_help('selfassign')
+            return
+
+        # ===== If role is already allowed.
+        if role.id not in self.cogset['selfroles']:
+            await ctx.send(f"Role <@&{role.id}> is wasn't self assignable.")
+            return 
+
+        self.cogset['selfroles'].remove(role.id)
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+        await self.bot.send_msg(dest=ctx.channel, content=f"Role <@&{role.id}> is no longer self assignable, please repost/update the self assignable roles message for changes to take effect.")
+
+    @cmd_selfassign.group(pass_context=True, name="list", aliases=[], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp1_list(self, ctx):
+        """[Administrator] List all self assignable roles."""
+
+        self_roles =    [role for role in ctx.guild.roles if role.id in self.cogset['selfroles']]
+        self_roles.reverse()
+
+        desc = "\n".join((f"> {role.name}" for role in self_roles))
+        desc += f"\nTotal number of self assignable roles: {len(self_roles)}."
+
+        e = discord.Embed(
+            title=          "List of Self Assignable Roles", 
+            description=    desc, 
+            colour=         RANDOM_DISCORD_COLOR(), 
+            type=           "rich", 
+            timestamp=      datetime.datetime.utcnow()
+            )
+        e.set_footer(
+            icon_url=       GUILD_URL_AS(ctx.guild), 
+            text=           ctx.guild.name
+            )
+        
+        await self.bot.send_msg(dest=ctx.channel, embed=e)
+        return
+
+    @cmd_selfassign.group(pass_context=True, name="post", aliases=[], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp1_post(self, ctx):
+        """[Administrator] Post new self assignable roles message."""
+
         dest_channel =  discord.utils.get(ctx.guild.channels, id=self.bot.config.roles_channel_id)
 
         e, key, rkey, self_roles = await self.gen_self_roles_msg(ctx.guild)
@@ -379,109 +598,65 @@ class SelfRoles(commands.Cog):
 
         return
 
-    @commands.group(pass_context=True, name='selfassign', case_insensitive=True)
-    async def cmd_selfassign(self, ctx):
-        """Handles the self assignable roles."""
-
-        if ctx.invoked_subcommand is None:
-            await ctx.send_help('selfassign')
-
-
-    @cmd_selfassign.group(pass_context=True, name="allow", aliases=['add'], invoke_without_command=True, case_insensitive=True)
+    @cmd_selfassign.group(pass_context=True, name="update", aliases=['refresh'], invoke_without_command=True, case_insensitive=True)
     @checks.HIGHEST_STAFF()
-    async def grp_allow(self, ctx, role: discord.Role = None):
-        """Add a role to list of self assignable roles."""
+    async def grp1_update(self, ctx):
+        """[Administrator] Update existing self assignable roles message."""
 
-        # ===== If no role has been provided.
-        if role is None:
-            await ctx.send_help('selfassign')
-            return
-        
-        # ===== If role is already self assignable
-        if role.id in self.cogset['selfroles']:
-            await ctx.send(f"Role <@&{role.id}> is already self assignable.")
-            return 
-    
-        self.cogset['selfroles'].append(role.id)
-        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
-        await ctx.send(f"Role <@&{role.id}> is now self assignable, please repost/update the self assignable roles message for changes to take effect.")
+        await self.update_self_roles_msg(ctx.guild)
+
+        await self.bot.send_msg(dest=ctx.channel, content="Self Assignable Roles message has been updated.")
         return
 
-    @cmd_selfassign.group(pass_context=True, name="remove", aliases=['delete'], invoke_without_command=True, case_insensitive=True)
-    @checks.HIGHEST_STAFF()
-    async def grp_remove(self, ctx, role: discord.Role = None ):
-        """Remove a role from list of self assignable roles."""
-
-        # ===== If no role has been provided.
-        if role is None:
-            await ctx.send_help('selfassign')
-            return
-
-        # ===== If role is already allowed.
-        if role.id not in self.cogset['selfroles']:
-            await ctx.send(f"Role <@&{role.id}> is wasn't self assignable.")
-            return 
-
-        self.cogset['selfroles'].remove(role.id)
-        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
-        await ctx.send(f"Role <@&{role.id}> is no longer self assignable, please repost/update the self assignable roles message for changes to take effect.")
-
-    @cmd_selfassign.group(pass_context=True, name="list", aliases=[], invoke_without_command=True, case_insensitive=True)
-    @checks.HIGHEST_STAFF()
-    async def grp_list(self, ctx):
-        """List all self assignable roles."""
-
-        self_roles =    [role for role in ctx.guild.roles if role.id in self.cogset['selfroles']]
-
-        desc = "\n".join((f"> {role.name}" for role in self_roles))
-        desc += f"\nTotal number of self assignable roles {len(self_roles)}."
-
-        e = discord.Embed(
-            title=          "List of Self Assignable Roles", 
-            description=    desc, 
-            colour=         RANDOM_DISCORD_COLOR(), 
-            type=           "rich", 
-            timestamp=      datetime.datetime.utcnow()
-            )
-        e.set_footer(
-            icon_url=       GUILD_URL_AS(ctx.guild), 
-            text=           ctx.guild.name
-            )
-        
-        await self.bot.send_msg(dest=ctx.channel, embed=e)
-        return
 
   # -------------------- Reaction Functions --------------------
+
     async def name_color(self, member, role, guild, payload):
+        if role is None:
+            msg = f"The name colour you have requested is no longer available on {guild.name}.\nSorry about that."
 
-        try:
-            await member.add_roles(role, reason="Apply new name color.")
+        elif role in member.roles:
+            msg = f"Your name colour is already {role.name} on {guild.name}.\nYou silly goose!"
+        
+        elif role.id not in self.cogset['namecolors']:
+            msg = f"The name colour you have requested {role.name} is no longer available.\nSorry about that."
+        
+        else:
+            try:
+                await member.add_roles(role, reason="Apply new name color.")
+                msg = f"Your name colour has been set to {role.name} on {guild.name}.\nCongrats"
 
-        except discord.errors.Forbidden:
-            raise exceptions.PostAsWebhook(                
-                f'Exception in on_raw_reaction_add\nAdding role {role.name} failed, I do not have permissions to add these roles.', 
-                preface=f"```diff\n- An error has occured in {self.qualified_name}\n```") 
+            except discord.errors.Forbidden:
+                raise exceptions.PostAsWebhook(                
+                    f'Exception in on_raw_reaction_add\nAdding role {role.name} failed, I do not have permissions to add these roles.', 
+                    preface=f"```diff\n- An error has occured in {self.qualified_name}\n```") 
 
-        # ===== REMOVE OTHER NAME COLOR ROLES
-        for rrole in guild.roles:
-            if rrole.id in [i[1] for i in self.cogset['keys'][payload.message_id].items()] and rrole != role:
+            # ===== REMOVE OTHER NAME COLOR ROLES
+            for rrole in guild.roles:
+                if rrole.id in [i[1] for i in self.cogset['keys'][payload.message_id].items()] and rrole != role:
 
-                try:
-                    await member.remove_roles(rrole, reason='Removing old name color.')
-                    await asyncio.sleep(0.2)
+                    try:
+                        await member.remove_roles(rrole, reason='Removing old name color.')
+                        await asyncio.sleep(0.2)
 
-                except discord.errors.NotFound:
-                    pass
+                    except discord.errors.NotFound:
+                        pass
+        
+        await member.send(msg)
         return
 
     async def self_roles(self, member, role, guild, payload):
-        if role.id not in self.cogset['selfroles']:
-            return
 
-        if role in member.roles:
+        if role is None:
+            msg = f"The role you have requested is no longer self assignable on {guild.name}.\nSorry about that."
+
+        elif role in member.roles:
             await member.remove_roles(role, reason="Remove self assignable role.")
             msg = f"You've had the role \"{role.name}\" removed on {guild.name}."
-        
+
+        elif role.id not in self.cogset['selfroles']:
+            msg = f"The role you requested \"{role.name}\" is no longer self assignable on FurSail."
+
         else:
             await member.add_roles(role, reason="Apply self assignable role.")
             msg = f"You've been given the role \"{role.name}\" on {guild.name}."
@@ -489,9 +664,6 @@ class SelfRoles(commands.Cog):
         await member.send(msg)
         return
         
-
-
-
 
 def setup(bot):
     bot.add_cog(SelfRoles(bot))

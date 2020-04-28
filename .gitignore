@@ -38,3 +38,4 @@ nuggetbot/plugins/images/wel/src/c/
 database tools - real/
 *.pyc
 nuggetbot/__pycache__/bot.cpython-37.pyc
+logs/nuggetbot.log

@@ -8,3 +8,35 @@
 
 ######################### PRE-RUN SANITY CHECKS PASSED #########################
 
+[3173435.533285141] launcher-ERROR: Error starting bot
+Traceback (most recent call last):
+  File "runbot.py", line 237, in main
+    m.run()
+  File "N:\DiscordBots\NuggetBot4.0\nuggetbot\bot.py", line 186, in run
+    raise self.exit_signal
+nuggetbot.exceptions.RestartSignal
+[3173437.532186508] launcher-INFO: Restarting in 2 seconds...
+[5070920.088768005] launcher-ERROR: Error starting bot
+Traceback (most recent call last):
+  File "runbot.py", line 237, in main
+    m.run()
+  File "N:\DiscordBots\NuggetBot4.0\nuggetbot\bot.py", line 186, in run
+    raise self.exit_signal
+nuggetbot.exceptions.RestartSignal
+[5070924.584388733] launcher-INFO: Restarting in 4 seconds...
+[10004662.666082382] launcher-ERROR: Error starting bot
+Traceback (most recent call last):
+  File "runbot.py", line 237, in main
+    m.run()
+  File "N:\DiscordBots\NuggetBot4.0\nuggetbot\bot.py", line 186, in run
+    raise self.exit_signal
+nuggetbot.exceptions.RestartSignal
+[10004664.164781570] launcher-INFO: Restarting in 6 seconds...
+[11478972.657680511] launcher-ERROR: Error starting bot
+Traceback (most recent call last):
+  File "runbot.py", line 237, in main
+    m.run()
+  File "N:\DiscordBots\NuggetBot4.0\nuggetbot\bot.py", line 186, in run
+    raise self.exit_signal
+nuggetbot.exceptions.TerminateSignal
+[11478975.153923035] launcher-INFO: Restarting in 8 seconds...

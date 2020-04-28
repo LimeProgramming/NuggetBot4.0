@@ -477,8 +477,8 @@ class NuggetBot(commands.Bot):
                                     status=discord.Status.online)
 
       # ---------- SCHEDULER ----------
-        #self.scheduler.start()
-        #self.scheduler.print_jobs()
+        self.scheduler.start()
+        self.scheduler.print_jobs()
 
 
     async def on_resume(self):
