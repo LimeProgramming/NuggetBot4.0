@@ -205,8 +205,8 @@ class NewMembers(commands.Cog):
         self.roles['name_colour']=  discord.utils.get(self.tguild.roles, id=self.bot.config.name_colors[0])
 
       # ---------- SCHEDULER ----------
-        self.scheduler.start()
-        self.scheduler.print_jobs()
+        #self.scheduler.start()
+        #self.scheduler.print_jobs()
 
       # ---------- CHECK NEW MEMBERS ----------
         await self.check_new_members()
@@ -343,12 +343,14 @@ class NewMembers(commands.Cog):
     async def on_member_update(self, before, after):
         """When there is an update to a users user data"""
 
-        # ===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
-        await self.bot.wait_until_ready()
+        await self.bot.wait_until_ready() # Wait for bot to finish setting up
 
-        # ===== IGNORE NON-TARGET GUILDS
-        if before.guild.id != self.bot.config.target_guild_id:
-            return
+        if before.guild.id != self.bot.config.target_guild_id: return # Ignore non-target guilds
+
+        # ===== Make sure cog is finished setting up
+        while True:
+            if "member" in self.roles: break
+            await asyncio.sleep(1)
 
         # ===== HANDLING FOR STAFF ADDING THE MEMBER ROLE TO NEW USERS MANUALLY 
         if {self.roles['member'], self.roles['gated']}.issubset(set(after.roles)) and self.roles['gated'] in before.roles:
@@ -358,16 +360,13 @@ class NewMembers(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, msg):
-        # ===== WAIT FOR THE BOT TO BE FINISHED SETTING UP
-        await self.bot.wait_until_ready()
+        await self.bot.wait_until_ready() # Wait for bot to finish setting up
 
         # ===== IF MESSAGE WAS NOT IN ENTRANCE GATE
-        if msg.channel.id != self.bot.config.channels['entrance_gate']:
-            return
+        if msg.channel.id != self.bot.config.channels['entrance_gate']: return
 
         # ===== IF THE MESSAGE IS A BOT COMMAND
-        if (msg.content[len(self.bot.command_prefix):].split(" "))[0] in self.bot.all_cmds:
-            return
+        if (msg.content[len(self.bot.command_prefix):].split(" "))[0] in self.bot.all_cmds: return
 
         # ===== IF THE AUTHOR IS GATED, LOG THE MESSAGE. IGNORES STAFF SINCE THEY TEND TO MESS AROUND 
         if  (       any(role.id == self.bot.config.roles['gated'] for role in msg.author.roles)

@@ -1,11 +1,18 @@
-[17.982959747] 2019-12-26 18:18:55,658 - INFO - launcher: Starting sanity checks
-[17.982959747] 2019-12-26 18:18:55,658 - INFO - launcher: Checking for Python 3.5+
-[17.982959747] 2019-12-26 18:18:55,658 - INFO - launcher: Checking console encoding
-[17.982959747] 2019-12-26 18:18:55,658 - INFO - launcher: Setting console encoding to UTF-8
-[17.982959747] 2019-12-26 18:18:55,658 - INFO - launcher: Ensuring we're in the right environment
-[507.024526596] 2019-12-26 18:18:56,147 - INFO - launcher: Required checks passed.
-[508.023262024] 2019-12-26 18:18:56,148 - INFO - launcher: Optional checks passed.
-[508.023262024] 2019-12-26 18:18:56,148 - INFO - launcher: Moving old nuggetbot log
+[43.954849243] 2020-04-28 16:47:23,151 - INFO - launcher: Starting sanity checks
+[43.954849243] 2020-04-28 16:47:23,151 - INFO - launcher: Checking for Python 3.6+
+[43.954849243] 2020-04-28 16:47:23,151 - INFO - launcher: Checking console encoding
+[44.454336166] 2020-04-28 16:47:23,151 - INFO - launcher: Setting console encoding to UTF-8
+[405.585050583] 2020-04-28 16:47:23,512 - INFO - launcher: Required checks passed.
+[405.585050583] 2020-04-28 16:47:23,512 - INFO - launcher: Optional checks passed.
+[406.084537506] 2020-04-28 16:47:23,513 - INFO - launcher: Moving old nuggetbot log
 
 ######################### PRE-RUN SANITY CHECKS PASSED #########################
 
+[318633.606433868] launcher-ERROR: Error starting bot
+Traceback (most recent call last):
+  File "runbot.py", line 237, in main
+    m.run()
+  File "N:\DiscordBots\NuggetBot4.0\nuggetbot\bot.py", line 186, in run
+    raise self.exit_signal
+nuggetbot.exceptions.RestartSignal
+[318635.603427887] launcher-INFO: Restarting in 2 seconds...

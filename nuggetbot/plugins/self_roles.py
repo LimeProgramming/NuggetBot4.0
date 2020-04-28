@@ -40,44 +40,61 @@ class SelfRoles(commands.Cog):
     delete_after = 15
     
     def __init__(self, bot):
+        self.emojiname =        [':zero:', ':one:', ':two:', ':three:', ':four:', ':five:', ':six:', ':seven:', ':eight:', ':nine:', ':keycap_ten:', ':arrow_up:', ':arrow_right:', ':arrow_down:', ':arrow_left:']
+        self.emojistring =      ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '⬆️', '➡️', '⬇️', '⬅️']
         self.bot = bot
         self.cogset = dict()
         SelfRoles.config = Config()
 
   # -------------------- LOCAL COG STUFF --------------------
-    async def connect_db(self):
-        """
-        Connects to the database using variables set in the dblogin.py file.
-        """
 
-        credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
-        self.db = await asyncpg.create_pool(**credentials)
-
-        return
-
-    async def disconnet_db(self):
-        """
-        Closes the connection to the database.
-        """
-        await self.db.close()
-
-        return
-        
     @asyncio.coroutine
     async def cog_command_error(self, ctx, error):
-        print('Ignoring exception in {}'.format(ctx.invoked_with), file=sys.stderr)
-        print(error)
+        if isinstance(error, discord.ext.commands.errors.NotOwner):
+            try:
+                owner = (self.bot.application_info()).owner
+            except:
+                owner = self.bot.get_guild(self.bot.config.target_guild_id).owner()
+
+            await ctx.channel.send(content=f"```diff\n- {ctx.prefix}{ctx.invoked_with} is an owner only command, this will be reported to {owner.name}.")
+            await owner.send(content=f"{ctx.author.mention} tried to use the owner only command{ctx.invoked_with}")
+            return 
+
+        if isinstance(error, discord.ext.commands.errors.CheckFailure):
+            print(error)
+            pass
+
+        if self.bot.config.delete_invoking:
+            try:
+                await ctx.message.delete()
+            except (discord.errors.NotFound, discord.errors.Forbidden): pass
+
+    @asyncio.coroutine
+    async def cog_before_invoke(self, ctx):
+        await ctx.channel.trigger_typing()
+        return
+
+    @asyncio.coroutine
+    async def cog_after_invoke(self, ctx):
+        if self.bot.config.delete_invoking:
+            try:
+                await ctx.message.delete()
+            except (discord.errors.NotFound, discord.errors.Forbidden): pass
+        
+        return
 
 
   # -------------------- LISTENERS --------------------
     @commands.Cog.listener()
     async def on_ready(self): 
+
       # ---------- LOADS THE COGSET ----------
         self.cogset = await cogset.LOAD(self.qualified_name)
         if not self.cogset:
             self.cogset= dict(
                 keys = dict(),
-                retmsgs = dict()
+                retmsgs = dict(),
+                selfroles = []
             )
 
             await cogset.SAVE(self.cogset, cogname=self.qualified_name)
@@ -143,17 +160,6 @@ class SelfRoles(commands.Cog):
         await cogset.SAVE(self.cogset, cogname=self.qualified_name)
             
 
-      # ---------- CHECK FOR CHANGES IN MESSAGES ----------
-        # === GET NUGGETBOT AS A MEMBER
-        #selfmember =  guild.get_member(self.bot.user.id)
-        #if not selfmember:
-        #    raise exceptions.Note(f'Could not find myself in {guild.name}')
-
-        # === CHECK IF BOT CAN ACTUALLY GRANT THE ROLE
-        #if selfmember.top_role.position <= role.position:
-        #    raise exceptions.Note(f'Role {role.name} is higher or equal to my top_role so I cannot apply it anyone.')
-
-
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         """
@@ -165,29 +171,23 @@ class SelfRoles(commands.Cog):
         """
 
       # ---------- IGNORE ----------
-        # ===== REACTIONS FROM DM'S
-        if not payload.guild_id: return 
+        if not payload.guild_id: return # REACTIONS FROM DM'S
 
-        # ===== IRRELIVANT MESSAGES
-        if payload.message_id not in self.cogset['retmsgs'].keys(): return
+        if payload.message_id not in self.cogset['retmsgs'].keys(): return # IRRELIVANT MESSAGES
 
-        # ===== REACTIONS FROM BOT
-        if payload.user_id == self.bot.user.id: return
+        if payload.user_id == self.bot.user.id: return # REACTIONS FROM BOT
 
       # ---------- GET NEEDED VARIABLES ----------
-        # ===== THE GUILD
-        guild = self.bot.get_guild(payload.guild_id)
+        guild = self.bot.get_guild(payload.guild_id) # Get the guild
 
-        # ===== THE CHANNEL
-        rolesCHL = guild.get_channel(payload.channel_id)
+        rolesCHL = guild.get_channel(payload.channel_id) # Get the channel
 
-        # ===== THE MESSAGE
-        rolesMSG = await rolesCHL.fetch_message(payload.message_id)
+        rolesMSG = await rolesCHL.fetch_message(payload.message_id) # Get the Message Object
 
-        # ===== THE REACTOR AS A MEMBER
-        member = guild.get_member(payload.user_id)
+        member = guild.get_member(payload.user_id) # Get reacter as a Member Object
+
+        # ===== IF MEMBER SOMEHOW LEFT IMMIDATELY AFTER REACTING
         if not member:
-            # === IF MEMBER SOMEHOW LEFT IMMIDATELY AFTER REACTING
             await self.remove_user_reactions(msg = rolesMSG)
             return
 
@@ -204,33 +204,31 @@ class SelfRoles(commands.Cog):
       # ---------- HANDLE RELATED ROLES ----------
         await self.remove_user_reactions(msg = rolesMSG, member = member)
 
+    @commands.Cog.listener()
+    async def on_raw_message_delete(self, payload):
+        if payload.message_id not in self.cogset['retmsgs'].keys(): return 
+
+        missing_func = self.cogset['retmsgs'][payload.message_id]
+        owner = await self.bot._get_owner()
+
+        if missing_func == 'name_color':
+            await owner.send("Name colour message has been deleted.")
+        
+        elif missing_func == 'self_roles':
+            await owner.send("Self assignable roles message has been deleted.")
+
+        else:
+            await owner.send(f"Function message {missing_func} has been deleted.")
+
+        del self.cogset['retmsgs'][payload.message_id]
+        del self.cogset['keys'][payload.message_id]
+        return
+        
+
 
   # -------------------- FUNCTIONS --------------------
 
-    async def name_color(self, member, role, guild, payload):
-
-        try:
-            await member.add_roles(role, reason="Apply new name color.")
-
-        except discord.errors.Forbidden:
-            raise exceptions.PostAsWebhook(                
-                f'Exception in on_raw_reaction_add\nAdding role {role.name} failed, I do not have permissions to add these roles.', 
-                preface=f"```diff\n- An error has occured in {self.qualified_name}\n```") 
-
-        # ===== REMOVE OTHER NAME COLOR ROLES
-        for rrole in guild.roles:
-            if rrole.id in [i[1] for i in self.cogset['keys'][payload.message_id].items()] and rrole != role:
-
-                try:
-                    await member.remove_roles(rrole, reason='Removing old name color.')
-                    await asyncio.sleep(0.2)
-
-                except discord.errors.NotFound:
-                    pass
-        return
-
-
-    async def remove_user_reactions(self, msg, member = None):
+    async def remove_user_reactions(self, msg, member = None, all=False):
         '''
         Removes member's reaction from msg
 
@@ -244,9 +242,9 @@ class SelfRoles(commands.Cog):
         
         for reaction in msg.reactions:
 
-            if member is None:
+            if member is None or all:
                 for user in await reaction.users().flatten():
-                    if user == self.bot.user: continue
+                    if user == self.bot.user and not all: continue
 
                     await reaction.remove(user)
                     await asyncio.sleep(0.2)  
@@ -261,7 +259,6 @@ class SelfRoles(commands.Cog):
                 except discord.errors.NotFound:
                     pass
         return 
-
 
     async def post_name_colours_msg(self):
         # ===== VARIABLE SETUP
@@ -309,6 +306,192 @@ class SelfRoles(commands.Cog):
         await cogset.SAVE(self.cogset, cogname=self.qualified_name)
 
         return
+
+    async def gen_self_roles_msg(self, guild):
+        key =           dict()
+        rkey=           dict()
+        desc =          'Add a reaction to **toggle** your self assinable roles!\n\n'
+        self_roles =    [role for role in guild.roles if role.id in self.cogset['selfroles']]
+                
+        # ===== BUILD THE EMBED DESCRIPTION
+        for i, role in enumerate(self_roles):
+            desc = f'{desc}{self.emojiname[i]} - for {role.name}\n'
+            key[self.emojistring[i]] = role.id
+            rkey[role.id] = self.emojistring[i]
+
+        # ===== BUILD THE EMBED
+        e = discord.Embed(
+            title=          "Set Name Colour", 
+            description=    desc, 
+            colour=         RANDOM_DISCORD_COLOR(), 
+            type=           "rich", 
+            timestamp=      datetime.datetime.utcnow()
+            )
+        e.set_footer(
+            icon_url=       GUILD_URL_AS(guild), 
+            text=           guild.name
+            )
+
+        return (e, key, rkey, self_roles)
+
+    async def update_self_roles_msg(self, guild):
+        channel =  discord.utils.get(guild.channels, id=self.bot.config.roles_channel_id)
+        msg_id = {v: k for k, v in self.cogset['retmsgs'].items()}['self_roles']
+        self_roles_msg = await channel.fetch_message(msg_id)
+
+        e, key, rkey, self_roles = await self.gen_self_roles_msg(guild)
+
+        # ===== Clear all old reactions
+        await self.remove_user_reactions(self_roles_msg, all=True)
+
+        # ===== Update the message
+        await self_roles_msg.edit(embed=e)
+
+        # ===== ADD REACTIONS
+        for i in self_roles:
+            await self_roles_msg.add_reaction(rkey[i.id])
+            await asyncio.sleep(0.4)
+
+  # -------------------- Commands --------------------
+    @checks.HIGHEST_STAFF()
+    @commands.command(pass_context=True, hidden=False, name='PostSelfAssign', aliases=[])
+    async def cmd_post_self_roles_msg(self, ctx):
+        """
+        [Administrator] Post the self assignable roles message.
+        """
+        dest_channel =  discord.utils.get(ctx.guild.channels, id=self.bot.config.roles_channel_id)
+
+        e, key, rkey, self_roles = await self.gen_self_roles_msg(ctx.guild)
+
+        # ===== SEND THE MESSAGE
+        msg = await self.bot.send_msg(dest_channel, embed=e)
+
+        # ===== ADD REACTIONS
+        for i in self_roles:
+            await msg.add_reaction(rkey[i.id])
+            await asyncio.sleep(0.4)
+
+        # ===== SAVE MSG ID AND EMOJI KEY
+        self.cogset['keys'][msg.id]     =   key
+        self.cogset['retmsgs'][msg.id]  =   'self_roles'
+        
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+
+        return
+
+    @commands.group(pass_context=True, name='selfassign', case_insensitive=True)
+    async def cmd_selfassign(self, ctx):
+        """Handles the self assignable roles."""
+
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help('selfassign')
+
+
+    @cmd_selfassign.group(pass_context=True, name="allow", aliases=['add'], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp_allow(self, ctx, role: discord.Role = None):
+        """Add a role to list of self assignable roles."""
+
+        # ===== If no role has been provided.
+        if role is None:
+            await ctx.send_help('selfassign')
+            return
+        
+        # ===== If role is already self assignable
+        if role.id in self.cogset['selfroles']:
+            await ctx.send(f"Role <@&{role.id}> is already self assignable.")
+            return 
+    
+        self.cogset['selfroles'].append(role.id)
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+        await ctx.send(f"Role <@&{role.id}> is now self assignable, please repost/update the self assignable roles message for changes to take effect.")
+        return
+
+    @cmd_selfassign.group(pass_context=True, name="remove", aliases=['delete'], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp_remove(self, ctx, role: discord.Role = None ):
+        """Remove a role from list of self assignable roles."""
+
+        # ===== If no role has been provided.
+        if role is None:
+            await ctx.send_help('selfassign')
+            return
+
+        # ===== If role is already allowed.
+        if role.id not in self.cogset['selfroles']:
+            await ctx.send(f"Role <@&{role.id}> is wasn't self assignable.")
+            return 
+
+        self.cogset['selfroles'].remove(role.id)
+        await cogset.SAVE(self.cogset, cogname=self.qualified_name)
+        await ctx.send(f"Role <@&{role.id}> is no longer self assignable, please repost/update the self assignable roles message for changes to take effect.")
+
+    @cmd_selfassign.group(pass_context=True, name="list", aliases=[], invoke_without_command=True, case_insensitive=True)
+    @checks.HIGHEST_STAFF()
+    async def grp_list(self, ctx):
+        """List all self assignable roles."""
+
+        self_roles =    [role for role in ctx.guild.roles if role.id in self.cogset['selfroles']]
+
+        desc = "\n".join((f"> {role.name}" for role in self_roles))
+        desc += f"\nTotal number of self assignable roles {len(self_roles)}."
+
+        e = discord.Embed(
+            title=          "List of Self Assignable Roles", 
+            description=    desc, 
+            colour=         RANDOM_DISCORD_COLOR(), 
+            type=           "rich", 
+            timestamp=      datetime.datetime.utcnow()
+            )
+        e.set_footer(
+            icon_url=       GUILD_URL_AS(ctx.guild), 
+            text=           ctx.guild.name
+            )
+        
+        await self.bot.send_msg(dest=ctx.channel, embed=e)
+        return
+
+  # -------------------- Reaction Functions --------------------
+    async def name_color(self, member, role, guild, payload):
+
+        try:
+            await member.add_roles(role, reason="Apply new name color.")
+
+        except discord.errors.Forbidden:
+            raise exceptions.PostAsWebhook(                
+                f'Exception in on_raw_reaction_add\nAdding role {role.name} failed, I do not have permissions to add these roles.', 
+                preface=f"```diff\n- An error has occured in {self.qualified_name}\n```") 
+
+        # ===== REMOVE OTHER NAME COLOR ROLES
+        for rrole in guild.roles:
+            if rrole.id in [i[1] for i in self.cogset['keys'][payload.message_id].items()] and rrole != role:
+
+                try:
+                    await member.remove_roles(rrole, reason='Removing old name color.')
+                    await asyncio.sleep(0.2)
+
+                except discord.errors.NotFound:
+                    pass
+        return
+
+    async def self_roles(self, member, role, guild, payload):
+        if role.id not in self.cogset['selfroles']:
+            return
+
+        if role in member.roles:
+            await member.remove_roles(role, reason="Remove self assignable role.")
+            msg = f"You've had the role \"{role.name}\" removed on {guild.name}."
+        
+        else:
+            await member.add_roles(role, reason="Apply self assignable role.")
+            msg = f"You've been given the role \"{role.name}\" on {guild.name}."
+
+        await member.send(msg)
+        return
+        
+
+
+
 
 def setup(bot):
     bot.add_cog(SelfRoles(bot))

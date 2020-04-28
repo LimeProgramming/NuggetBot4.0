@@ -287,14 +287,14 @@ class NuggetBot(commands.Bot):
         if len(await self.db.fetch(pgCmds.MEMBER_TABLE_EMPTY)) == 0:
             for m in guildMems:
                 j += 1 
-                await self.db.execute(pgCmds.ADD_MEMBER_FUNC, m.id, m.joined_at, m.created_at, True)                
+                await self.db.execute(pgCmds.ADD_MEMBER_FUNC, m.id, m.joined_at, m.created_at)                
 
         else:
             # === ADDING NEW MEMBERS
             for member in guildMems:
                 if member.id not in dbMemids and not member.bot:
                     j += 1 
-                    await self.db.execute(pgCmds.ADD_MEMBER_FUNC, member.id, member.joined_at, member.created_at, True)
+                    await self.db.execute(pgCmds.ADD_MEMBER_FUNC, member.id, member.joined_at, member.created_at)
                                         
         # ===== UPDATE CURRENT MEMBERS LOGGED IN DATABASE
         for memid in dbMems:
@@ -477,8 +477,8 @@ class NuggetBot(commands.Bot):
                                     status=discord.Status.online)
 
       # ---------- SCHEDULER ----------
-        self.scheduler.start()
-        self.scheduler.print_jobs()
+        #self.scheduler.start()
+        #self.scheduler.print_jobs()
 
 
     async def on_resume(self):
@@ -500,6 +500,28 @@ class NuggetBot(commands.Bot):
             await self.logout()
             await self.close()
 
+        elif ex_type == discord.ext.commands.errors.CommandInvokeError:
+            if issubclass(type(ex.original), exceptions.Signal):
+
+                if type(ex.original) == exceptions.RestartSignal:
+                    self.exit_signal = exceptions.RestartSignal()
+
+                elif type(ex.original) == exceptions.TerminateSignal:
+                    self.exit_signal = exceptions.TerminateSignal()
+
+                try:
+                    await self.db.close()
+                except AttributeError:
+                    pass
+
+                await self.logout()
+                await self.close()
+
+            else:
+                print('Ignoring exception in {}'.format(event), file=sys.stderr)
+                traceback.print_exc()
+
+        ##retire
         elif issubclass(ex_type, exceptions.Signal):
             self.exit_signal = ex_type
             await self.db.close()
@@ -1116,7 +1138,6 @@ class NuggetBot(commands.Bot):
 
         return message_list
 
-    #updated
     async def ask_yn(self, msg, question, timeout=60, expire_in=0):
         """Custom function which ask a yes or no question using reactions, returns True for yes | false for no | none for timeout"""
 
@@ -1165,7 +1186,6 @@ class NuggetBot(commands.Bot):
         except asyncio.TimeoutError:
             return None
 
-    #updated
     async def ask_yn_msg(self, msg, question, timeout=60, expire_in=0):
         """Custom function which ask a yes or no question using messages, returns True for yes | false for no | none for timeout"""
 
@@ -1199,7 +1219,6 @@ class NuggetBot(commands.Bot):
         except asyncio.TimeoutError:
             return None
 
-    #updated
     async def _get_private_channel(self, user):
         """
             Doesn't work but has logic I might find handy for something else
@@ -1211,7 +1230,6 @@ class NuggetBot(commands.Bot):
 
         return channel
 
-    #updated
     def safe_print(self, content, *, end='\n', flush=True):
         """Custom function to allow printing to console with less issues from asyncio"""
 
@@ -1219,7 +1237,6 @@ class NuggetBot(commands.Bot):
         if flush:
             sys.stdout.flush()
 
-    #updated
     async def __split_list(self, arr, size=100):
         """Custom function to break a list or string into an array of a certain size"""
 
@@ -1233,7 +1250,6 @@ class NuggetBot(commands.Bot):
         arrs.append(arr)
         return arrs
 
-    #updated
     async def _has_guild_perms(self, member, perm):
         """
         Input:
@@ -1269,6 +1285,41 @@ class NuggetBot(commands.Bot):
 
         return False
 
+    async def _get_channel(self, dest):
+        """
+        This just takes common ABC messageables and returns the channel.
+        Also suppors channel ids in the form of int's and strings.
+        """
+        channel = None 
+
+        if isinstance(dest, discord.Message):
+            channel = dest.channel 
+        
+        elif isinstance(dest, discord.TextChannel):
+            channel = dest
+        
+        elif isinstance(dest, discord.ext.commands.Context):
+            channel = dest.channel
+        
+        elif type(dest) is int:
+            channel = self.get_channel(dest)
+            if channel is None:
+                try:
+                    channel = self.fetch_channel(dest)
+                except (discord.InvalidData, discord.HTTPException, discord.NotFound, discord.Forbidden):
+                    channel = None 
+
+        elif type(dest) is str and dest.isdigit():
+            dest = int(dest)
+            channel = self.get_channel(dest)
+            if channel is None:
+                try:
+                    channel = self.fetch_channel(dest)
+                except (discord.InvalidData, discord.HTTPException, discord.NotFound, discord.Forbidden):
+                    channel = None 
+
+        return channel
+
     # ===== Last of the database stuff =====
     @asyncio.coroutine
     def _db_add_new_messages(self, guild):
@@ -1278,11 +1329,7 @@ class NuggetBot(commands.Bot):
         j = 0
         c = 0
 
-        for channel in guild.channels:
-            # === IGNORE VOICECHANNELS AND CATEGORIES
-            if not channel.type == discord.ChannelType.text:
-                continue
-            
+        for channel in guild.text_channels:
             # === IGNORE GATE CHANNEL
             if channel.id == self.config.channels['entrance_gate']:
                 continue
@@ -1615,217 +1662,6 @@ class NuggetBot(commands.Bot):
         return "{} {}".format(func.__name__, arg)
 
 
-# ======================================== SELF ASSIGN ROLES ========================================
-    #build role edit report
-    async def _report_edited_roles(self, msg, nsfwRole, isRoleAdded, changedRoles, expire_in=15, Archive=True):
-        embed = discord.Embed(  description=f"Mention: {msg.author.mention}\n"
-                                            f"Has NSFW Role: {nsfwRole}\n",
-                                type=       "rich",
-                                timestamp=  datetime.datetime.utcnow(),
-                                colour=     (0x51B5CC if isRoleAdded else 0xCC1234)
-                            )
-        embed.set_author(       name=       "Roles updated",
-                                icon_url=   AVATAR_URL_AS(msg.author)
-                        )
-
-        log = ""
-        logPrefix = ("+" if isRoleAdded else "-")
-
-        for i, changedRole in enumerate(changedRoles):
-            if i == 0:
-                log += f"{logPrefix}{changedRole}"
-            else:
-                log += f"\n{logPrefix}{changedRole}"
-
-        embed.add_field(        name=       ("Assigned Roles" if isRoleAdded else "Removed Roles"),
-                                value=      log,
-                                inline=     False
-                        )
-        embed.set_footer(       icon_url=   msg.guild.icon_url, 
-                                text=       msg.guild.name
-                        )
-
-        await self.send_msg(msg.channel, content=None, embed=embed, expire_in=expire_in)
-
-        if Archive:
-            await self.send_msg(discord.utils.get(msg.guild.channels, id=self.config.channels['bot_log']), content=None, embed=embed)
-
-        return
-
-    ###HANDLER IF ROLE HAS AN NSFW VERSION
-    async def _lewd_role_available(self, msg, baseRoleName, nsfwRoleName, expire_in=15, yn_expire_in=2):
-        #===== VARIABLE SETUP
-        #-- TRUE IF USER HAS NSFW ROLE
-        nsfwRole = bool(discord.utils.get(msg.author.roles, name="NSFW"))
-        #-- TRUE IF GRANTING THE ROLE, FALSE IF REMOVING THE ROLE
-        toggleAdd = not bool(discord.utils.get(msg.author.roles, name=baseRoleName))
-        #-- TRUE IF USER HAS NSFW VERSION OF BASE ROLE
-        hasNSFWRoleName = bool(discord.utils.get(msg.author.roles, name=nsfwRoleName))
-
-        reportedRoles = [baseRoleName]
-
-        #===== IF MEMBER HAS NSFW ROLE
-        if nsfwRole:
-            react = False
-
-            #=== IF USER HAS THE NSFW VERSION OF BASE ROLE **AND** IS REMOVING THE BASE ROLE
-            #=== ASK IF THEY WANT NSFW ROLE VERSION REMOVED AS WELL
-            if hasNSFWRoleName and not toggleAdd:
-                react = await self.ask_yn(msg, f"You have the NSFW version of the {baseRoleName} role.\nWould you like to have that **removed** as well?", expire_in=yn_expire_in)
-
-            #=== IF GRANTING BASE ROLE **AND** DOESN'T HAVE NSFW ROLE VERSION
-            #=== ASK IF THEY WANT THE NSFW ROLE VERSION ADDED AS WELL
-            if not hasNSFWRoleName and toggleAdd:
-                react = await self.ask_yn(msg, f"A NSFW version of the {baseRoleName} role is available.\nWould you like to have that **added** as well?", expire_in=yn_expire_in)
-
-            #=== IF USER SAYS YES
-            if react:
-                reportedRoles.append(nsfwRoleName)
-                #= ADD LEWD ROLE IF TOGGLE TRUE
-                if toggleAdd:
-                    await msg.author.add_roles(discord.utils.get(msg.guild.roles, name=nsfwRoleName))
-                #= REMOVE LEWD ROLE IF TOGGLE FALSE
-                else:
-                    await msg.author.remove_roles(discord.utils.get(msg.guild.roles, name=nsfwRoleName))
-
-            #=== Time out handing
-            elif react == None:
-                #= Tell the user they took too long
-                await self.send_msg(msg.channel, content="You took too long to respond. Cancelling action.", expire_in=expire_in)
-                return
-
-        #===== ADD BASE ROLE IF TOGGLE IS TRUE
-        if toggleAdd:
-            await msg.author.add_roles(discord.utils.get(msg.guild.roles, name=baseRoleName))
-        #===== REM BASE ROLE IF TOGGLE FALSE
-        else:
-            await msg.author.remove_roles(discord.utils.get(msg.guild.roles, name=baseRoleName))
-
-        await self._report_edited_roles(msg, nsfwRole=nsfwRole, isRoleAdded=toggleAdd, changedRoles=reportedRoles, expire_in=expire_in)
-        return
-
-    ###handler is the role is NSFW
-    async def _handle_nsfw_role(self, msg, nsfwRoleName, expire_in=15):
-        #TRUE IF HAS NSFW ROLE
-        nsfwRole = bool(discord.utils.get(msg.author.roles, name="NSFW"))
-        #TRUE IF GRANTING ROLE, FALSE IF REMOVING ROLE
-        toggleAdd = not bool(discord.utils.get(msg.author.roles, name=nsfwRoleName))
-
-        #if user has the lewd role and getting rid of it
-        if not toggleAdd:
-            await msg.author.remove_roles(discord.utils.get(msg.guild.roles, name=nsfwRoleName))
-            await self._report_edited_roles(msg, nsfwRole=nsfwRole, isRoleAdded=False, changedRoles=[nsfwRoleName], expire_in=expire_in, Archive=True)
-            return
-
-        #if user doesn't have nsfw role and wants the lewd role
-        if not nsfwRole and toggleAdd:
-            await self.send_msg(msg.channel, content="NSFW role required.", expire_in=expire_in)
-            return
-
-        #user has nsfw role and is requesting the lewd role
-        if nsfwRole and toggleAdd:
-            await msg.author.add_roles(discord.utils.get(msg.guild.roles, name=nsfwRoleName))
-            await self._report_edited_roles(msg, nsfwRole=nsfwRole, isRoleAdded=True, changedRoles=[nsfwRoleName], expire_in=expire_in, Archive=True)
-            return
-
-    ###Handler to toggle a role
-    async def _toggle_role(self, msg, baseRoleName, expire_in=15):
-        baseRole = discord.utils.get(msg.author.roles, name=baseRoleName)
-        toggleAdd = not bool(baseRole)
-
-        if toggleAdd:
-            await msg.author.add_roles(discord.utils.get(msg.guild.roles, name=baseRoleName))
-
-        else:
-            await msg.author.remove_roles(baseRole)
-
-        await self._report_edited_roles(msg, nsfwRole="N/A", isRoleAdded=toggleAdd, changedRoles=[baseRoleName], expire_in=expire_in, Archive=True)
-        return
-
-    ###RP role
-    @in_reception
-    @is_core
-    async def cmd_rp(self, msg):
-        """
-        [Core] Users can toggle the RP role. They get the option of the RP-LEWD role if they have the NSFW role
-        """
-
-        await self._lewd_role_available(msg, baseRoleName="RP", nsfwRoleName="RP-LEWD", expire_in=10, yn_expire_in=2)
-        return Response(reply=False)
-
-    ###RP Lewd role
-    @in_reception
-    @is_core
-    async def cmd_rp_lewd(self, msg):
-        """
-        Useage:
-            [prefix]rp_lewd
-        [NSFW] Users can toggle the RP-LEWD role
-        """
-
-        await self._handle_nsfw_role(msg=msg, nsfwRoleName="RP-LEWD")
-        return Response(reply=False)
-
-    ###artist role
-    @in_reception
-    @is_core
-    async def cmd_artist(self, msg):
-        """
-        [Core] Users can toggle the artist role
-        """
-
-        await self._toggle_role(msg=msg, baseRoleName="Artist")
-        return Response(reply=False)
-
-    ###book_wyrm role
-    @in_reception
-    @is_core
-    async def cmd_book_wyrm(self, msg):
-        """
-        [Core] Users can toggle the book-wyrm role.
-        """
-
-        await self._toggle_role(msg=msg, baseRoleName="Book-Wyrm")
-        return Response(reply=False)
-
-    ###ping
-    @in_reception
-    @is_core
-    async def cmd_notifyme(self, msg):
-        """
-        [Core] Users can toggle the ping role
-        """
-
-        await self._toggle_role(msg=msg, baseRoleName="NotifyMe")
-        return Response(reply=False)
-
-    ###vore role
-    @in_reception
-    @is_core
-    async def cmd_vore(self, msg):
-        """
-        [Core] Users can toggle the vore role.
-        """
-
-        #True if user has RP role
-        #hasRPRole = (True if discord.utils.get(msg.author.roles, name="RP") else False)
-        #True if user has Vore role
-        #hasVoreRole = (True if discord.utils.get(msg.author.roles, name="Vore") else False)
-
-        #if hasRPRole or hasVoreRole:
-        await self._toggle_role(msg=msg, baseRoleName="Vore")
-        return Response(reply=False)
-    
-    @in_reception
-    @is_core
-    async def cmd_commissioner(self, msg):
-        """
-        [Core] Users can toggle the commissioner role.
-        """
-        await self._toggle_role(msg=msg, baseRoleName="Commissioner")
-        return Response(reply=False)
-
-
 #======================================== Staff Commands ========================================
     @is_any_staff
     async def cmd_adminhelp(self, msg):
@@ -1980,37 +1816,6 @@ class NuggetBot(commands.Bot):
 
 
 #======================================== OWNER COMMANDS ========================================
-    @owner_only
-    async def cmd_restart(self, msg):
-        """
-        Useage:
-            [prefix]restart
-        [Bot Owner] Restarts the bot.
-        """
-        embed= await GenEmbed.ownerRestart(msg=msg)
-
-        await self.send_msg(msg.channel, embed=embed)
-        await self.delete_msg(msg)
-        self.exit_signal = exceptions.RestartSignal()
-
-        raise exceptions.RestartSignal
-
-    @owner_only
-    async def cmd_shutdown(self, msg):
-        """
-        Useage:
-            [prefix]shutdown
-        [Bot Owner] Shuts down the bot.
-        """
-
-        embed = await GenEmbed.ownerShutdown(msg)
-
-        await self.send_msg(msg.channel, embed=embed)
-
-        #self.exit_signal = exceptions.TerminateSignal()
-        await self.delete_msg(msg)
-        raise exceptions.TerminateSignal
-
     @owner_only
     async def cmd_findfeedback(self, msg):
         """

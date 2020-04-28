@@ -58,7 +58,7 @@ progress_bar () {
 while [ $runbot -gt 0 ]
 
 do
-    python3.7 runbot3.py
+    python3.7 runbot.py
 
     while IFS= read -r line
     do

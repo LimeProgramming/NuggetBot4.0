@@ -33,6 +33,7 @@ from discord.utils import _bytes_to_base64_data
 from nuggetbot.config import Config
 from nuggetbot.util import gen_embed as GenEmbed
 from nuggetbot.database import DatabaseCmds as pgCmds
+from nuggetbot.exceptions import RestartSignal, TerminateSignal
 from nuggetbot.util.chat_formatting import RANDOM_DISCORD_COLOR, GUILD_URL_AS, AVATAR_URL_AS
 from .util import checks, cogset
 import dblogin 
@@ -64,7 +65,6 @@ class Admin(commands.Cog):
         self._last_result = None
         self.sessions = set()
         self.http = aiohttp.ClientSession(loop=bot.loop)
-        Admin.config = Config()
 
         self.raw_perms = [  'create_instant_invite', 'kick_members', 'ban_members', 'administrator', 
                     'manage_channels', 'manage_guild', 'add_reactions', 'view_audit_log', 'priority_speaker', 
@@ -226,7 +226,7 @@ class Admin(commands.Cog):
             try:
                 owner = (self.bot.application_info()).owner
             except:
-                owner = self.bot.get_guild(Admin.config.target_guild_id).owner()
+                owner = self.bot.get_guild(self.bot.config.target_guild_id).owner()
 
             await ctx.channel.send(content=f"```diff\n- {ctx.prefix}{ctx.invoked_with} is an owner only command, this will be reported to {owner.name}.")
             await owner.send(content=f"{ctx.author.mention} tried to use the owner only command{ctx.invoked_with}")
@@ -239,18 +239,17 @@ class Admin(commands.Cog):
     async def cog_before_invoke(self, ctx):
         '''THIS IS CALLED BEFORE EVERY COG COMMAND, IT'S SOLE PURPOSE IS TO CONNECT TO THE DATABASE'''
 
-        credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
-        self.db = await asyncpg.create_pool(**credentials)
+        #credentials = {"user": dblogin.user, "password": dblogin.pwrd, "database": dblogin.name, "host": dblogin.host}
+        #self.db = await asyncpg.create_pool(**credentials)
 
         return
 
+    @asyncio.coroutine
     async def cog_after_invoke(self, ctx):
-        await self.db.close()
-
-        if Admin.config.delete_invoking:
-            await ctx.message.delete()
-
-        return
+        if self.bot.config.delete_invoking:
+            try:
+                await ctx.message.delete()
+            except (discord.errors.NotFound, discord.errors.Forbidden): pass
 
 
   #-------------------- LISTENERS --------------------
@@ -979,6 +978,80 @@ class Admin(commands.Cog):
         new_ctx._db = ctx._db
         await self.bot.invoke(new_ctx)
 
+    @checks.BOT_OWNER()
+    @commands.command(pass_context=True, hidden=False, name='reboot', aliases=['restart'])
+    async def cmd_reboot(self, ctx):
+        """
+        [Disabled command]
+        """
+
+        embed = discord.Embed(  
+            description=    "Restarting 👋",
+            colour=         0x6BB281,
+            timestamp=      datetime.datetime.utcnow(),
+            type=           "rich"
+            )
+
+        if ctx.guild:
+            embed.set_footer(
+                icon_url=       GUILD_URL_AS(ctx.guild), 
+                text=           ctx.guild.name
+                )
+        else:
+            embed.set_footer(
+                icon_url=       AVATAR_URL_AS(user=self.bot.user), 
+                text=           self.bot.user.name
+                )
+
+        embed.set_author(       
+            name=           "Owner Command",
+            icon_url=       AVATAR_URL_AS(user=ctx.author)
+            )
+
+        await self.bot.send_msg(ctx.channel, embed=embed)
+        await self.bot.delete_msg(ctx.message)
+
+        raise RestartSignal
+    
+    @checks.BOT_OWNER()
+    @commands.command(pass_context=True, hidden=False, name='shutdown', aliases=['logout'])
+    async def cmd_shutdown(self, ctx):
+        """
+        [Disabled command]
+        """
+
+        embed = discord.Embed(  
+            description=    "Shutting Down 👋",
+            colour=         0x6BB281,
+            timestamp=      datetime.datetime.utcnow(),
+            type=           "rich"
+            )
+
+        if ctx.guild:
+            embed.set_footer(
+                icon_url=       GUILD_URL_AS(ctx.guild), 
+                text=           ctx.guild.name
+                )
+        else:
+            embed.set_footer(
+                icon_url=       AVATAR_URL_AS(user=self.bot.user), 
+                text=           self.bot.user.name
+                )
+
+        embed.set_author(
+            name=           "Owner Command",
+            icon_url=       AVATAR_URL_AS(user=ctx.author)
+            )
+
+        await self.bot.send_msg(ctx.channel, embed=embed)
+        await self.bot.delete_msg(ctx.message)
+
+        raise TerminateSignal
+
+    @cmd_shutdown.error
+    @cmd_reboot.error
+    async def _reboot_error(self, ctx, error):
+        raise error.original
 
 def setup(bot):
     bot.add_cog(Admin(bot))
